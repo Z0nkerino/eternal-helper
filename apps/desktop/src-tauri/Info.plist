@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>LSUIElement</key>
+  <true/>
+  <key>NSScreenCaptureUsageDescription</key>
+  <string>Eternal Helper records your screen only when you press Record.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Eternal Helper uses the microphone only when you record with your voice.</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Eternal Helper reads what Music or Spotify is playing to show it in the island.</string>
+</dict>
+</plist>

@@ -1,0 +1,13 @@
+{
+  "name": "eternal-helper",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Eternal Helper by Eternal Inc. — a dynamic island for Windows and macOS.",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --filter @eternal/desktop tauri dev",
+    "build": "pnpm --filter @eternal/desktop tauri build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}
