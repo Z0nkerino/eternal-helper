@@ -1,0 +1,119 @@
+name: Release
+
+# Every push to main whose version (apps/desktop/src-tauri/tauri.conf.json) has no release yet builds the
+# Windows installer and the macOS universal DMG and publishes them as a GitHub Release with stable names:
+#   https://github.com/<owner>/<repo>/releases/latest/download/Eternal-Helper-windows-setup.exe
+#   https://github.com/<owner>/<repo>/releases/latest/download/Eternal-Helper-mac.dmg
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      exists: ${{ steps.v.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: version
+    if: needs.version.outputs.exists != 'true' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: '--bundles nsis'
+          - os: macos-latest
+            args: '--target universal-apple-darwin --bundles dmg'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: apps/desktop/src-tauri }
+      - run: pnpm install --frozen-lockfile
+
+      # Code signing is optional: a variable is exported only when its secret exists,
+      # so without certificates the installers are simply unsigned.
+      - name: Signing environment (optional)
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -n "${!v}" ]; then
+              { echo "$v<<__EOF__"; echo "${!v}"; echo "__EOF__"; } >> "$GITHUB_ENV"
+            fi
+          done
+
+      - name: Build
+        working-directory: apps/desktop
+        run: pnpm tauri build ${{ matrix.args }}
+
+      - name: Give the installer a stable name
+        shell: bash
+        run: |
+          mkdir -p out
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp apps/desktop/src-tauri/target/release/bundle/nsis/*.exe out/Eternal-Helper-windows-setup.exe
+          else
+            cp apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg out/Eternal-Helper-mac.dmg
+          fi
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.version.outputs.version }}
+        run: |
+          notes="Eternal Helper ${TAG#v} by Eternal Inc.
+
+          - Windows 10/11: Eternal-Helper-windows-setup.exe
+          - macOS 13+ (Apple Silicon and Intel): Eternal-Helper-mac.dmg
+
+          The installers are not code-signed yet. Windows: SmartScreen → More info → Run anyway. Mac: if macOS blocks the app, open System Settings → Privacy & Security → Open Anyway."
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" out/* --title "Eternal Helper ${TAG#v}" --notes "$notes" --target "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY"
+          fi

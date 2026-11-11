@@ -8,6 +8,21 @@ An always-visible black pill at the top centre of the screen. It shows the clock
 
 > **Status: basic build (v0.1).** This is the foundation: it builds, runs and is tested. See [What's in this build](#whats-in-this-build) and [Not yet](#not-yet).
 
+## Download
+
+| Platform | Download |
+| --- | --- |
+| **Windows 10/11** | [Eternal-Helper-windows-setup.exe](https://github.com/Z0nkerino/eternal-helper/releases/latest/download/Eternal-Helper-windows-setup.exe) |
+| **macOS 13+** (Apple Silicon + Intel) | [Eternal-Helper-mac.dmg](https://github.com/Z0nkerino/eternal-helper/releases/latest/download/Eternal-Helper-mac.dmg) |
+
+All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
+
+**Windows, first launch:** the installer isn't code-signed yet, so SmartScreen may say "Windows protected your PC". Click **More info → Run anyway**.
+
+**Mac, first launch:** the app isn't notarized yet (that needs a paid Apple Developer account), so macOS blocks it the first time. Open **System Settings → Privacy & Security** and click **Open Anyway**. Then allow **Screen Recording** when you first record.
+
+New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
+
 ## What's in this build
 
 | Area | What works |
@@ -54,12 +69,12 @@ apps/desktop/            Tauri 2 app
     platform/            OS code behind traits: win.rs (WinRT/Win32), mac.rs (AppKit), other.rs
 packages/ui/             design tokens and basic components
 packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
-.github/workflows/ci.yml tests + Windows (MSI/NSIS) and macOS universal (DMG) builds
+.github/workflows/       ci.yml (tests), release.yml (Windows + Mac installers → GitHub Releases)
 ```
 
 ### CI and signing
 
-CI builds unsigned installers by default. To sign them, add the repository secrets `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` (macOS signing and notarization) and `TAURI_SIGNING_PRIVATE_KEY` (+ password) for updates. CI uses each one only if it's set.
+`ci.yml` runs the tests on every push. `release.yml` builds and publishes the installers when the version changes. They're unsigned by default. To sign the Mac app, add the repository secrets `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` and `APPLE_TEAM_ID`. The workflow uses each one only if it's set.
 
 ## OS limits found so far
 
@@ -84,6 +99,13 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Скачать
+
+- **Windows 10/11:** [Eternal-Helper-windows-setup.exe](https://github.com/Z0nkerino/eternal-helper/releases/latest/download/Eternal-Helper-windows-setup.exe)
+- **macOS 13+** (Apple Silicon и Intel): [Eternal-Helper-mac.dmg](https://github.com/Z0nkerino/eternal-helper/releases/latest/download/Eternal-Helper-mac.dmg)
+
+Установщики пока без цифровой подписи. Windows: «Подробнее → Выполнить в любом случае». Mac: **Системные настройки → Конфиденциальность и безопасность → Всё равно открыть**.
 
 ## Что есть
 
