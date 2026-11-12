@@ -33,6 +33,7 @@ New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and pu
 | **Screen recording + library** | Record the screen with no sound, with system sound, or with system sound + microphone. Pause/stop from the pill, with a live timer. Videos are saved to `Videos/Eternal Helper` (`Movies` on Mac, or a folder you choose) and listed in the **Videos** tab: open, show in folder, rename, delete. Files you add to the folder by hand show up too. |
 | **Media** | Now playing, with cover art, progress and play/pause/next/previous. Windows: every app that reports to the system (Spotify, browsers, Yandex Music, AIMP…). macOS: Spotify and Apple Music. |
 | **Home, Text, Weather** | Quick tools (record, timer, focus, Afina, Planner). Text tools: change case, fix the keyboard layout (ghbdtn → привет), transliterate, clean up text, format JSON, Base64 and URL encode/decode; each result is copied to the clipboard. Weather from Open-Meteo (no key needed). |
+| **Notch-safe layout** | On a MacBook with a notch, the notch is a no-go zone. The open panel puts only information beside it (time, weather, what's running) and the tabs go below it, at least 8 px clear. Tabs can sit at the **top, bottom or in a side column** (Settings → Panel tabs; *Auto* = bottom on notched Macs, top elsewhere). Tabs are icons with labels on hover and scroll sideways with faded edges when they don't fit. The notch is measured for the display the island is on, so moving to an external monitor or closing the lid updates the layout. *Settings → For developers → Show safe areas* draws the notch and safe zones over the island. |
 | **System** | Tray / menu-bar menu, start at login, a global shortcut you set yourself (shows an error if it's taken), do not disturb, hides in fullscreen apps, follows the cursor's monitor if you want. Russian and English, chosen automatically from the system language. Respects "reduce motion". |
 
 ### How to connect Universal Planner (one minute)
@@ -59,6 +60,7 @@ cd apps/desktop/src-tauri && cargo test   # Rust unit tests
 ```
 
 UI only, in a browser, with a built-in mock backend: `pnpm --filter @eternal/desktop dev` → http://localhost:1420.
+Emulate displays with `?emulate=` (`macbook-air-13`, `macbook-air-15`, `macbook-pro-14`, `macbook-pro-16`, `mac-no-notch`, `external-monitor`, `windows-100`, `windows-150`, `windows-200`), choose the tab position with `&tabs=top|bottom|side` and turn on the safe-area overlay with `&debug=1`. Notch sizes in these presets are approximate; the app itself measures the real notch with `NSScreen`.
 
 ### Layout
 
@@ -109,6 +111,7 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 
 ## Что есть
 
+- **Раскладка под вырез (notch):** вырез — запретная зона. Рядом с ним в раскрытой панели только информация (время, погода, индикаторы), вкладки — ниже выреза с отступом не меньше 8 px. Расположение вкладок: сверху / снизу / сбоку (Настройки → Вкладки панели; «Авто» — снизу на Mac с вырезом). Отладка: Настройки → Для разработчиков → «Показать безопасные зоны».
 - **Остров:** прозрачное окно поверх всех, без иконки в таскбаре/Dock, на всех рабочих столах; клики проходят сквозь всё, кроме пилюли; spring-анимации покой → активность → панель; вторая активность — «пузырь» сбоку; тосты выезжают из острова; на MacBook с вырезом пилюля растёт из выреза.
 - **Afina в острове:** вкладка, шар в пилюле и хоткей **Alt+Space / ⌥Space**. Сама отвечает (RU/EN): задачи из Планера на сегодня, ближайшее событие, время, погода, таймер и фокус, старт/стоп записи экрана, калькулятор, раскладка, «не беспокоить». Остальное — через ИИ по вашему ключу: Claude (по умолчанию `claude-opus-5-5`), OpenAI-совместимые API или локальная Ollama. Ключи — в системном хранилище.
 - **Подключение к Universal Planner:** живые события через Webhook → Custom на локальный приёмник острова (только `127.0.0.1`, с секретным токеном) и задачи на сегодня из папки резервных копий Планера. Кнопка «Открыть Планер».

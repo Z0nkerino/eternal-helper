@@ -1,21 +1,28 @@
 // The island: one black shape that springs between the pill, a live activity and the full panel.
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
 import { springs } from '@eternal/ui';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { MODULES } from '../modules';
 import { call } from '../lib/ipc';
-import { useT } from '../lib/i18n';
 import { closePanel, dismissToast, openPanel, useApp, type Tab } from '../lib/store';
+import { panelLayout, type PanelLayout } from '../lib/safeArea';
 import { Bubble, PillContent, useActivities } from './Pill';
+import { Tabs } from './Tabs';
+import { NotchStrip } from './NotchStrip';
+import { SafeAreaOverlay } from './SafeAreaOverlay';
 
 const PANEL_W = 720;
 /** Each tab gets the height it needs; the island springs between them. */
 const PANEL_H: Record<Tab, number> = { home: 336, afina: 470, planner: 420, videos: 420, text: 360, settings: 476 };
 
-function useSize(activity: boolean, notch: { width: number; height: number } | null, panel: boolean, tab: Tab) {
-  if (panel) return { w: PANEL_W, h: PANEL_H[tab], r: 28 };
-  if (notch) return { w: notch.width + (activity ? 220 : 160), h: Math.max(32, notch.height), r: 14 };
+/** Normal top padding of the open panel when there's no notch to clear. */
+const PANEL_PAD = 10;
+
+function useSize(activity: boolean, notch: { width: number; height: number } | null, panel: boolean, tab: Tab, p: PanelLayout) {
+  // On a notched display the panel grows by the info strip, so the content keeps its full height below it.
+  if (panel) return { w: PANEL_W, h: PANEL_H[tab] + (p.notch ? p.contentTop - PANEL_PAD : 0), r: 28 };
+  // Pill "wings" either side of the notch, wide enough for the clock and weather.
+  if (notch) return { w: notch.width + (activity ? 260 : 200), h: Math.max(32, notch.height), r: 14 };
   return activity ? { w: 290, h: 38, r: 19 } : { w: 200, h: 34, r: 17 };
 }
 
@@ -43,31 +50,26 @@ function useHitArea(refs: React.RefObject<HTMLElement>[]) {
   });
 }
 
-function Panel() {
-  const t = useT();
+function Panel({ p }: { p: PanelLayout }) {
   const tab = useApp((s) => s.tab);
   const Active = MODULES.find((m) => m.id === tab)?.tab ?? MODULES[0].tab!;
   return (
-    <motion.div className="panel" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.08 } }} exit={{ opacity: 0, transition: { duration: 0.08 } }}>
-      <nav className="tabs" role="tablist">
-        {MODULES.map((m) => {
-          const Icon = m.icon!;
-          return (
-            <button key={m.id} role="tab" aria-selected={tab === m.id} className={tab === m.id ? 'on' : ''} onClick={() => openPanel(m.id)}>
-              <Icon size={15} />
-              <span>{t(m.name)}</span>
-              {tab === m.id && <motion.span layoutId="tab-pill" className="tab-pill" transition={springs.snappy} />}
-            </button>
-          );
-        })}
-        <div className="grow" />
-        <button className="icon-btn" aria-label={t('close')} onClick={closePanel}>
-          <X size={16} />
-        </button>
-      </nav>
-      <div className="panel-body" role="tabpanel">
-        <Active />
+    <motion.div
+      className={`panel tabs-${p.tabs}`}
+      style={{ paddingTop: p.notch ? p.contentTop : PANEL_PAD }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1, transition: { delay: 0.08 } }}
+      exit={{ opacity: 0, transition: { duration: 0.08 } }}
+    >
+      {p.notch && <NotchStrip notch={p.notch} width={PANEL_W} />}
+      {p.tabs === 'top' && <Tabs position="top" />}
+      <div className="panel-main">
+        {p.tabs === 'side' && <Tabs position="side" />}
+        <div className="panel-body" role="tabpanel">
+          <Active />
+        </div>
       </div>
+      {p.tabs === 'bottom' && <Tabs position="bottom" />}
     </motion.div>
   );
 }
@@ -113,7 +115,10 @@ export function Island() {
   const activities = useActivities();
   const panel = view === 'panel';
   const notch = layout?.notch ?? null;
-  const size = useSize(activities.length > 0, notch, panel, tab);
+  const tabsPref = useApp((s) => s.settings?.tabsPosition);
+  const debug = useApp((s) => !!s.settings?.debugSafeAreas);
+  const size = useSize(activities.length > 0, notch, panel, tab, panelLayout(layout, tabsPref, PANEL_W));
+  const p = panelLayout(layout, tabsPref, size.w);
   const islandRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const toastRef = useRef<HTMLDivElement>(null);
@@ -151,7 +156,7 @@ export function Island() {
         >
           <AnimatePresence initial={false}>
             {panel ? (
-              <Panel key="panel" />
+              <Panel key="panel" p={p} />
             ) : (
               <motion.div key={activities[0] ?? 'idle'} className="pill-content" initial={{ opacity: 0, filter: 'blur(4px)' }} animate={{ opacity: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, filter: 'blur(4px)' }} transition={{ duration: 0.18 }}>
                 <PillContent activity={activities[0]} notch={notch ? notch.width : 0} />
@@ -166,6 +171,7 @@ export function Island() {
             </motion.div>
           )}
         </AnimatePresence>
+        {debug && <SafeAreaOverlay p={p} width={size.w} height={size.h} panel={panel} />}
       </div>
       <Toasts innerRef={toastRef} />
     </div>

@@ -94,13 +94,47 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 /* ---------- Panel ---------- */
 
-.panel { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 10px 12px 12px; }
-.tabs { display: flex; align-items: center; gap: 2px; padding-bottom: 10px; }
-.tabs [role='tab'] { position: relative; display: flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px; color: var(--muted); }
-.tabs [role='tab'] > :not(.tab-pill) { position: relative; z-index: 1; }
-.tabs [role='tab'].on { color: var(--text); }
-.tabs [role='tab']:hover { color: var(--text); }
+.panel { position: absolute; inset: 0; display: flex; flex-direction: column; padding: 10px 12px 12px; gap: 10px; }
+.panel-main { flex: 1; min-height: 0; display: flex; gap: 10px; }
+
+/* Tab bar: icons, active one in a pill with its label, hover labels as tooltips. */
+.tabbar { display: flex; align-items: center; gap: 4px; flex: none; min-width: 0; }
+.tabbar-side { flex-direction: column; align-items: stretch; width: 44px; }
+.tabbar-side .tab-close { order: -1; align-self: center; }
+.tabs-scroll { display: flex; align-items: center; gap: 2px; overflow: auto hidden; scrollbar-width: none; flex: 1; min-width: 0; padding: 2px; }
+.tabs-scroll::-webkit-scrollbar { display: none; }
+.tabbar-side .tabs-scroll { flex-direction: column; overflow: hidden auto; }
+.tabs-scroll.fade-end { mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.tabs-scroll.fade-start { mask-image: linear-gradient(to right, transparent, #000 28px); }
+.tabs-scroll.fade-start.fade-end { mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+.tabbar-side .tabs-scroll.fade-end { mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent); }
+.tabbar-side .tabs-scroll.fade-start { mask-image: linear-gradient(to bottom, transparent, #000 24px); }
+.tab { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-width: 38px; padding: 0 11px; border-radius: 999px; color: var(--muted); flex: none; }
+.tabbar-side .tab { width: 40px; padding: 0; }
+.tab > svg, .tab > .tab-label { position: relative; z-index: 1; }
+.tab.on { color: var(--text); }
+.tab:hover { color: var(--text); background: #ffffff0d; }
 .tab-pill { position: absolute; inset: 0; background: var(--surface-3); border-radius: 999px; }
+.tab-label { white-space: nowrap; font-weight: 500; }
+.tabbar { position: relative; }
+.tab-tip { position: absolute; z-index: 10; pointer-events: none; white-space: nowrap; background: #2a2a30; color: var(--text); font-size: 11.5px; padding: 4px 8px; border-radius: 7px; box-shadow: 0 6px 16px #0008; animation: tip-in 0.12s ease-out both; }
+@keyframes tip-in { from { opacity: 0; } }
+/* Tooltips open away from the notch: below a top bar, above a bottom bar, right of a side column. */
+.tip-top { top: calc(100% + 6px); transform: translateX(-50%); }
+.tip-bottom { bottom: calc(100% + 6px); transform: translateX(-50%); }
+.tip-side { transform: translateY(-50%); }
+
+/* Info strip beside the notch (open panel on notched Macs): text only. */
+.notch-strip { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; font-size: 12px; }
+.strip-side { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; overflow: hidden; white-space: nowrap; }
+.strip-side.left { left: 0; justify-content: flex-end; }
+.strip-side.right { justify-content: flex-start; }
+
+/* Debug: show safe areas */
+.safe-overlay { position: absolute; top: 0; pointer-events: none; z-index: 50; }
+.sa-notch { position: absolute; background: repeating-linear-gradient(45deg, #ff3b3099 0 6px, #ff3b3044 6px 12px); outline: 1px solid #ff3b30; color: #fff; font: 600 10px/1 ui-monospace, monospace; display: grid; place-items: center; }
+.sa-strip { position: absolute; left: 0; right: 0; outline: 1px dashed #ffd60a; background: #ffd60a14; }
+.sa-safe { position: absolute; left: 0; right: 0; outline: 1px dashed #32d74b; color: #32d74b; font: 600 10px ui-monospace, monospace; padding: 2px 6px; display: flex; align-items: flex-end; justify-content: flex-end; }
 .panel-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 
 .card { background: var(--surface-2); border-radius: var(--radius); padding: 12px; border: 0.5px solid var(--line); }
@@ -220,3 +254,4 @@ section > h3 + .setting:last-child { border-radius: 12px; }
 .dropdown button { text-align: left; padding: 7px 10px; border-radius: 7px; }
 .dropdown button:hover { background: #ffffff12; }
 .about { display: flex; align-items: center; gap: 10px; padding: 4px 2px 8px; }
+.setting-help { margin: 0; padding: 4px 12px 8px; background: var(--surface-2); border-bottom: 0.5px solid var(--line); }

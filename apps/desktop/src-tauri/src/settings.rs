@@ -14,6 +14,10 @@ pub struct Settings {
     pub do_not_disturb: bool,
     pub hide_in_fullscreen: bool,
     pub accent: String,
+    /// Where the panel's tabs sit: "auto" (bottom on notched displays, top elsewhere) | "top" | "bottom" | "side".
+    pub tabs_position: String,
+    /// Developer option: draw the notch and safe zones over the island.
+    pub debug_safe_areas: bool,
     pub weather: WeatherSettings,
     pub planner: PlannerSettings,
     pub afina: AfinaSettings,
@@ -72,6 +76,8 @@ impl Default for Settings {
             do_not_disturb: false,
             hide_in_fullscreen: true,
             accent: "#2F6BFF".into(),
+            tabs_position: "auto".into(),
+            debug_safe_areas: false,
             weather: WeatherSettings { unit: "c".into(), ..Default::default() },
             planner: PlannerSettings::default(),
             afina: AfinaSettings::default(),

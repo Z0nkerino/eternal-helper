@@ -52,3 +52,14 @@ export function describeWeather(code: number, lang: Lang): { label: string; icon
   if (code <= 77 || code === 85 || code === 86) return { label: L('Snow', 'Снег'), icon: 'snow' };
   return { label: L('Thunderstorm', 'Гроза'), icon: 'storm' };
 }
+
+/** WMO weather code → emoji, for compact places like the notch strip. Day/night aware for clear skies. */
+export function weatherEmoji(code: number, isDay = true): string {
+  if (code === 0) return isDay ? '☀️' : '🌙';
+  if (code <= 2) return isDay ? '🌤️' : '☁️';
+  if (code === 3) return '☁️';
+  if (code <= 48) return '🌫️';
+  if (code <= 67 || (code >= 80 && code <= 82)) return '🌧️';
+  if (code <= 77 || code === 85 || code === 86) return '🌨️';
+  return '⛈️';
+}

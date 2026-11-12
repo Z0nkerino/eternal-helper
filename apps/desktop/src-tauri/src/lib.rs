@@ -40,6 +40,7 @@ struct AppState {
     /// Hidden by the user from the tray (separate from auto-hide in fullscreen).
     user_hidden: AtomicBool,
     last_media: Mutex<Option<MediaInfo>>,
+    layout: Mutex<Layout>,
 }
 
 type S<'a> = State<'a, AppState>;
@@ -54,27 +55,33 @@ fn rec_dir(st: &AppState) -> PathBuf {
 
 // ---------- Window placement ----------
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, PartialEq, Debug)]
 #[serde(rename_all = "camelCase")]
 struct Layout {
     platform: &'static str,
+    /// Notch of the display the island is on right now (None on Windows and notch-less displays).
     notch: Option<platform::Notch>,
     /// Space to leave at the top (macOS menu bar on displays without a notch).
     top_inset: f64,
     native_recording: bool,
+    /// Logical width of the island's display, for the safe-area debug overlay.
+    screen_width: f64,
+    scale: f64,
 }
 
-fn layout() -> Layout {
-    let notch = platform::notch();
+fn layout_for(notch: Option<platform::Notch>, screen_width: f64, scale: f64) -> Layout {
     Layout {
         platform: if cfg!(windows) { "windows" } else if cfg!(target_os = "macos") { "macos" } else { "linux" },
         notch,
         top_inset: if cfg!(target_os = "macos") && notch.is_none() { 25.0 } else { 0.0 },
         native_recording: platform::native_recording(),
+        screen_width,
+        scale,
     }
 }
 
-/// Centres the island at the top of the monitor under the cursor ("cursor" mode) or the primary one.
+/// Centres the island at the top of the monitor under the cursor ("cursor" mode) or the primary one,
+/// then recomputes the safe area for that monitor.
 fn place(app: &AppHandle, w: &WebviewWindow) {
     let mode = app.state::<AppState>().settings.get().monitor;
     let monitor = if mode == "cursor" {
@@ -90,6 +97,23 @@ fn place(app: &AppHandle, w: &WebviewWindow) {
     if w.outer_position().ok() != Some(target) {
         let _ = w.set_position(target);
     }
+    refresh_layout(app, pos.x as f64 / scale, size.width as f64 / scale, scale);
+}
+
+/// Measures the notch of the given display (on the main thread, as AppKit requires) and tells the UI
+/// when the layout changed, e.g. after moving to an external monitor.
+fn refresh_layout(app: &AppHandle, x: f64, width: f64, scale: f64) {
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let next = layout_for(platform::notch_for(x, width), width, scale);
+        let st = handle.state::<AppState>();
+        let mut cur = st.layout.lock().unwrap();
+        if *cur != next {
+            *cur = next.clone();
+            drop(cur);
+            let _ = handle.emit("island://layout", &next);
+        }
+    });
 }
 
 // ---------- Background loops ----------
@@ -133,9 +157,9 @@ fn spawn_screen_watch(app: AppHandle) {
                     let _ = w.show();
                 }
             }
-            if s.monitor == "cursor" {
-                place(&app, &w);
-            }
+            // Cheap when nothing changed; follows the cursor's monitor and display changes (lid closed,
+            // monitor plugged in) so the notch-safe layout always matches the current screen.
+            place(&app, &w);
         }
     });
 }
@@ -210,8 +234,8 @@ fn set_settings(app: AppHandle, st: S, value: Settings) -> Result<Settings, Stri
 }
 
 #[tauri::command]
-fn island_layout() -> Layout {
-    layout()
+fn island_layout(st: S) -> Layout {
+    st.layout.lock().unwrap().clone()
 }
 
 #[tauri::command]
@@ -452,6 +476,7 @@ pub fn run() {
                 hit: Mutex::new((ISLAND_W / 2.0 - 100.0, 0.0, 200.0, 40.0)),
                 user_hidden: AtomicBool::new(false),
                 last_media: Mutex::new(None),
+                layout: Mutex::new(layout_for(None, 0.0, 1.0)),
             };
             let planner_state = state.planner.clone();
             app.manage(state);

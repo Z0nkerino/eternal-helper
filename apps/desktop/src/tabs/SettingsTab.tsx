@@ -187,6 +187,13 @@ export function SettingsTab() {
         <h3>{t('set.general')}</h3>
         <Segment label={t('set.language')} value={s.language} options={[['auto', 'Auto'], ['ru', 'Русский'], ['en', 'English']]} onChange={(language) => void saveSettings({ language })} />
         <Segment label={t('set.monitor')} value={s.monitor} options={[['primary', t('set.monitor.primary')], ['cursor', t('set.monitor.cursor')]]} onChange={(monitor) => void saveSettings({ monitor })} />
+        <Segment
+          label={t('set.tabs')}
+          value={s.tabsPosition}
+          options={[['auto', t('set.tabs.auto')], ['top', t('set.tabs.top')], ['bottom', t('set.tabs.bottom')], ['side', t('set.tabs.side')]]}
+          onChange={(tabsPosition) => void saveSettings({ tabsPosition })}
+        />
+        <p className="faint small setting-help">{t('set.tabsHelp')}</p>
         <HotkeyField />
         <Switch label={t('set.autostart')} on={s.autostart} onChange={(autostart) => void saveSettings({ autostart })} />
         <Switch label={t('set.dnd')} on={s.doNotDisturb} onChange={(doNotDisturb) => void saveSettings({ doNotDisturb })} />
@@ -227,10 +234,14 @@ export function SettingsTab() {
           />
         </div>
       </section>
+      <section>
+        <h3>{t('set.dev')}</h3>
+        <Switch label={t('set.safeAreas')} on={s.debugSafeAreas} onChange={(debugSafeAreas) => void saveSettings({ debugSafeAreas })} />
+      </section>
       <section className="about">
         <img src="/eternal-inc.svg" width={28} height={28} alt="" />
         <div>
-          <div>Eternal Helper 0.1.0</div>
+          <div>Eternal Helper 0.1.1</div>
           <div className="faint small">© 2026 Eternal Inc. · Universal Planner · Afina</div>
         </div>
         <div className="grow" />

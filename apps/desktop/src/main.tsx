@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { MotionConfig } from 'framer-motion';
 import { Island } from './island/Island';
-import { call, listen, type MediaInfo, type Settings } from './lib/ipc';
+import { call, listen, type Layout, type MediaInfo, type Settings } from './lib/ipc';
 import { closePanel, openPanel, saveSettings, tickTimer, toast, useApp } from './lib/store';
 import { refreshWeather } from './lib/weather';
 import { startPlannerSync } from './lib/planner';
@@ -17,6 +17,8 @@ async function boot() {
 
   listen<MediaInfo | null>('media://changed', (media) => useApp.setState({ media }));
   listen<Settings>('settings://changed', (settings) => useApp.setState({ settings }));
+  // Moving to another display (or closing the lid) can add or remove a notch.
+  listen<Layout>('island://layout', (layout) => useApp.setState({ layout }));
   // The global shortcut opens Afina, ready to type — she doubles as the command palette.
   listen('island://hotkey', () => {
     const s = useApp.getState();

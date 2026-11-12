@@ -138,7 +138,7 @@ pub fn set_activatable(w: &tauri::WebviewWindow, on: bool) {
     }
 }
 
-pub fn notch() -> Option<Notch> {
+pub fn notch_for(_x: f64, _width: f64) -> Option<Notch> {
     None
 }
 

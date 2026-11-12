@@ -34,12 +34,15 @@ pub trait FullscreenDetector: Send + Sync {
     fn fullscreen_active(&self) -> bool;
 }
 
-/// Hardware cut-out at the top of the built-in display (MacBook notch).
-#[derive(Clone, Copy, Serialize, Debug, Default)]
+/// Hardware cut-out at the top of a display (MacBook notch), in points.
+/// Nothing interactive may ever be drawn inside this rectangle.
+#[derive(Clone, Copy, Serialize, Debug, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Notch {
     pub width: f64,
     pub height: f64,
+    /// Horizontal offset of the notch centre from the screen centre (0 on every current MacBook).
+    pub center_offset: f64,
 }
 
 #[cfg(target_os = "macos")]

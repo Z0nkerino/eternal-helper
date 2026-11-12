@@ -107,19 +107,31 @@ pub fn set_activatable(w: &tauri::WebviewWindow, on: bool) {
     }
 }
 
-/// Size of the notch on the primary display, if it has one. Must be called on the main thread.
-pub fn notch() -> Option<Notch> {
+/// Notch of the screen whose frame starts at `x` and is `width` points wide (Tauri's logical monitor
+/// geometry). Must be called on the main thread. Displays without a notch return None.
+pub fn notch_for(x: f64, width: f64) -> Option<Notch> {
     let mtm = MainThreadMarker::new()?;
     let screens = NSScreen::screens(mtm);
-    let screen = screens.firstObject()?;
+    let screen = screens
+        .iter()
+        .find(|s| {
+            let f = s.frame();
+            (f.origin.x - x).abs() < 2.0 && (f.size.width - width).abs() < 2.0
+        })
+        .or_else(|| screens.iter().find(|s| (s.frame().size.width - width).abs() < 2.0))?;
     let insets = screen.safeAreaInsets();
     if insets.top <= 0.0 {
         return None;
     }
+    let frame = screen.frame();
     let left = screen.auxiliaryTopLeftArea();
     let right = screen.auxiliaryTopRightArea();
-    let width = screen.frame().size.width - left.size.width - right.size.width;
-    (width > 0.0).then_some(Notch { width, height: insets.top })
+    let notch_w = frame.size.width - left.size.width - right.size.width;
+    if notch_w <= 0.0 {
+        return None;
+    }
+    let center_offset = left.size.width + notch_w / 2.0 - frame.size.width / 2.0;
+    Some(Notch { width: notch_w, height: insets.top, center_offset })
 }
 
 pub fn native_recording() -> bool {

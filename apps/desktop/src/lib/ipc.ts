@@ -13,6 +13,8 @@ export interface Settings {
   doNotDisturb: boolean;
   hideInFullscreen: boolean;
   accent: string;
+  tabsPosition: 'auto' | 'top' | 'bottom' | 'side';
+  debugSafeAreas: boolean;
   weather: { place: string; lat: number | null; lon: number | null; unit: 'c' | 'f' };
   planner: { enabled: boolean; port: number; token: string; backupDir: string };
   afina: { enabled: boolean; provider: 'anthropic' | 'openai' | 'ollama' | 'off'; model: string; baseUrl: string };
@@ -30,11 +32,21 @@ export interface MediaInfo {
   durationMs?: number | null;
 }
 
+export interface Notch {
+  width: number;
+  height: number;
+  /** Offset of the notch centre from the screen centre, in points. */
+  centerOffset: number;
+}
+
 export interface Layout {
   platform: 'windows' | 'macos' | 'linux';
-  notch: { width: number; height: number } | null;
+  /** Notch of the display the island is on now; null on Windows and notch-less displays. */
+  notch: Notch | null;
   topInset: number;
   nativeRecording: boolean;
+  screenWidth: number;
+  scale: number;
 }
 
 export interface PlannerEvent {
@@ -123,6 +135,27 @@ export function listen<T>(event: string, cb: (payload: T) => void): () => void {
 
 // ---------- Browser mock ----------
 
+/**
+ * Display presets for checking the layout in a browser: `?emulate=macbook-pro-14` etc.
+ * Notch sizes are approximate (points); what matters is that nothing interactive lands inside them.
+ */
+export const DISPLAY_PRESETS: Record<string, Layout> = {
+  'macbook-air-13': { platform: 'macos', notch: { width: 190, height: 32, centerOffset: 0 }, topInset: 0, nativeRecording: true, screenWidth: 1470, scale: 2 },
+  'macbook-air-15': { platform: 'macos', notch: { width: 190, height: 32, centerOffset: 0 }, topInset: 0, nativeRecording: true, screenWidth: 1710, scale: 2 },
+  'macbook-pro-14': { platform: 'macos', notch: { width: 200, height: 32, centerOffset: 0 }, topInset: 0, nativeRecording: true, screenWidth: 1512, scale: 2 },
+  'macbook-pro-16': { platform: 'macos', notch: { width: 200, height: 38, centerOffset: 0 }, topInset: 0, nativeRecording: true, screenWidth: 1728, scale: 2 },
+  'mac-no-notch': { platform: 'macos', notch: null, topInset: 25, nativeRecording: true, screenWidth: 1440, scale: 2 },
+  'external-monitor': { platform: 'macos', notch: null, topInset: 25, nativeRecording: true, screenWidth: 2560, scale: 1 },
+  'windows-100': { platform: 'windows', notch: null, topInset: 0, nativeRecording: false, screenWidth: 1920, scale: 1 },
+  'windows-150': { platform: 'windows', notch: null, topInset: 0, nativeRecording: false, screenWidth: 1707, scale: 1.5 },
+  'windows-200': { platform: 'windows', notch: null, topInset: 0, nativeRecording: false, screenWidth: 1920, scale: 2 },
+};
+
+function emulatedLayout(): Layout {
+  const key = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('emulate') ?? '' : '';
+  return structuredClone(DISPLAY_PRESETS[key] ?? DISPLAY_PRESETS['windows-100']);
+}
+
 const mockSettings: Settings = {
   language: 'auto',
   monitor: 'primary',
@@ -131,6 +164,8 @@ const mockSettings: Settings = {
   doNotDisturb: false,
   hideInFullscreen: true,
   accent: '#2F6BFF',
+  tabsPosition: 'auto',
+  debugSafeAreas: false,
   weather: { place: '', lat: null, lon: null, unit: 'c' },
   planner: { enabled: true, port: 45123, token: 'demo-token', backupDir: '' },
   afina: { enabled: true, provider: 'anthropic', model: 'claude-opus-5-5', baseUrl: '' },
@@ -140,6 +175,14 @@ const mockRecs: Recording[] = [
   { id: 'r1', title: 'Recording 2026-11-11 10-02-11', path: '/Videos/Eternal Helper/a.mp4', size: 18_400_000, durationMs: 74_000, createdAt: Date.now() - 3_600_000 },
 ];
 
+// Dev-only URL overrides for layout checks: ?tabs=bottom&debug=1
+if (typeof location !== 'undefined') {
+  const q = new URLSearchParams(location.search);
+  const tabs = q.get('tabs');
+  if (tabs === 'top' || tabs === 'bottom' || tabs === 'side' || tabs === 'auto') mockSettings.tabsPosition = tabs;
+  if (q.get('debug') === '1') mockSettings.debugSafeAreas = true;
+}
+
 async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
   switch (cmd) {
     case 'get_settings':
@@ -148,7 +191,7 @@ async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
       Object.assign(mockSettings, (arg as { value: Settings }).value);
       return structuredClone(mockSettings);
     case 'island_layout':
-      return { platform: 'windows', notch: null, topInset: 0, nativeRecording: false } satisfies Layout;
+      return emulatedLayout();
     case 'media_now':
       return { title: 'Northern Lights', artist: 'Demo Artist', album: 'Demo', playing: true, source: 'Spotify', positionMs: 42_000, durationMs: 210_000 } satisfies MediaInfo;
     case 'planner_info':
