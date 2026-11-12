@@ -16,6 +16,7 @@ export function Tabs({ position }: { position: TabsPosition }) {
   const tab = useApp((s) => s.tab);
   const libSub = useApp((s) => s.libSub);
   const [hover, setHover] = useState<string | null>(null);
+  const update = useApp((s) => !!s.update?.available);
   const side = position === 'side';
 
   const onKeyDown = (e: React.KeyboardEvent) => {
@@ -51,6 +52,7 @@ export function Tabs({ position }: { position: TabsPosition }) {
               {on && <motion.span layoutId="seg-pill" className="seg-pill" transition={springs.snappy} />}
               <Icon size={15} aria-hidden />
               {!side && <span className="seg-label">{label}</span>}
+              {m.id === 'settings' && update && <span className="seg-dot" aria-label="update" />}
             </button>
           );
         })}

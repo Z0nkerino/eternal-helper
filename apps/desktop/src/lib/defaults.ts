@@ -1,6 +1,11 @@
 // Defaults for UI-only settings. Rust stores whatever the UI sends; missing keys are filled here.
 import type { CarouselItem, Settings } from './ipc';
 
+/** The classic default city: Saint Petersburg. */
+export const SPB = { place: 'Санкт-Петербург, Россия', lat: 59.9386, lon: 30.3141 };
+/** Same as DEFAULT_WIDGETS in home/widgets.tsx (kept here so this file has no UI imports). */
+const DEFAULT_WIDGET_IDS = ['clock', 'weather', 'calendar', 'music', 'next', 'actions'];
+
 const REGION_CURRENCY: Record<string, string> = {
   RU: 'RUB', BY: 'BYN', KZ: 'KZT', UA: 'UAH', US: 'USD', GB: 'GBP', DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', NL: 'EUR', AT: 'EUR', FI: 'EUR',
   AE: 'AED', TR: 'TRY', JP: 'JPY', CN: 'CNY', IN: 'INR', CA: 'CAD', AU: 'AUD', CH: 'CHF', PL: 'PLN', GE: 'GEL', AM: 'AMD', UZ: 'UZS',
@@ -94,6 +99,9 @@ export function withDefaults(s: Settings): Settings {
     // Home and Settings can never be hidden.
     shotHotkey: typeof x.shotHotkey === 'string' ? x.shotHotkey : 'Alt+Shift+S',
     hoverOpen: x.hoverOpen ?? true,
+    homeWidgets: Array.isArray(x.homeWidgets) ? x.homeWidgets.filter((w) => typeof w === 'string').slice(0, 16) : DEFAULT_WIDGET_IDS,
+    account: { signedIn: false, name: '', email: '', city: SPB.place, color: '#2f6bff', bio: '', since: 0, ...x.account },
+    weather: x.weather?.lat == null ? { ...x.weather, place: SPB.place, lat: SPB.lat, lon: SPB.lon, unit: x.weather?.unit || 'c' } : x.weather,
     hiddenTabs: Array.isArray(x.hiddenTabs) ? x.hiddenTabs.filter((t) => t !== 'home' && t !== 'settings') : [],
   };
 }

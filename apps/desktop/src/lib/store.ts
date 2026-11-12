@@ -3,11 +3,11 @@ import { create } from 'zustand';
 import { withDefaults } from './defaults';
 import { call, type Battery, type Layout, type MediaInfo, type MusicReport, type PlannerEvent, type PlannerSnapshot, type Settings } from './ipc';
 
-export type Tab = 'home' | 'library' | 'afina' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
+export type Tab = 'home' | 'music' | 'library' | 'afina' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
 /** The island has four tabs; the other screens live inside Library. */
-export type MainTab = 'home' | 'library' | 'afina' | 'settings';
+export type MainTab = 'home' | 'music' | 'library' | 'afina' | 'settings';
 export type LibSub = 'weather' | 'planner' | 'videos' | 'text' | 'timer' | 'calc' | 'translate' | 'wifi' | 'radio';
-export const MAIN_TABS: MainTab[] = ['home', 'library', 'afina', 'settings'];
+export const MAIN_TABS: MainTab[] = ['home', 'music', 'library', 'afina', 'settings'];
 const IN_LIBRARY: Tab[] = ['weather', 'planner', 'videos', 'text'];
 export type View = 'idle' | 'panel';
 
@@ -16,6 +16,8 @@ export interface Toast {
   text: string;
   tone?: 'ok' | 'warn' | 'error';
   action?: { label: string; run: () => void };
+  /** How long it stays (ms). */
+  ms?: number;
 }
 
 export interface TimerState {
@@ -188,7 +190,7 @@ export function toast(text: string, opts: Omit<Toast, 'id' | 'text'> & { force?:
   if (opts.tone === 'error') set((s) => ({ pulse: { ...s.pulse, error: s.pulse.error + 1 } }));
   const t: Toast = { id: ++toastId, text, tone: opts.tone, action: opts.action };
   set((s) => ({ toasts: [...s.toasts.slice(-2), t] }));
-  setTimeout(() => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== t.id) })), opts.action ? 6000 : 3200);
+  setTimeout(() => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== t.id) })), opts.ms ?? (opts.action ? 6000 : 3200));
 }
 
 export function dismissToast(id: number) {

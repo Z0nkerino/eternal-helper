@@ -31,6 +31,10 @@ export interface Settings {
   hiddenTabs: string[];
   /** Open the panel when the cursor rests on the island (no click needed). */
   hoverOpen: boolean;
+  /** Widgets on Home, in order. */
+  homeWidgets: string[];
+  /** The Eternal account shown in Settings and greetings (kept on this computer). */
+  account: Account;
   shotHotkey: string;
   recording: { audio: 'none' | 'system' | 'system+mic'; folder: string };
   // UI-only preferences (stored by Rust as-is; defaults in lib/defaults.ts)
@@ -101,6 +105,18 @@ export interface Recording {
   size: number;
   durationMs: number;
   createdAt: number;
+}
+
+export interface Account {
+  signedIn: boolean;
+  name: string;
+  email: string;
+  city: string;
+  /** Accent colour of the avatar. */
+  color: string;
+  bio: string;
+  /** When the account was created (ms). */
+  since: number;
 }
 
 export interface Battery {

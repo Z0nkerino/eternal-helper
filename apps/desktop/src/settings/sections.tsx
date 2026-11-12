@@ -12,6 +12,7 @@ import { checkForUpdates, installUpdate } from '../lib/updates';
 import { Emoji } from '../lib/emoji';
 import { RELEASE } from '../lib/release';
 import { AfinaSettings, HotkeyField, Segment, Switch, WeatherPlace } from './parts';
+import { AccountSection } from './Account';
 
 type S = Settings;
 const patch = <K extends keyof S>(key: K, cur: S[K], p: Partial<S[K]>) => void saveSettings({ [key]: { ...(cur as object), ...p } } as Partial<S>);
@@ -439,6 +440,7 @@ export interface Section {
 }
 
 export const SECTIONS: Section[] = [
+  { id: 'account', emoji: '👤', title: ['Account', 'Аккаунт'], desc: ['Your profile and connected services', 'Профиль и подключённые сервисы'], keywords: 'account profile sign in login name email city avatar аккаунт профиль войти имя почта город', Body: AccountSection },
   { id: 'personal', emoji: '✨', title: ['Personalise', 'Под себя'], desc: ['Your name, sizes, clock, animations and tabs', 'Имя, размеры, часы, анимации и вкладки'], keywords: 'name size scale text font opacity clock 24 seconds animation motion tabs имя размер текст шрифт прозрачность часы секунды анимация вкладки', Body: Personalise },
   { id: 'appearance', emoji: '🎨', title: ['Appearance', 'Внешний вид'], desc: ['Theme, colour, corners and the widgets in the pill', 'Тема, цвет, углы и виджеты в пилюле'], keywords: 'theme glass neon minimal accent colour color corner radius carousel widgets тема стекло неон цвет акцент углы карусель виджеты', Body: Appearance },
   { id: 'general', emoji: '⚙️', title: ['General', 'Общие'], desc: ['Language, monitor, shortcuts and start-up', 'Язык, монитор, горячие клавиши и запуск'], keywords: 'language monitor shortcut hotkey screenshot autostart login dnd fullscreen язык монитор клавиши скриншот автозапуск не беспокоить', Body: General },

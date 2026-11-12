@@ -23,6 +23,19 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.3.0 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **Music tab** | A new tab for whatever is playing. The cover sits on a vinyl record that slides out and spins while music plays. A soft aurora drifts behind it in the cover's colours, and a visualizer follows Eternal Radio's real sound (and dances along with other players). **Synced lyrics scroll smoothly**: the sung line glides to the middle and glows, and the others fade by distance. Eternal Radio stations and Spotify / Yandex Music / SoundCloud sign-in are one tap away. |
+| **Widgets** | Home is now a grid of widgets: clock, weather, date, now playing, up next, quick actions, timer, battery, world clocks, currency, Cloudy, "Vibes" and "Did you know?". Tap **Edit** and they wiggle: drag to reorder, × to remove, + to add from the gallery. The island grows to fit. |
+| **Account** | Settings → Account: your name, e-mail, city, a few words and an avatar colour, plus which services are connected (Planner, music accounts, Afina). It's kept on this computer, and greetings use your name. |
+| **St. Petersburg by default** | Weather starts in Saint Petersburg until you pick another city. |
+| **Update alerts** | New versions are found on their own (8 seconds after start, then every 3 hours): a toast with **Install**, a dot on Settings and an update pill on Home that shows download progress. |
+| **Cloudy, simpler and cuter** | One clean cloud silhouette with plain black oval eyes and an oval mouth (no shine). His eyes open and close softly and he sometimes blinks twice. He sticks his tongue out, winks and plays around. His menu is a small row of icons. |
+| **Icons instead of emoji** | Across the app, emoji are replaced with clean line icons tinted by meaning. |
+| **Smoother everywhere** | Large blur animations (which stutter on some PCs) are replaced with GPU-friendly springs. The island has a glow that breathes in the music's colour, a sheet of light when it opens, content that arrives in a soft cascade and tabs that slide. |
+
 ## Beta 0.2.0 — “Sunrise” 🌅
 
 | What | Details |
@@ -112,7 +125,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name is *Beta 0.2.0 “Sunrise”*; the build number is 0.4.0 so that in-app updates from earlier builds (up to 0.3.1) still see it as newer.
+- **Version naming:** the public name is *Beta 0.3.0 “Sunrise”*; the build number is 0.5.0 so that in-app updates from earlier builds (up to 0.4.0) still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -138,6 +151,16 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.3.0 — «Sunrise» 🌅
+
+- **Вкладка «Музыка»:** обложка на виниловой пластинке, которая выезжает и крутится, мягкое «северное сияние» в цветах обложки, визуализатор и **плавно прокручивающийся текст песни** — текущая строка подсвечивается посередине. Станции Eternal Radio и вход в Spotify, Яндекс Музыку и SoundCloud.
+- **Виджеты на Главной:** часы, погода, дата, музыка, планы, быстрые действия, таймер, батарея, мировые часы, валюты, Cloudy, «Вайб» и «А ты знал?». Нажми «Изменить» — перетаскивай, удаляй, добавляй из галереи.
+- **Аккаунт:** имя, почта, город, пара слов о себе и цвет аватара, плюс подключённые сервисы. Хранится на компьютере.
+- **Санкт-Петербург по умолчанию** для погоды.
+- **Сам сообщает об обновлениях:** уведомление с кнопкой «Установить», точка на Настройках и кнопка обновления на Главной.
+- **Cloudy проще и милее:** чистый силуэт облака, чёрные овальные глаза и рот без бликов, плавно моргает, показывает язык, подмигивает и играет. Меню — маленький ряд иконок.
+- **Иконки вместо эмодзи** и **плавные анимации везде**: свечение острова в цвет музыки, световая волна при открытии, мягкое появление содержимого.
 
 ## Beta 0.2.0 — «Sunrise» 🌅
 

@@ -31,3 +31,19 @@ describe('settings defaults', () => {
     expect(safeAccent('nonsense')).toBe('#2F6BFF');
   });
 });
+
+describe('0.3 defaults', () => {
+  it('uses Saint Petersburg when no city is set, and keeps a chosen one', () => {
+    const a = withDefaults({} as unknown as Settings);
+    expect(a.weather.lat).toBeCloseTo(59.94, 1);
+    expect(a.weather.place).toMatch(/Петербург/);
+    const b = withDefaults({ weather: { place: 'Paris', lat: 48.85, lon: 2.35, unit: 'c' } } as unknown as Settings);
+    expect(b.weather.place).toBe('Paris');
+  });
+  it('has default widgets and a signed-out account', () => {
+    const s = withDefaults({} as unknown as Settings);
+    expect(s.homeWidgets.length).toBeGreaterThan(3);
+    expect(s.account.signedIn).toBe(false);
+    expect(withDefaults({ homeWidgets: [] } as unknown as Settings).homeWidgets).toEqual([]);
+  });
+});

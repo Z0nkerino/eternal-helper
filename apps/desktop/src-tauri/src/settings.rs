@@ -82,7 +82,8 @@ impl Default for Settings {
             accent: "#2F6BFF".into(),
             tabs_position: "auto".into(),
             debug_safe_areas: false,
-            weather: WeatherSettings { unit: "c".into(), ..Default::default() },
+            // The classic default city: Saint Petersburg.
+            weather: WeatherSettings { place: "Санкт-Петербург, Россия".into(), lat: Some(59.9386), lon: Some(30.3141), unit: "c".into() },
             planner: PlannerSettings::default(),
             afina: AfinaSettings::default(),
             recording: RecordingSettings::default(),

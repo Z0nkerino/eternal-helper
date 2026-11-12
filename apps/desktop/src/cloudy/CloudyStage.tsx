@@ -10,6 +10,7 @@ import { call, emitEvent, inTauri, listen, type Settings } from '../lib/ipc';
 import { withDefaults } from '../lib/defaults';
 import { resolveLang } from '../lib/i18n';
 import { Emoji, Rich } from '../lib/emoji';
+import { EyeOff, House, Moon, MousePointer2, Shapes, Sun as SunIcon, Utensils, Volleyball, type LucideIcon } from 'lucide-react';
 import { clampToArea, defaultSpot, heightOf, nextTripIn, planTrip, step, throwVelocity, type Area, type Body } from './brain';
 import { cheer, decay, feed, FOODS, loadPet, need, savePet, type FoodId, type Pet } from './pet';
 import { CloudyFace, type Expr, type Tint } from './CloudyFace';
@@ -43,24 +44,24 @@ type Fx = 'rain' | 'snow' | 'rainbow' | 'storm' | null;
 
 type Line = [string, string];
 const LINES: Record<string, Line[]> = {
-  idle: [['Hi there! ☁️', 'Привет! ☁️'], ['Time for some water 💧', 'Пора попить воды 💧'], ['Stretch a little 🙆', 'Потянись немного 🙆'], ['You’re doing great ✨', 'У тебя отлично получается ✨'], ['Blink a few times 👀', 'Поморгай немного 👀'], ['I like it here 🫶', 'Мне тут нравится 🫶']],
-  hungry: [['Could I have a snack? 🥺', 'Можно перекусить? 🥺'], ['My tummy is rumbling… 🍪', 'В животике урчит… 🍪'], ['A rainbow would be lovely 🌈', 'Радуга была бы кстати 🌈']],
-  bored: [['So bored… play with me? 🎾', 'Скучно… поиграем? 🎾'], ['Psst. Click me 👉☁️', 'Пс-с. Кликни меня 👉☁️'], ['*sigh* ☁️', '*вздох* ☁️']],
-  sleepy: [['So sleepy… 🥱', 'Так спать хочется… 🥱'], ['Five more minutes… 💤', 'Ещё пять минуточек… 💤']],
-  fed: [['Yum! 😋', 'Ням! 😋'], ['Delicious! ✨', 'Вкуснятина! ✨'], ['Thank you! 💗', 'Спасибо! 💗']],
-  full: [['I’m full! 😌', 'Я сыт! 😌'], ['Maybe later 🙂', 'Может, попозже 🙂']],
-  thrown: [['Wheee! 🎈', 'Уи-и-и! 🎈'], ['Again! Again! 🤩', 'Ещё! Ещё! 🤩']],
-  music: [['Ooh, I love this one 🎶', 'О, люблю эту песню 🎶']],
-  rain: [['It’s raining outside 🌧️', 'На улице дождь 🌧️']],
-  tickle: [['Hee-hee! That tickles 😄', 'Хи-хи! Щекотно 😄']],
-  poof: [['Poof! ☁️', 'Пуф! ☁️'], ['I’m back! ✨', 'Я снова тут! ✨'], ['Ta-da! 🎩', 'Та-дам! 🎩'], ['Can’t catch vapour 😜', 'Пар не поймаешь 😜']],
-  dodge: [['Missed me! 😜', 'Не попал! 😜'], ['Whoa, too fast! 💨', 'Ого, слишком быстро! 💨']],
-  chase: [['I’ll get you, cursor! 🏃', 'Догоню тебя, курсор! 🏃'], ['Boop! 👆', 'Буп! 👆']],
-  peek: [['Peekaboo! 👀', 'Ку-ку! 👀']],
-  island: [['Hi, island! 👋', 'Привет, остров! 👋']],
-  nuzzle: [['Hehe, hello 🫶', 'Хи-хи, привет 🫶']],
-  sneeze: [['A-a-achoo! 🤧', 'А-а-апчхи! 🤧']],
-  hint: [['Click: poof! · Right-click: menu', 'Клик — пуф! · Правый клик — меню']],
+  idle: [['Hi there!','Привет!'], ['Time for some water','Пора попить воды'], ['Stretch a little','Потянись немного'], ['You’re doing great','У тебя отлично получается'], ['Blink a few times','Поморгай немного'], ['I like it here','Мне тут нравится']],
+  hungry: [['Could I have a snack?','Можно перекусить?'], ['My tummy is rumbling…','В животике урчит…'], ['A rainbow would be lovely','Радуга была бы кстати']],
+  bored: [['So bored… play with me?','Скучно… поиграем?'], ['Psst. Click me','Пс-с. Кликни меня'], ['*sigh*','*вздох*']],
+  sleepy: [['So sleepy…','Так спать хочется…'], ['Five more minutes…','Ещё пять минуточек…']],
+  fed: [['Yum!','Ням!'], ['Delicious!','Вкуснятина!'], ['Thank you!','Спасибо!']],
+  full: [['I’m full!','Я сыт!'], ['Maybe later','Может, попозже']],
+  thrown: [['Wheee!','Уи-и-и!'], ['Again! Again!','Ещё! Ещё!']],
+  music: [['Ooh, I love this one','О, люблю эту песню']],
+  rain: [['It’s raining outside','На улице дождь']],
+  tickle: [['Hee-hee! That tickles','Хи-хи! Щекотно']],
+  poof: [['Poof!','Пуф!'], ['I’m back!','Я снова тут!'], ['Ta-da!','Та-дам!'], ['Can’t catch vapour','Пар не поймаешь']],
+  dodge: [['Missed me!','Не попал!'], ['Whoa, too fast!','Ого, слишком быстро!']],
+  chase: [['I’ll get you, cursor!','Догоню тебя, курсор!'], ['Boop!','Буп!']],
+  peek: [['Peekaboo!','Ку-ку!']],
+  island: [['Hi, island!','Привет, остров!']],
+  nuzzle: [['Hehe, hello','Хи-хи, привет']],
+  sneeze: [['A-a-achoo!','А-а-апчхи!']],
+  hint: [['Click: poof! · Right-click: menu','Клик — пуф! · Правый клик — меню']],
 };
 
 const CHATTER_MIN: Record<Settings['cloudy']['chatter'], number> = { never: 0, rare: 18, normal: 7, often: 3 };
@@ -117,6 +118,7 @@ export function CloudyStage() {
   const [dissolved, setDissolved] = useState(false);
   const [fx, setFx] = useState<Fx>(null);
   const [reach, setReach] = useState(0);
+  const [shift, setShift] = useState(0);
   const shapeTimer = useRef<ReturnType<typeof setTimeout>>();
   const fxTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -160,8 +162,8 @@ export function CloudyStage() {
     setShape(id);
     react('joy', 'morph', 900);
     if (talk) {
-      const [e, en, ru] = SHAPE_NAMES[id];
-      sayText(`${e} ${lang === 'ru' ? ru : en}`, Math.min(ms, 3200));
+      const [, en, ru] = SHAPE_NAMES[id];
+      sayText(lang === 'ru' ? ru : en, Math.min(ms, 3200));
     }
     shapeTimer.current = setTimeout(() => setShape('cloud'), ms);
   };
@@ -387,6 +389,16 @@ export function CloudyStage() {
     raf.current = 0; // a remount (React dev double-mount) can start the loop again
   }, []);
   useEffect(() => reportHit(true), [menu, bubble, dragging, signal?.recording, cfg.size, reportHit]);
+  // Keep the menu and speech bubble on screen when he sits near an edge.
+  useEffect(() => {
+    setShift(0);
+    const id = requestAnimationFrame(() => {
+      const r = extras.current?.getBoundingClientRect();
+      if (!r || !r.width) return;
+      setShift(r.right > innerWidth - 8 ? innerWidth - 8 - r.right : r.left < 8 ? 8 - r.left : 0);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [menu, bubble]);
 
   const fly = (to: { x: number; y: number } | undefined, kind: NonNullable<typeof tripKind.current>) => {
     if (dragging || sleeping) return;
@@ -492,7 +504,7 @@ export function CloudyStage() {
       } else {
         const acts: [Expr, Anim, number][] = [
           ['curious', 'lean', 1800], ['wink', 'wiggle', 1100], ['joy', 'hop', 900], ['proud', 'idle', 1600], ['cheeky', 'wiggle', 1200], ['happy', 'spin', 1300], ['think', 'idle', 1800],
-          ['joy', 'jelly', 1200], ['happy', 'inflate', 1600], ['joy', 'flip', 1100], ['proud', 'yoga', 2400], ['cheeky', 'rollover', 1400], ['joy', 'wave', 1600], ['happy', 'boing', 1000],
+          ['joy', 'jelly', 1200], ['tongue', 'wiggle', 1600], ['tongue', 'jelly', 1400], ['cheeky', 'hop', 1200], ['happy', 'inflate', 1600], ['joy', 'flip', 1100], ['proud', 'yoga', 2400], ['cheeky', 'rollover', 1400], ['joy', 'wave', 1600], ['happy', 'boing', 1000],
         ];
         if (r < 0.4) {
           const [e, a, ms] = pick(acts);
@@ -700,7 +712,7 @@ export function CloudyStage() {
       clearTimeout(clickTimer.current);
       clickTimer.current = undefined;
       setMenu(false);
-      react('joy', 'spin', 1500);
+      react('tongue', 'spin', 1500);
       say('tickle', true, 2200);
       sound('joy');
       updatePet(cheer(petRef.current, 'pet'));
@@ -728,15 +740,14 @@ export function CloudyStage() {
   };
 
   const L = (en: string, ru: string) => (lang === 'ru' ? ru : en);
-  const menuItems: [string, string, () => void][] = [
-    ['🍽️', L('Feed me', 'Покормить'), () => void call('open_window', { kind: 'pet' })],
-    ['✨', L('Make a shape', 'Сделай фигуру'), () => formShape(pick(SHOW_SHAPES.filter((x) => x !== shape)))],
-    ['🎾', L('Play ball', 'Поиграть в мяч'), playBall],
-    ['🏃', L('Catch the cursor', 'Поймай курсор'), play.chase],
-    ['👀', L('Play hide and seek', 'Поиграть в прятки'), play.peek],
-    sleeping ? ['☀️', L('Wake up', 'Разбудить'), () => setSleeping(false)] : ['💤', L('Take a nap', 'Поспать'), () => setSleeping(true)],
-    ['🔮', L('Call Afina', 'Позвать Афину'), () => void emitEvent('island://hotkey')],
-    ['⚙️', L('Cloudy’s room', 'Комната Cloudy'), () => void call('open_window', { kind: 'pet' })],
+  const menuItems: [LucideIcon, string, () => void][] = [
+    [Utensils, L('Feed', 'Покормить'), () => void call('open_window', { kind: 'pet' })],
+    [Shapes, L('Shape', 'Фигура'), () => formShape(pick(SHOW_SHAPES.filter((x) => x !== shape)))],
+    [Volleyball, L('Ball', 'Мяч'), playBall],
+    [MousePointer2, L('Catch me', 'Догонялки'), play.chase],
+    [EyeOff, L('Hide', 'Прятки'), play.peek],
+    sleeping ? [SunIcon, L('Wake', 'Разбудить'), () => setSleeping(false)] : [Moon, L('Nap', 'Спать'), () => setSleeping(true)],
+    [House, L('Room', 'Комната'), () => void call('open_window', { kind: 'pet' })],
   ];
 
   // Browser preview (no desktop shell): ?mood=… shows a look.
@@ -772,14 +783,24 @@ export function CloudyStage() {
         ))}
       </AnimatePresence>
       <div ref={el} className="cloudy" style={{ width: cfg.size }}>
-        <div ref={extras} className="cloudy-extras" style={{ bottom: heightOf(cfg.size) + 10 }}>
+        <div ref={extras} className="cloudy-extras" style={{ bottom: heightOf(cfg.size) + 10, translate: `${shift}px 0` }}>
           <AnimatePresence>
             {menu && (
-              <motion.div className="cloudy-menu" initial={{ opacity: 0, y: 8, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 4, scale: 0.94 }} transition={{ type: 'spring', stiffness: 520, damping: 30 }}>
-                {menuItems.map(([e, label, run]) => (
-                  <button key={label} onClick={() => (setMenu(false), run())}>
-                    <Emoji e={e} size={16} /> {label}
-                  </button>
+              <motion.div className="cloudy-menu" initial={{ opacity: 0, y: 10, scale: 0.6 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 6, scale: 0.8 }} transition={{ type: 'spring', stiffness: 480, damping: 30 }}>
+                {menuItems.map(([Icon, label, run], i) => (
+                  <motion.button
+                    key={label}
+                    aria-label={label}
+                    onClick={() => (setMenu(false), run())}
+                    initial={{ opacity: 0, y: 8, scale: 0.5 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ delay: 0.03 * i, type: 'spring', stiffness: 520, damping: 26 }}
+                    whileHover={{ y: -2 }}
+                    whileTap={{ scale: 0.86 }}
+                  >
+                    <Icon size={17} strokeWidth={2} />
+                    <span className="cm-tip">{label}</span>
+                  </motion.button>
                 ))}
               </motion.div>
             )}

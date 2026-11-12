@@ -3,6 +3,7 @@ import { useApp } from './store';
 
 const ru = {
   'tab.home': 'Главная',
+  'tab.music': 'Музыка',
   'tab.afina': 'Afina',
   'tab.planner': 'Планер',
   'tab.videos': 'Записи',
@@ -10,8 +11,8 @@ const ru = {
   'tab.settings': 'Настройки',
   'tab.weather': 'Погода',
   'tab.library': 'Библиотека',
-  'shot.saved': '🖼️ Скриншот сохранён',
-  'rel.welcome': '🌅 Это Beta 0.2.0 «Sunrise»: новый остров — наведи курсор, и он откроется. А Cloudy теперь настоящее облако — кликни его!',
+  'shot.saved': 'Скриншот сохранён',
+  'rel.welcome': 'Beta 0.3.0 «Sunrise»: вкладка «Музыка», виджеты на Главной и новый Cloudy',
   'rel.play': 'Включить «Sunrise»',
   'upd.available': 'Доступна новая версия',
   'upd.install': 'Обновить',
@@ -114,6 +115,7 @@ export type Key = keyof typeof ru;
 
 const en: Record<Key, string> = {
   'tab.home': 'Home',
+  'tab.music': 'Music',
   'tab.afina': 'Afina',
   'tab.planner': 'Planner',
   'tab.videos': 'Videos',
@@ -121,8 +123,8 @@ const en: Record<Key, string> = {
   'tab.settings': 'Settings',
   'tab.weather': 'Weather',
   'tab.library': 'Library',
-  'shot.saved': '🖼️ Screenshot saved',
-  'rel.welcome': '🌅 Beta 0.2.0 “Sunrise”: rest the cursor on the island to open it. And Cloudy is a real cloud now — click him!',
+  'shot.saved': 'Screenshot saved',
+  'rel.welcome': 'Beta 0.3.0 “Sunrise”: a Music tab, widgets on Home and a new Cloudy',
   'rel.play': 'Play “Sunrise”',
   'upd.available': 'A new version is available:',
   'upd.install': 'Update',

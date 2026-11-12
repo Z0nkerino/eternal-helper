@@ -156,7 +156,7 @@ export function LibraryTab() {
     { emoji: '📷', label: tr('Screenshot', 'Скриншот'), onClick: () => void takeScreenshot() },
     { emoji: '🎥', label: rec === 'idle' ? tr('Record', 'Запись') : tr('Stop rec', 'Стоп'), onClick: toggleRecording, hot: rec !== 'idle' },
     { emoji: '🎬', label: tr('Recordings', 'Записи'), onClick: () => openLibrary('videos') },
-    { emoji: '📻', label: tr('Radio', 'Радио'), onClick: () => openLibrary('radio') },
+    { emoji: '📻', label: tr('Radio', 'Радио'), onClick: () => openPanel('music') },
     { emoji: '🧮', label: tr('Calculator', 'Калькулятор'), onClick: () => openLibrary('calc') },
     { emoji: '🌐', label: tr('Translator', 'Переводчик'), onClick: () => openLibrary('translate') },
     { emoji: '🔤', label: tr('Text tools', 'Текст'), onClick: () => openLibrary('text') },
@@ -170,7 +170,7 @@ export function LibraryTab() {
     <div className="library">
       <AnimatePresence mode="popLayout" initial={false}>
         {sub ? (
-          <motion.div key={sub} className="lib-sub" initial={{ x: 60, opacity: 0, filter: 'blur(4px)' }} animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ x: 60, opacity: 0, filter: 'blur(4px)' }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}>
+          <motion.div key={sub} className="lib-sub" initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 60, opacity: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}>
             <header className="lib-sub-head">
               <button className="icon-btn" onClick={() => openLibrary(null)} aria-label={tr('Back', 'Назад')}>
                 <ChevronLeft size={18} />

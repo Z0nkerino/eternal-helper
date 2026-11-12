@@ -137,6 +137,8 @@ export function setVolume(v: number) {
 /** A liquid-glass cover for a track, as an SVG data URL (also used by the island). */
 export function coverArt(t: Track, size = 240) {
   const [a, b, c] = t.colors;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"><defs><filter id="b"><feGaussianBlur stdDeviation="9"/></filter><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}"/><stop offset="1" stop-color="#0b0b12"/></linearGradient></defs><rect width="100" height="100" fill="url(#g)"/><g filter="url(#b)"><circle cx="30" cy="35" r="30" fill="${a}" opacity=".9"/><circle cx="72" cy="62" r="28" fill="${b}" opacity=".85"/><circle cx="55" cy="22" r="16" fill="#fff" opacity=".35"/></g><rect x="6" y="6" width="88" height="88" rx="18" fill="none" stroke="#fff" stroke-opacity=".28"/></svg>`;
+  // Soft colour blobs made with radial gradients (no blur filter, so it paints instantly everywhere).
+  const blob = (id: string, col: string, op: number) => `<radialGradient id="${id}"><stop offset="0" stop-color="${col}" stop-opacity="${op}"/><stop offset=".55" stop-color="${col}" stop-opacity="${op * 0.55}"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c}"/><stop offset="1" stop-color="#0b0b12"/></linearGradient>${blob('a', a, 0.95)}${blob('b', b, 0.9)}${blob('w', '#fff', 0.4)}</defs><rect width="100" height="100" fill="url(#g)"/><circle cx="30" cy="35" r="44" fill="url(#a)"/><circle cx="72" cy="62" r="42" fill="url(#b)"/><circle cx="55" cy="22" r="24" fill="url(#w)"/><rect x="6" y="6" width="88" height="88" rx="18" fill="none" stroke="#fff" stroke-opacity=".28"/></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
