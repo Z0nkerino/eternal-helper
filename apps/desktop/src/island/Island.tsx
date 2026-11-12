@@ -15,7 +15,7 @@ import { recentTracks } from '../lib/recent';
 
 const PANEL_W = 720;
 /** Each tab gets the height it needs; the island springs between them. */
-const PANEL_H: Record<Tab, number> = { home: 372, afina: 470, planner: 420, videos: 420, text: 360, weather: 476, settings: 476 };
+const PANEL_H: Record<Tab, number> = { home: 372, library: 556, afina: 470, planner: 420, videos: 420, text: 360, weather: 476, settings: 476 };
 
 /** Normal top padding of the open panel when there's no notch to clear. */
 const PANEL_PAD = 10;
@@ -55,7 +55,8 @@ function useHitArea(refs: React.RefObject<HTMLElement>[]) {
 }
 
 function Panel({ p }: { p: PanelLayout }) {
-  const tab = useApp((s) => s.tab);
+  const hidden = useApp((s) => s.settings?.hiddenTabs ?? []);
+  const tab = useApp((s) => (hidden.includes(s.tab) ? 'home' : s.tab));
   const Active = MODULES.find((m) => m.id === tab)?.tab ?? MODULES[0].tab!;
   return (
     <motion.div
@@ -70,7 +71,11 @@ function Panel({ p }: { p: PanelLayout }) {
       <div className="panel-main">
         {p.tabs === 'side' && <Tabs position="side" />}
         <div className="panel-body" role="tabpanel">
-          <Active />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={tab} className="panel-anim" initial={{ opacity: 0, y: 8, filter: 'blur(3px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -6, filter: 'blur(2px)' }} transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}>
+              <Active />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
       {p.tabs === 'bottom' && <Tabs position="bottom" />}
@@ -117,7 +122,11 @@ function Toasts({ innerRef }: { innerRef: React.RefObject<HTMLDivElement> }) {
 export function Island() {
   const view = useApp((s) => s.view);
   const tab = useApp((s) => s.tab);
-  const layout = useApp((s) => s.layout);
+  const rawLayout = useApp((s) => s.layout);
+  const uiScale = useApp((s) => s.settings?.uiScale ?? 1);
+  // The island may be scaled (Settings → Personalise); the notch keeps its real size, so in the
+  // island's own (scaled) coordinates it is smaller or larger by the same factor.
+  const layout = rawLayout && uiScale !== 1 ? { ...rawLayout, topInset: rawLayout.topInset / uiScale, notch: rawLayout.notch && { width: rawLayout.notch.width / uiScale, height: rawLayout.notch.height / uiScale, centerOffset: rawLayout.notch.centerOffset / uiScale } } : rawLayout;
   const activities = useActivities();
   const panel = view === 'panel';
   const notch = layout?.notch ?? null;

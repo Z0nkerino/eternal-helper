@@ -18,6 +18,7 @@ jobs:
     outputs:
       version: ${{ steps.v.outputs.version }}
       exists: ${{ steps.v.outputs.exists }}
+      name: ${{ steps.v.outputs.name }}
     steps:
       - uses: actions/checkout@v4
       - id: v
@@ -26,6 +27,7 @@ jobs:
         run: |
           version=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "name=$(jq -r '.releaseName // empty' apps/desktop/package.json)" >> "$GITHUB_OUTPUT"
           if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -104,6 +106,7 @@ jobs:
       - name: Update feed for in-app updates (latest.json)
         env:
           VERSION: ${{ needs.version.outputs.version }}
+          NAME: ${{ needs.version.outputs.name }}
           REPO: ${{ github.repository }}
         run: |
           base="https://github.com/$REPO/releases/download/v$VERSION"
@@ -112,7 +115,7 @@ jobs:
           jq -n --arg v "$VERSION" --arg base "$base" \
             --arg ws "$win_sha" --argjson wz "$(stat -c%s out/Eternal-Helper-windows-setup.exe)" \
             --arg ms "$mac_sha" --argjson mz "$(stat -c%s out/Eternal-Helper-mac.dmg)" \
-            '{version: $v, notes: ("Eternal Helper " + $v), pub_date: (now | todate),
+            --arg name "${NAME:-$VERSION}" '{version: $v, notes: ("Eternal Helper " + $name), pub_date: (now | todate),
               platforms: {
                 "windows-x86_64": {url: ($base + "/Eternal-Helper-windows-setup.exe"), sha256: $ws, size: $wz},
                 "macos-universal": {url: ($base + "/Eternal-Helper-mac.dmg"), sha256: $ms, size: $mz}
@@ -123,8 +126,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.version.outputs.version }}
+          NAME: ${{ needs.version.outputs.name }}
         run: |
-          notes="Eternal Helper ${TAG#v} by Eternal Inc.
+          TITLE="Eternal Helper ${NAME:-${TAG#v}}"
+          notes="$TITLE by Eternal Inc. (build ${TAG#v})
 
           - Windows 10/11: Eternal-Helper-windows-setup.exe
           - macOS 13+ (Apple Silicon and Intel): Eternal-Helper-mac.dmg
@@ -133,5 +138,5 @@ jobs:
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" out/* --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" out/* --title "Eternal Helper ${TAG#v}" --notes "$notes" --target "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY"
+            gh release create "$TAG" out/* --title "$TITLE" --notes "$notes" --target "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY"
           fi

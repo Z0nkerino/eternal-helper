@@ -7,9 +7,11 @@ import { call, inTauri, type CarouselItem, type MusicService, type Settings } fr
 import { useT, useTr } from '../lib/i18n';
 import { saveSettings, useApp } from '../lib/store';
 import { ACCENTS, THEMES } from '../lib/theme';
-import { CAROUSEL_ITEMS } from '../lib/defaults';
+import { CAROUSEL_ITEMS, LIMITS, safeAccent } from '../lib/defaults';
+import { MODULES } from '../modules';
 import { checkForUpdates, installUpdate } from '../lib/updates';
 import { Emoji } from '../lib/emoji';
+import { RELEASE } from '../lib/release';
 import { AfinaSettings, HotkeyField, Segment, Switch, WeatherPlace } from './parts';
 
 type S = Settings;
@@ -21,10 +23,71 @@ function General({ s }: { s: S }) {
     <>
       <Segment label={t('set.language')} value={s.language} options={[['auto', 'Auto'], ['ru', 'Русский'], ['en', 'English']]} onChange={(language) => void saveSettings({ language })} />
       <Segment label={t('set.monitor')} value={s.monitor} options={[['primary', t('set.monitor.primary')], ['cursor', t('set.monitor.cursor')]]} onChange={(monitor) => void saveSettings({ monitor })} />
-      <HotkeyField />
+      <HotkeyField label={t.lang === 'ru' ? 'Остров и Афина' : 'Island & Afina'} />
+      <HotkeyField field="shotHotkey" label={t.lang === 'ru' ? 'Скриншот' : 'Screenshot'} />
       <Switch label={t('set.autostart')} on={s.autostart} onChange={(autostart) => void saveSettings({ autostart })} />
       <Switch label={t('set.dnd')} on={s.doNotDisturb} onChange={(doNotDisturb) => void saveSettings({ doNotDisturb })} />
       <Switch label={t('set.fullscreen')} on={s.hideInFullscreen} onChange={(hideInFullscreen) => void saveSettings({ hideInFullscreen })} />
+    </>
+  );
+}
+
+function Range({ label, value, set, range, step, fmt }: { label: string; value: number; set: (v: number) => void; range: readonly [number, number]; step: number; fmt: (v: number) => string }) {
+  return (
+    <div className="setting">
+      <span>{label}</span>
+      <div className="row gap">
+        <input type="range" min={range[0]} max={range[1]} step={step} value={value} onChange={(e) => set(parseFloat(e.target.value))} aria-label={label} />
+        <span className="mono small range-val">{fmt(value)}</span>
+      </div>
+    </div>
+  );
+}
+
+function Personalise({ s }: { s: S }) {
+  const t = useT();
+  const tr = useTr();
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const optional = MODULES.filter((m) => m.id !== 'home' && m.id !== 'settings');
+  const visible = MODULES.length - s.hiddenTabs.length;
+  return (
+    <>
+      <div className="setting">
+        <span>{tr('What should we call you?', 'Как к тебе обращаться?')}</span>
+        <input className="field" maxLength={LIMITS.nameLength} value={s.name} placeholder={tr('Your name (optional)', 'Имя (необязательно)')} onChange={(e) => void saveSettings({ name: e.target.value.slice(0, LIMITS.nameLength) })} aria-label={tr('Your name', 'Имя')} />
+      </div>
+      <Range label={tr('Island size', 'Размер острова')} value={s.uiScale} set={(uiScale) => void saveSettings({ uiScale })} range={LIMITS.uiScale} step={0.05} fmt={pct} />
+      <Range label={tr('Text size', 'Размер текста')} value={s.fontScale} set={(fontScale) => void saveSettings({ fontScale })} range={LIMITS.fontScale} step={0.05} fmt={pct} />
+      <Range label={tr('Island opacity', 'Непрозрачность острова')} value={s.islandOpacity} set={(islandOpacity) => void saveSettings({ islandOpacity })} range={LIMITS.islandOpacity} step={0.02} fmt={pct} />
+      <Segment label={tr('Clock', 'Часы')} value={s.clock24 ? '24' : '12'} options={[['24', '24 h'], ['12', '12 h AM/PM']]} onChange={(v) => void saveSettings({ clock24: v === '24' })} />
+      <Switch label={tr('Show seconds', 'Показывать секунды')} on={s.clockSeconds} onChange={(clockSeconds) => void saveSettings({ clockSeconds })} />
+      <Segment label={tr('Animations', 'Анимации')} value={s.motion} options={[['full', tr('Smooth & lively', 'Плавные и живые')], ['reduced', tr('Reduced', 'Минимум')]]} onChange={(motion) => void saveSettings({ motion })} />
+      <div className="setting column">
+        <span>{tr('Tabs in the panel', 'Вкладки в панели')}</span>
+        <div className="tab-picks">
+          {optional.map((m) => {
+            const Icon = m.icon!;
+            const on = !s.hiddenTabs.includes(m.id);
+            return (
+              <label key={m.id} className={`tab-pick ${on ? 'on' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={on}
+                  // Keep at least 4 tabs so the panel stays useful.
+                  disabled={on && visible <= 4}
+                  onChange={() => void saveSettings({ hiddenTabs: on ? [...s.hiddenTabs, m.id] : s.hiddenTabs.filter((x) => x !== m.id) })}
+                />
+                <Icon size={14} /> {t(m.name)}
+              </label>
+            );
+          })}
+        </div>
+        <span className="tiny faint">{tr('Home and Settings always stay. At least 4 tabs.', 'Главная и Настройки остаются всегда. Минимум 4 вкладки.')}</span>
+      </div>
+      <div className="setting">
+        <span className="faint small">{tr('Back to how it came', 'Вернуть как было')}</span>
+        <button className="btn" onClick={() => void saveSettings({ name: '', uiScale: 1, fontScale: 1, islandOpacity: 1, motion: 'full', clockSeconds: false, hiddenTabs: [] })}>{tr('Reset', 'Сбросить')}</button>
+      </div>
     </>
   );
 }
@@ -66,6 +129,9 @@ function Appearance({ s }: { s: S }) {
           {ACCENTS.map((c) => (
             <button key={c} role="radio" aria-checked={s.accent === c} aria-label={c} className={`swatch ${s.accent.toLowerCase() === c.toLowerCase() ? 'on' : ''}`} style={{ background: c }} onClick={() => void saveSettings({ accent: c })} />
           ))}
+          <label className={`swatch custom ${ACCENTS.some((c) => c.toLowerCase() === s.accent.toLowerCase()) ? '' : 'on'}`} title={tr('Your own colour', 'Свой цвет')} style={{ background: ACCENTS.includes(s.accent) ? 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)' : safeAccent(s.accent) }}>
+            <input type="color" value={safeAccent(s.accent)} onChange={(e) => void saveSettings({ accent: safeAccent(e.target.value) })} aria-label={tr('Your own colour', 'Свой цвет')} />
+          </label>
         </div>
       </div>
       <div className="setting">
@@ -291,17 +357,27 @@ function Cloudy({ s }: { s: S }) {
   const c = s.cloudy;
   return (
     <>
-      <Switch label={tr('Cloudy walks on the desktop', 'Cloudy гуляет по рабочему столу')} on={c.enabled} onChange={(enabled) => patch('cloudy', c, { enabled })} />
+      <div className="setting">
+        <span className="small muted">{tr('Feed Cloudy, play with him and set how he behaves in his own window.', 'Покорми Cloudy, поиграй с ним и настрой его поведение в его окне.')}</span>
+        <button className="btn accent" onClick={() => void call('open_window', { kind: 'pet' })}>☁️ {tr('Cloudy’s room', 'Комната Cloudy')}</button>
+      </div>
+      <Switch label={tr('Cloudy lives on the desktop', 'Cloudy живёт на рабочем столе')} on={c.enabled} onChange={(enabled) => patch('cloudy', c, { enabled })} />
       {c.enabled && (
         <>
           <div className="setting">
             <span>{tr('Size', 'Размер')}</span>
-            <input type="range" min={40} max={110} step={2} value={c.size} onChange={(e) => patch('cloudy', c, { size: parseInt(e.target.value, 10) })} aria-label={tr('Size', 'Размер')} />
+            <input type="range" min={48} max={120} step={2} value={c.size} onChange={(e) => patch('cloudy', c, { size: parseInt(e.target.value, 10) })} aria-label={tr('Size', 'Размер')} />
           </div>
           <div className="setting">
             <span>{tr('Speed', 'Скорость')}</span>
-            <input type="range" min={0.3} max={2.5} step={0.1} value={c.speed} onChange={(e) => patch('cloudy', c, { speed: parseFloat(e.target.value) })} aria-label={tr('Speed', 'Скорость')} />
+            <input type="range" min={0.5} max={2} step={0.1} value={c.speed} onChange={(e) => patch('cloudy', c, { speed: parseFloat(e.target.value) })} aria-label={tr('Speed', 'Скорость')} />
           </div>
+          <Segment
+            label={tr('Wanders around', 'Гуляет по экрану')}
+            value={c.roam}
+            options={[['stay', tr('Stays', 'Сидит')], ['rare', tr('Rarely', 'Редко')], ['sometimes', tr('Sometimes', 'Иногда')], ['often', tr('Often', 'Часто')]]}
+            onChange={(roam) => patch('cloudy', c, { roam })}
+          />
           <Segment
             label={tr('Speech bubbles', 'Реплики')}
             value={c.chatter}
@@ -309,7 +385,7 @@ function Cloudy({ s }: { s: S }) {
             onChange={(chatter) => patch('cloudy', c, { chatter })}
           />
           <p className="faint small setting-help">
-            {tr('Drag and throw Cloudy, click for a menu, double-click for a surprise. He hides in fullscreen apps and while you record the screen.', 'Cloudy можно перетаскивать и бросать, клик — меню, двойной клик — сюрприз. Он прячется в полноэкранных приложениях и во время записи экрана.')}
+            {tr('Drag Cloudy to a new spot or throw him; click to pet, double-click to tickle, right-click for his menu. He hides in fullscreen apps and while you record.', 'Перетащи Cloudy на новое место или подбрось; клик — погладить, двойной клик — пощекотать, правый клик — меню. Он прячется в полноэкранных приложениях и во время записи.')}
           </p>
         </>
       )}
@@ -325,7 +401,7 @@ function Updates({ s }: { s: S }) {
     <>
       <div className="setting">
         <span>
-          <div>Eternal Helper {__APP_VERSION__}</div>
+          <div>Eternal Helper {RELEASE.name} · {RELEASE.codename}</div>
           <div className="faint small">
             {u?.progress != null
               ? `${tr('Downloading', 'Скачивание')} ${Math.round(u.progress * 100)}%`
@@ -363,12 +439,13 @@ function Developer({ s }: { s: S }) {
 
 function About() {
   const t = useT();
+  const tr = useTr();
   return (
     <div className="setting about-row">
       <img src="/eternal-inc.svg" width={28} height={28} alt="" />
       <div className="grow">
-        <div>Eternal Helper {__APP_VERSION__}</div>
-        <div className="faint small">© 2026 Eternal Inc. · Universal Planner · Afina · Cloudy</div>
+        <div>Eternal Helper {RELEASE.name} «{RELEASE.codename}»</div>
+        <div className="faint small">© 2026 Eternal Inc. · Universal Planner · Afina · Cloudy · {tr('build', 'сборка')} {__APP_VERSION__}</div>
       </div>
       <button className="btn" onClick={() => void call('quit')}>{t('set.quit')}</button>
     </div>
@@ -379,19 +456,34 @@ export interface Section {
   id: string;
   emoji: string;
   title: [string, string];
+  /** One line under the title saying what's inside. */
+  desc: [string, string];
+  /** Extra words for search, both languages. */
+  keywords: string;
   Body: (p: { s: S }) => JSX.Element;
 }
 
 export const SECTIONS: Section[] = [
-  { id: 'general', emoji: '⚙️', title: ['General', 'Общие'], Body: General },
-  { id: 'appearance', emoji: '🎨', title: ['Appearance', 'Внешний вид'], Body: Appearance },
-  { id: 'afina', emoji: '🔮', title: ['Afina & AI', 'Afina и ИИ'], Body: () => <AfinaSettings /> },
-  { id: 'music', emoji: '🎧', title: ['Music accounts', 'Музыка'], Body: Music },
-  { id: 'today', emoji: '🌤️', title: ['Weather & Today', 'Погода и «Сегодня»'], Body: WeatherToday },
-  { id: 'cloudy', emoji: '☁️', title: ['Cloudy', 'Cloudy'], Body: Cloudy },
-  { id: 'recordings', emoji: '🎬', title: ['Recordings', 'Записи'], Body: Recordings },
-  { id: 'planner', emoji: '🗓️', title: ['Universal Planner', 'Universal Planner'], Body: Planner },
-  { id: 'updates', emoji: '🔄', title: ['Updates', 'Обновления'], Body: Updates },
-  { id: 'developer', emoji: '🛠️', title: ['For developers', 'Для разработчиков'], Body: Developer },
-  { id: 'about', emoji: '💙', title: ['About', 'О программе'], Body: () => <About /> },
+  { id: 'personal', emoji: '✨', title: ['Personalise', 'Под себя'], desc: ['Your name, sizes, clock, animations and tabs', 'Имя, размеры, часы, анимации и вкладки'], keywords: 'name size scale text font opacity clock 24 seconds animation motion tabs имя размер текст шрифт прозрачность часы секунды анимация вкладки', Body: Personalise },
+  { id: 'appearance', emoji: '🎨', title: ['Appearance', 'Внешний вид'], desc: ['Theme, colour, corners and the widgets in the pill', 'Тема, цвет, углы и виджеты в пилюле'], keywords: 'theme glass neon minimal accent colour color corner radius carousel widgets тема стекло неон цвет акцент углы карусель виджеты', Body: Appearance },
+  { id: 'general', emoji: '⚙️', title: ['General', 'Общие'], desc: ['Language, monitor, shortcuts and start-up', 'Язык, монитор, горячие клавиши и запуск'], keywords: 'language monitor shortcut hotkey screenshot autostart login dnd fullscreen язык монитор клавиши скриншот автозапуск не беспокоить', Body: General },
+  { id: 'afina', emoji: '🔮', title: ['Afina & AI', 'Afina и ИИ'], desc: ['Afina’s brain, AI accounts and computer access', 'Мозг Афины, ИИ-аккаунты и доступ к компьютеру'], keywords: 'ai brain model webllm chatgpt claude gemini perplexity copilot deepseek files tools ии мозг модель файлы', Body: () => <AfinaSettings /> },
+  { id: 'music', emoji: '🎧', title: ['Music accounts', 'Музыка'], desc: ['Spotify, Yandex Music and SoundCloud', 'Spotify, Яндекс Музыка и SoundCloud'], keywords: 'spotify yandex soundcloud music player музыка плеер яндекс', Body: Music },
+  { id: 'today', emoji: '🌤️', title: ['Weather & Today', 'Погода и «Сегодня»'], desc: ['City, currency pairs and world clocks', 'Город, валюты и мировые часы'], keywords: 'weather city currency rates clocks time zone погода город валюта курс часы пояс', Body: WeatherToday },
+  { id: 'cloudy', emoji: '☁️', title: ['Cloudy', 'Cloudy'], desc: ['Your desktop cloud: size, speed and chatter', 'Облачко на рабочем столе: размер, скорость, реплики'], keywords: 'cloudy pet cloud feed облачко питомец кормить', Body: Cloudy },
+  { id: 'recordings', emoji: '🎬', title: ['Recordings', 'Записи'], desc: ['Where videos go and which sound is recorded', 'Куда сохраняются видео и какой звук пишется'], keywords: 'record video screen folder sound microphone запись видео экран папка звук микрофон', Body: Recordings },
+  { id: 'planner', emoji: '🗓️', title: ['Universal Planner', 'Universal Planner'], desc: ['The local connection to your planner', 'Подключение к планеру'], keywords: 'planner webhook port backup планер порт', Body: Planner },
+  { id: 'updates', emoji: '🔄', title: ['Updates', 'Обновления'], desc: ['Check for and install new versions', 'Проверка и установка новых версий'], keywords: 'update version release обновление версия', Body: Updates },
+  { id: 'developer', emoji: '🛠️', title: ['For developers', 'Для разработчиков'], desc: ['Debug overlays', 'Отладка'], keywords: 'debug safe area notch отладка вырез', Body: Developer },
+  { id: 'about', emoji: '💙', title: ['About', 'О программе'], desc: ['Version and credits', 'Версия и авторы'], keywords: 'about version eternal inc о программе версия', Body: () => <About /> },
 ];
+
+/** Sections matching a search (title, description or keywords, either language). */
+export function searchSections(q: string): Section[] {
+  const words = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return SECTIONS;
+  return SECTIONS.filter((x) => {
+    const hay = `${x.title.join(' ')} ${x.desc.join(' ')} ${x.keywords}`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-afina-open"
+description = "Enables the afina_open command without any pre-configured scope."
+commands.allow = ["afina_open"]
+
+[[permission]]
+identifier = "deny-afina-open"
+description = "Denies the afina_open command without any pre-configured scope."
+commands.deny = ["afina_open"]

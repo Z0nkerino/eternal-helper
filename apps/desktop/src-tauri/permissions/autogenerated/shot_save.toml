@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shot-save"
+description = "Enables the shot_save command without any pre-configured scope."
+commands.allow = ["shot_save"]
+
+[[permission]]
+identifier = "deny-shot-save"
+description = "Denies the shot_save command without any pre-configured scope."
+commands.deny = ["shot_save"]

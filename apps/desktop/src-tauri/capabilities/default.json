@@ -6,7 +6,9 @@
     "island",
     "settings",
     "panel-*",
-    "cloudy"
+    "cloudy",
+    "pet",
+    "shot"
   ],
   "permissions": [
     "core:default",
@@ -18,6 +20,7 @@
     "clipboard-manager:allow-read-text",
     "autostart:default",
     "dialog:allow-open",
+    "clipboard-manager:allow-write-image",
     "allow-get-settings",
     "allow-set-settings",
     "allow-island-layout",
@@ -52,6 +55,22 @@
     "allow-music-hide",
     "allow-music-control",
     "allow-music-sign-out",
+    "allow-shot-start",
+    "allow-shot-image",
+    "allow-shot-save",
+    "allow-shot-close",
+    "allow-shot-reveal",
+    "allow-controls-read",
+    "allow-controls-set",
+    "allow-wifi-networks",
+    "allow-wifi-connect",
+    "allow-open-system-settings",
+    "allow-afina-find-files",
+    "allow-afina-find-text",
+    "allow-afina-open",
+    "allow-ai-services",
+    "allow-ai-open",
+    "allow-open-url",
     "allow-quit"
   ]
 }

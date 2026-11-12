@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shot-image"
+description = "Enables the shot_image command without any pre-configured scope."
+commands.allow = ["shot_image"]
+
+[[permission]]
+identifier = "deny-shot-image"
+description = "Denies the shot_image command without any pre-configured scope."
+commands.deny = ["shot_image"]

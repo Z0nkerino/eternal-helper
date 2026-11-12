@@ -129,6 +129,9 @@ pub fn style_overlay(w: &tauri::WebviewWindow) {
 
 /// The island is WS_EX_NOACTIVATE so clicks never steal focus; while the panel is open and the user
 /// may type (Afina, text tools) we drop the flag and take focus, then restore it on collapse.
+/// The screenshot editor is a normal focused topmost window (it takes keyboard input).
+pub fn style_shot(_w: &tauri::WebviewWindow) {}
+
 pub fn set_activatable(w: &tauri::WebviewWindow, on: bool) {
     if let Ok(hwnd) = w.hwnd() {
         let hwnd = HWND(hwnd.0 as _);

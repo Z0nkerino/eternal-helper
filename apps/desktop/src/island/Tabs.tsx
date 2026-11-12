@@ -14,6 +14,8 @@ export function Tabs({ position }: { position: TabsPosition }) {
   const t = useT();
   const tr = useTr();
   const tab = useApp((s) => s.tab);
+  const hidden = useApp((s) => s.settings?.hiddenTabs ?? []);
+  const modules = MODULES.filter((m) => !hidden.includes(m.id));
   const scroller = useRef<HTMLDivElement>(null);
   const [fade, setFade] = useState({ start: false, end: false });
   // One tooltip for the whole bar, drawn outside the scroller so it is never clipped.
@@ -56,8 +58,8 @@ export function Tabs({ position }: { position: TabsPosition }) {
     const keys = side ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'];
     if (!keys.includes(e.key)) return;
     e.preventDefault();
-    const i = MODULES.findIndex((m) => m.id === tab);
-    const next = MODULES[(i + (e.key === keys[1] ? 1 : MODULES.length - 1)) % MODULES.length];
+    const i = modules.findIndex((m) => m.id === tab);
+    const next = modules[(i + (e.key === keys[1] ? 1 : modules.length - 1)) % modules.length];
     openPanel(next.id);
     requestAnimationFrame(() => scroller.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.focus());
   };
@@ -76,7 +78,7 @@ export function Tabs({ position }: { position: TabsPosition }) {
           if (!side && scroller.current && Math.abs(e.deltaY) > Math.abs(e.deltaX)) scroller.current.scrollLeft += e.deltaY;
         }}
       >
-        {MODULES.map((m) => {
+        {modules.map((m) => {
           const Icon = m.icon!;
           const on = tab === m.id;
           const label = t(m.name);

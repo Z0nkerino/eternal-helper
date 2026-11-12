@@ -1,11 +1,14 @@
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, FolderSearch } from 'lucide-react';
+import { call } from '../lib/ipc';
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { Orb } from '../afina/Orb';
 import { send, useChat } from '../afina/chat';
 import { useT } from '../lib/i18n';
-import { useApp } from '../lib/store';
+import { openPanel, useApp } from '../lib/store';
 import { Rich } from '../lib/emoji';
+import { SERVICE_NAMES } from '../afina/chat';
+import { useLlm } from '../afina/llm';
 
 export function AfinaTab() {
   const t = useT();
@@ -52,6 +55,26 @@ export function AfinaTab() {
               <div className="msg-text">
                 <Rich text={b.text} />
               </div>
+              {b.files && b.files.length > 0 && (
+                <ul className="found">
+                  {b.files.map((f) => (
+                    <li key={f.path}>
+                      <button className="found-main" onClick={() => void call('afina_open', { path: f.path, reveal: false })} title={f.path}>
+                        <span className="ellipsis">{f.name}</span>
+                        <span className="tiny faint ellipsis">{f.snippet ?? f.path.replace(/[\\/][^\\/]*$/, '')}</span>
+                      </button>
+                      <button className="icon-btn" aria-label={t.lang === 'ru' ? 'Показать в папке' : 'Show in folder'} onClick={() => void call('afina_open', { path: f.path, reveal: true })}>
+                        <FolderSearch size={14} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {b.action && (
+                <button className="btn accent msg-action" onClick={b.action.run}>
+                  {b.action.label}
+                </button>
+              )}
               {b.chips && i === bubbles.length - 1 && (
                 <div className="chips">
                   {b.chips.map((c) => (
@@ -71,6 +94,7 @@ export function AfinaTab() {
           </div>
         )}
       </div>
+      <BrainChip />
       <form
         className="composer"
         onSubmit={(e) => {
@@ -83,6 +107,30 @@ export function AfinaTab() {
           <ArrowUp size={16} />
         </button>
       </form>
+    </div>
+  );
+}
+
+/** Which brain Afina uses right now (click → settings). */
+function BrainChip() {
+  const t = useT();
+  const provider = useApp((s) => s.settings?.afina.provider ?? 'local');
+  const llm = useLlm();
+  const ru = t.lang === 'ru';
+  const label =
+    provider === 'local'
+      ? `🔮 ${ru ? 'Мозг на устройстве' : 'On-device brain'}${llm.status === 'downloading' ? ` · ${Math.round(llm.progress * 100)}%` : llm.status === 'ready' ? (ru ? ' · готов' : ' · ready') : ''}`
+      : SERVICE_NAMES[provider]
+        ? `💬 ${SERVICE_NAMES[provider]}`
+        : provider === 'off'
+          ? (ru ? 'ИИ выключен' : 'AI off')
+          : `🛠️ API · ${provider}`;
+  return (
+    <div className="brain-chip-row">
+      <button className="brain-chip tiny" onClick={() => openPanel('settings')}>
+        <Rich text={label} size={13} />
+      </button>
+      {llm.status === 'downloading' && <div className="progress brain-progress"><div style={{ width: `${llm.progress * 100}%` }} /></div>}
     </div>
   );
 }

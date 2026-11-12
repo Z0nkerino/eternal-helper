@@ -54,7 +54,7 @@ pub struct PlannerSettings {
 #[serde(default, rename_all = "camelCase")]
 pub struct AfinaSettings {
     pub enabled: bool,
-    /// "anthropic" | "openai" | "ollama" | "off"
+    /// "local" (on-device WebLLM) | an AI account ("chatgpt", "claude", …) | developer keys: "anthropic" | "openai" | "ollama" | "off"
     pub provider: String,
     pub model: String,
     /// Base URL for OpenAI-compatible servers and Ollama.
@@ -106,7 +106,7 @@ impl Default for PlannerSettings {
 
 impl Default for AfinaSettings {
     fn default() -> Self {
-        Self { enabled: true, provider: "anthropic".into(), model: "claude-opus-5-5".into(), base_url: String::new() }
+        Self { enabled: true, provider: "local".into(), model: "Qwen2.5-1.5B-Instruct".into(), base_url: String::new() }
     }
 }
 

@@ -9,6 +9,7 @@ import { formatRate, rate, symbol } from '../lib/today';
 import { Emoji } from '../lib/emoji';
 import type { CarouselItem } from '../lib/ipc';
 import { useNow } from './bits';
+import { fmtTime } from '../lib/time';
 import { Wings } from './Pill';
 
 function useRate(pair: [string, string] | undefined) {
@@ -49,7 +50,7 @@ export function Carousel({ notch }: { notch: number }) {
     return () => clearInterval(id);
   }, [items.length, cfg?.interval]);
 
-  const time = new Date(now).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  const time = fmtTime(now);
   const item = items[idx];
   let left: React.ReactNode = null;
   let right: React.ReactNode = null;

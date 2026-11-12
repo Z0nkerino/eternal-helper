@@ -17,7 +17,19 @@ export interface Settings {
   debugSafeAreas: boolean;
   weather: { place: string; lat: number | null; lon: number | null; unit: 'c' | 'f' };
   planner: { enabled: boolean; port: number; token: string; backupDir: string };
-  afina: { enabled: boolean; provider: 'anthropic' | 'openai' | 'ollama' | 'off'; model: string; baseUrl: string };
+  afina: { enabled: boolean; provider: 'local' | 'chatgpt' | 'claude' | 'gemini' | 'perplexity' | 'copilot' | 'deepseek' | 'anthropic' | 'openai' | 'ollama' | 'off'; model: string; baseUrl: string };
+  afinaTools: { enabled: boolean };
+  afinaV2?: boolean;
+  // Personalisation (all clamped to safe ranges in lib/defaults.ts)
+  name: string;
+  uiScale: number;
+  fontScale: number;
+  islandOpacity: number;
+  motion: 'full' | 'reduced';
+  clock24: boolean;
+  clockSeconds: boolean;
+  hiddenTabs: string[];
+  shotHotkey: string;
   recording: { audio: 'none' | 'system' | 'system+mic'; folder: string };
   // UI-only preferences (stored by Rust as-is; defaults in lib/defaults.ts)
   theme: 'classic' | 'glass' | 'neon' | 'minimal';
@@ -26,7 +38,7 @@ export interface Settings {
   carousel: { enabled: boolean; interval: number; items: CarouselItem[] };
   currency: { pairs: [string, string][] };
   clocks: { tz: string; city: string }[];
-  cloudy: { enabled: boolean; size: number; speed: number; chatter: 'never' | 'rare' | 'normal' | 'often' };
+  cloudy: { enabled: boolean; size: number; speed: number; chatter: 'never' | 'rare' | 'normal' | 'often'; roam: 'stay' | 'rare' | 'sometimes' | 'often'; sounds: boolean };
   music: { startHidden: string[] };
   updates: { auto: boolean };
 }
@@ -161,7 +173,28 @@ interface Commands {
   music_hide: [{ service: string }, void];
   music_control: [{ service: string; action: 'toggle' | 'next' | 'previous' }, void];
   music_sign_out: [void, void];
+  shot_start: [void, void];
+  shot_close: [void, void];
+  shot_reveal: [{ path: string }, void];
+  controls_read: [void, unknown];
+  controls_set: [{ kind: string; value: number | boolean }, void];
+  wifi_networks: [void, { ssid: string; signal: number; secure: boolean; known: boolean }[]];
+  wifi_connect: [{ ssid: string; password: string | null }, void];
+  open_system_settings: [{ page: string }, void];
+  afina_find_files: [{ query: string }, FoundFile[]];
+  afina_find_text: [{ query: string }, FoundFile[]];
+  afina_open: [{ path: string; reveal: boolean }, void];
+  ai_services: [void, { id: string; name: string; prefill: boolean }[]];
+  ai_open: [{ service: string; prompt: string | null }, boolean];
+  open_url: [{ url: string }, void];
   quit: [void, void];
+}
+
+export interface FoundFile {
+  path: string;
+  name: string;
+  snippet: string | null;
+  modified: number;
 }
 
 export function call<K extends keyof Commands>(cmd: K, ...args: Commands[K][0] extends void ? [] : [Commands[K][0]]): Promise<Commands[K][1]> {
@@ -227,7 +260,7 @@ const mockSettings: Settings = {
   debugSafeAreas: false,
   weather: { place: '', lat: null, lon: null, unit: 'c' },
   planner: { enabled: true, port: 45123, token: 'demo-token', backupDir: '' },
-  afina: { enabled: true, provider: 'anthropic', model: 'claude-opus-5-5', baseUrl: '' },
+  afina: { enabled: true, provider: 'local', model: 'Qwen2.5-1.5B-Instruct', baseUrl: '' },
   recording: { audio: 'system', folder: '' },
 } as Settings;
 const mockRecs: Recording[] = [
@@ -267,6 +300,14 @@ async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
       return mockRecs;
     case 'rec_begin':
       return 'mock';
+    case 'controls_read':
+      return { volume: 64, muted: false, brightness: null, dark: true, wifi: true, wifiName: 'Eternal-Wi-Fi', bluetooth: false, can: { volume: true, brightness: false, dark: true, wifiToggle: true, wifiScan: true, bluetoothToggle: true, lock: true, sleep: true } };
+    case 'wifi_networks':
+      return [{ ssid: 'Eternal-Wi-Fi', signal: 88, secure: true, known: true }, { ssid: 'Cafe Sunrise', signal: 52, secure: false, known: false }, { ssid: 'Neighbours 5G', signal: 31, secure: true, known: false }];
+    case 'ai_services':
+      return [{ id: 'chatgpt', name: 'ChatGPT', prefill: true }, { id: 'claude', name: 'Claude', prefill: true }, { id: 'gemini', name: 'Gemini', prefill: false }, { id: 'perplexity', name: 'Perplexity', prefill: true }, { id: 'copilot', name: 'Copilot', prefill: true }, { id: 'deepseek', name: 'DeepSeek', prefill: false }];
+    case 'afina_find_files':
+      throw 'tools-off';
     case 'battery':
       return { present: true, percent: 76, charging: false, plugged: false } satisfies Battery;
     case 'update_check':

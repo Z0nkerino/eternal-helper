@@ -1,7 +1,21 @@
-// Cloudy's body and decisions, as pure functions (tested in brain.test.ts).
-// Coordinates are window pixels; y grows downward; the floor is the bottom of the work area.
+// Cloudy's movement, as pure functions (tested in brain.test.ts).
+// He floats: most of the time he stays at his spot (gently bobbing, done in CSS), and only now and then
+// takes a lively trip somewhere on the screen. Thrown, he glides with friction and settles where he stops.
+// Coordinates are window pixels (top-left of Cloudy); the window covers the work area.
 
-export type Action = 'idle' | 'walk' | 'sit' | 'sleep' | 'drag' | 'fall' | 'dance';
+export type Mode = 'rest' | 'trip' | 'glide' | 'drag';
+
+export interface Trip {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  /** Two control points for a curvy, playful path. */
+  c1: { x: number; y: number };
+  c2: { x: number; y: number };
+  start: number;
+  duration: number;
+  /** Return to the spot afterwards (a visit) or stay at the destination (a move). */
+  back: boolean;
+}
 
 export interface Body {
   x: number;
@@ -9,105 +23,107 @@ export interface Body {
   vx: number;
   vy: number;
   facing: 1 | -1;
-  action: Action;
-  /** When the current action ends and Cloudy picks a new one (ms timestamp). */
-  until: number;
+  mode: Mode;
+  trip: Trip | null;
 }
 
-export interface Env {
+export interface Area {
   width: number;
   height: number;
-  /** Cloudy's width; his height is 0.78 of it. */
+  /** Cloudy's width; his height is 0.8 of it. */
   size: number;
-  /** User speed multiplier (1 = normal). */
-  speed: number;
-  now: number;
-  night: boolean;
-  music: boolean;
 }
 
-export const GRAVITY = 2400;
-export const WALK = 38; // px/s at speed 1
-export const heightOf = (size: number) => size * 0.78;
-export const floorY = (env: Pick<Env, 'height' | 'size'>) => env.height - heightOf(env.size);
+export const heightOf = (size: number) => size * 0.8;
+const margin = 8;
 
-/** Moves Cloudy forward by `dt` seconds: walking, falling, bouncing off the floor and the screen edges. */
-export function step(b: Body, dt: number, env: Env): Body {
-  const n = { ...b };
-  const floor = floorY(env);
-  const maxX = env.width - env.size;
-  if (n.action === 'drag') return n;
-  if (n.action === 'fall' || n.y < floor - 0.5) {
-    n.vy += GRAVITY * dt;
-    n.x += n.vx * dt;
-    n.y += n.vy * dt;
-    n.vx *= Math.pow(0.6, dt); // air drag
-    if (n.x < 0 || n.x > maxX) {
-      n.x = Math.min(maxX, Math.max(0, n.x));
-      n.vx = -n.vx * 0.5;
-    }
-    if (n.y >= floor) {
-      n.y = floor;
-      if (Math.abs(n.vy) > 320) {
-        n.vy = -n.vy * 0.38; // bounce
-        n.vx *= 0.7;
-      } else {
-        n.vy = 0;
-        n.vx = 0;
-        n.action = 'idle';
-        n.until = env.now + 900;
-      }
-    } else {
-      n.action = 'fall';
-    }
-    return n;
-  }
-  if (n.action === 'walk') {
-    n.x += n.facing * WALK * env.speed * dt;
-    if (n.x <= 0 || n.x >= maxX) {
-      n.x = Math.min(maxX, Math.max(0, n.x));
-      n.facing = n.facing === 1 ? -1 : 1;
-    }
-  }
-  n.y = floor;
-  return n;
+export function clampToArea(x: number, y: number, a: Area) {
+  return {
+    x: Math.min(a.width - a.size - margin, Math.max(margin, x)),
+    y: Math.min(a.height - heightOf(a.size) - margin, Math.max(margin, y)),
+  };
 }
 
-/** Picks the next thing to do when the current action is over. `rand` returns 0..1. */
-export function decide(b: Body, env: Env, rand: () => number = Math.random): Body {
-  if (b.action === 'drag' || b.action === 'fall' || env.now < b.until) return b;
-  const r = rand();
-  const n = { ...b };
-  if (env.music) {
-    n.action = r < 0.75 ? 'dance' : 'walk';
-  } else if (env.night) {
-    n.action = r < 0.6 ? 'sleep' : r < 0.8 ? 'sit' : 'walk';
-  } else {
-    n.action = r < 0.45 ? 'walk' : r < 0.8 ? 'idle' : r < 0.95 ? 'sit' : 'sleep';
-  }
-  if (n.action === 'walk' && rand() < 0.4) n.facing = n.facing === 1 ? -1 : 1;
-  const dur: Record<Action, [number, number]> = { walk: [3, 9], idle: [2, 5], sit: [5, 12], sleep: [20, 60], dance: [6, 14], drag: [0, 0], fall: [0, 0] };
-  const [lo, hi] = dur[n.action];
-  n.until = env.now + (lo + rand() * (hi - lo)) * 1000;
-  return n;
+/** Where he lives by default: bottom-right, above the taskbar / Dock. */
+export const defaultSpot = (a: Area) => clampToArea(a.width - a.size - 48, a.height - heightOf(a.size) - 36, a);
+
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+function bezier(t: number, p0: number, p1: number, p2: number, p3: number) {
+  const u = 1 - t;
+  return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
 }
 
-/** Throw velocity from recent pointer samples (px/s), capped so he doesn't fly off. */
+/** Plans a trip to a point (or a random one). `speed` 1 = normal; `rand` returns 0..1. */
+export function planTrip(b: Body, a: Area, now: number, opts: { to?: { x: number; y: number }; back?: boolean; speed?: number; rand?: () => number } = {}): Body {
+  const rand = opts.rand ?? Math.random;
+  const to = clampToArea(opts.to?.x ?? margin + rand() * (a.width - a.size - 2 * margin), opts.to?.y ?? margin + rand() * (a.height - heightOf(a.size) - 2 * margin), a);
+  const from = { x: b.x, y: b.y };
+  const dist = Math.hypot(to.x - from.x, to.y - from.y);
+  // Swoop: control points pushed sideways from the straight line for a lively curve.
+  const nx = -(to.y - from.y) / (dist || 1);
+  const ny = (to.x - from.x) / (dist || 1);
+  const swing = (rand() - 0.5) * Math.min(260, dist * 0.6);
+  const c1 = { x: from.x + (to.x - from.x) * 0.3 + nx * swing, y: from.y + (to.y - from.y) * 0.3 + ny * swing - 40 };
+  const c2 = { x: from.x + (to.x - from.x) * 0.7 - nx * swing * 0.6, y: from.y + (to.y - from.y) * 0.7 - ny * swing * 0.6 - 20 };
+  const duration = Math.max(900, Math.min(6000, (dist / (260 * (opts.speed ?? 1))) * 1000));
+  return { ...b, mode: 'trip', vx: 0, vy: 0, facing: to.x >= from.x ? 1 : -1, trip: { from, to, c1, c2, start: now, duration, back: !!opts.back } };
+}
+
+export interface StepResult {
+  body: Body;
+  /** The body arrived somewhere new and became his spot (end of a move or a throw). */
+  settled?: { x: number; y: number };
+}
+
+/** Advances the body by `dt` seconds (trips follow their curve; glides slow down and bounce off edges). */
+export function step(b: Body, dt: number, now: number, a: Area, spot: { x: number; y: number }, speed = 1): StepResult {
+  if (b.mode === 'trip' && b.trip) {
+    const tr = b.trip;
+    const t = Math.min(1, (now - tr.start) / tr.duration);
+    const e = ease(t);
+    const x = bezier(e, tr.from.x, tr.c1.x, tr.c2.x, tr.to.x);
+    const y = bezier(e, tr.from.y, tr.c1.y, tr.c2.y, tr.to.y);
+    const facing: 1 | -1 = x > b.x + 0.2 ? 1 : x < b.x - 0.2 ? -1 : b.facing;
+    if (t < 1) return { body: { ...b, x, y, facing } };
+    if (tr.back) {
+      // Pause is handled by the caller; head home.
+      return { body: planTrip({ ...b, x: tr.to.x, y: tr.to.y }, a, now, { to: spot, speed }) };
+    }
+    return { body: { ...b, x: tr.to.x, y: tr.to.y, mode: 'rest', trip: null }, settled: { x: tr.to.x, y: tr.to.y } };
+  }
+  if (b.mode === 'glide') {
+    const f = Math.pow(0.1, dt); // strong air friction: a cloud glides, it doesn't fall
+    let { x, y, vx, vy } = b;
+    vx *= f;
+    vy *= f;
+    x += vx * dt;
+    y += vy * dt;
+    const c = clampToArea(x, y, a);
+    if (c.x !== x) vx = -vx * 0.55;
+    if (c.y !== y) vy = -vy * 0.55;
+    const facing: 1 | -1 = vx > 5 ? 1 : vx < -5 ? -1 : b.facing;
+    if (Math.hypot(vx, vy) < 18) return { body: { ...b, x: c.x, y: c.y, vx: 0, vy: 0, mode: 'rest', facing }, settled: c };
+    return { body: { ...b, x: c.x, y: c.y, vx, vy, facing } };
+  }
+  return { body: b };
+}
+
+/** Throw velocity from recent pointer samples (px/s), capped. */
 export function throwVelocity(samples: { x: number; y: number; t: number }[]): { vx: number; vy: number } {
   if (samples.length < 2) return { vx: 0, vy: 0 };
   const a = samples[0];
   const z = samples[samples.length - 1];
   const dt = Math.max(16, z.t - a.t) / 1000;
-  const cap = (v: number) => Math.max(-2200, Math.min(2200, v));
+  const cap = (v: number) => Math.max(-2600, Math.min(2600, v));
   return { vx: cap((z.x - a.x) / dt), vy: cap((z.y - a.y) / dt) };
 }
 
-/** Steps aside when the cursor comes close while he walks along the floor. */
-export function avoidCursor(b: Body, cursor: { x: number; y: number } | null, size: number): Body {
-  if (!cursor || b.action !== 'walk') return b;
-  const cx = b.x + size / 2;
-  const cy = b.y + heightOf(size) / 2;
-  if (Math.hypot(cursor.x - cx, cursor.y - cy) > size * 1.6) return b;
-  const away: 1 | -1 = cursor.x < cx ? 1 : -1;
-  return away === b.facing ? b : { ...b, facing: away };
+export type Roam = 'stay' | 'rare' | 'sometimes' | 'often';
+
+/** Minutes between spontaneous trips for a roaming setting (with ±40% randomness). */
+export function nextTripIn(roam: Roam, rand: () => number = Math.random): number | null {
+  const base = { stay: 0, rare: 9, sometimes: 4, often: 1.5 }[roam];
+  if (!base) return null;
+  return base * 60_000 * (0.6 + rand() * 0.8);
 }

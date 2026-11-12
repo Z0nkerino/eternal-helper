@@ -2,10 +2,11 @@
 // Left of the notch: time and weather. Right of it: indicators for what's going on.
 import { colors } from '@eternal/ui';
 import { useT } from '../lib/i18n';
-import { useApp, recElapsed } from '../lib/store';
+import { useApp, recElapsed, timerLeft } from '../lib/store';
 import { weatherEmoji } from '../lib/weather';
 import type { Rect } from '../lib/safeArea';
 import { Equalizer, fmtClock, useNow } from './bits';
+import { fmtTime } from '../lib/time';
 import { useActivities } from './Pill';
 
 export function NotchStrip({ notch, width }: { notch: Rect; width: number }) {
@@ -17,7 +18,7 @@ export function NotchStrip({ notch, width }: { notch: Rect; width: number }) {
   const media = useApp((s) => s.media);
   const planner = useApp((s) => s.planner);
   const activities = useActivities();
-  const time = new Date(now).toLocaleTimeString(t.lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+  const time = fmtTime(now);
   const day = new Date(now).toLocaleDateString(t.lang === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'short', day: 'numeric' });
   const gap = 10;
 
@@ -38,7 +39,7 @@ export function NotchStrip({ notch, width }: { notch: Rect; width: number }) {
             <span className="rec-dot" /> <span className="mono">{fmtClock(recElapsed(rec, now))}</span>
           </span>
         )}
-        {timer && <span className="mono" style={{ color: colors.warn }}>⏱ {fmtClock(timer.endsAt - now)}</span>}
+        {timer && <span className="mono" style={{ color: colors.warn }}>⏱ {fmtClock(timerLeft(timer, now))}</span>}
         {media?.playing && <Equalizer playing color={colors.accent2} />}
         {planner && planner.tasksToday.length > 0 && <span>📋 {planner.tasksToday.length}</span>}
       </div>

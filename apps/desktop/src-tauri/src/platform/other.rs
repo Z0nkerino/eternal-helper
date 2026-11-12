@@ -64,3 +64,5 @@ pub fn set_activatable(w: &tauri::WebviewWindow, on: bool) {
         let _ = w.set_focus();
     }
 }
+
+pub fn style_shot(_w: &tauri::WebviewWindow) {}

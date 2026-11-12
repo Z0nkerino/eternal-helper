@@ -3,7 +3,7 @@ import { Music, Pause, Play, Square, Timer } from 'lucide-react';
 import { colors } from '@eternal/ui';
 import { Orb } from '../afina/Orb';
 import { useT } from '../lib/i18n';
-import { recElapsed, stopTimer, useApp } from '../lib/store';
+import { recElapsed, stopTimer, timerLeft, useApp } from '../lib/store';
 import { pauseRecording, stopRecording } from '../lib/recorder';
 import { mediaControl } from '../lib/music';
 import { Carousel } from './Carousel';
@@ -75,7 +75,7 @@ export function PillContent({ activity, notch }: { activity: ActivityId | undefi
   }
 
   if (activity === 'timer' && s.timer) {
-    const left = s.timer.endsAt - now;
+    const left = timerLeft(s.timer, now);
     return (
       <Wings
         notch={notch}
@@ -153,7 +153,7 @@ export function Bubble({ activity }: { activity: ActivityId }) {
     case 'rec':
       return <span className={`rec-dot ${s.rec.status === 'paused' ? 'paused' : ''}`} />;
     case 'timer':
-      return s.timer ? <Ring progress={Math.max(0, (s.timer.endsAt - now) / s.timer.totalMs)} size={18} color={colors.warn} /> : null;
+      return s.timer ? <Ring progress={Math.max(0, (timerLeft(s.timer, now)) / s.timer.totalMs)} size={18} color={colors.warn} /> : null;
     case 'afina':
       return <Orb size={16} thinking />;
     case 'planner':

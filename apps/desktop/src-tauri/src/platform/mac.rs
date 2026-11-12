@@ -113,6 +113,18 @@ pub fn style_overlay(w: &tauri::WebviewWindow) {
     });
 }
 
+/// The screenshot editor covers everything, including the menu bar and the island.
+pub fn style_shot(w: &tauri::WebviewWindow) {
+    let Ok(ptr) = w.ns_window() else { return };
+    let ptr = ptr as usize;
+    let _ = w.run_on_main_thread(move || {
+        let win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
+        win.setLevel(27);
+        win.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::FullScreenAuxiliary);
+        win.setHasShadow(false);
+    });
+}
+
 pub fn set_activatable(w: &tauri::WebviewWindow, on: bool) {
     if on {
         let _ = w.set_focus();

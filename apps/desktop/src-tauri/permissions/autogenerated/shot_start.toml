@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shot-start"
+description = "Enables the shot_start command without any pre-configured scope."
+commands.allow = ["shot_start"]
+
+[[permission]]
+identifier = "deny-shot-start"
+description = "Denies the shot_start command without any pre-configured scope."
+commands.deny = ["shot_start"]

@@ -21,6 +21,8 @@ export interface AfinaWorld {
   planner: PlannerSnapshot | null;
   timerEndsAt: number | null;
   recording: boolean;
+  /** What the user asked to be called (optional). */
+  name?: string;
   actions: {
     startTimer: (minutes: number, label: string) => void;
     stopTimer: () => void;
@@ -191,6 +193,7 @@ export function respond(input: string, w: AfinaWorld, uiLang: Lang): AfinaReply 
 /** What the language model is told about the user's day. Kept short and factual. */
 export function contextFor(w: AfinaWorld, lang: Lang): string {
   const lines = [`Local time: ${w.now.toString()}`, `UI language: ${lang}`];
+  if (w.name) lines.push(`The user's name: ${w.name}`);
   if (w.weather) lines.push(`Weather${w.place ? ` in ${w.place}` : ''}: ${w.weather.temp}°, ${describeWeather(w.weather.code, 'en').label}`);
   if (w.planner) {
     lines.push(`Universal Planner tasks today (${w.planner.tasksToday.length} open, ${w.planner.doneToday} done): ${w.planner.tasksToday.map((t) => t.title).join('; ') || 'none'}`);

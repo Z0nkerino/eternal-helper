@@ -51,12 +51,13 @@ export function offsetFromLocal(tz: string, now = new Date()) {
 
 // ---------- Greeting ----------
 
-export function greeting(lang: Lang, hour = new Date().getHours()) {
+export function greeting(lang: Lang, hour = new Date().getHours(), name = '') {
   const L = (en: string, ru: string) => (lang === 'ru' ? ru : en);
-  if (hour < 5) return L('Good night 🌙', 'Доброй ночи 🌙');
-  if (hour < 12) return L('Good morning ☀️', 'Доброе утро ☀️');
-  if (hour < 18) return L('Good afternoon 👋', 'Добрый день 👋');
-  return L('Good evening 🌇', 'Добрый вечер 🌇');
+  const n = name.trim() ? `, ${name.trim()}` : '';
+  if (hour < 5) return L(`Good night${n} 🌙`, `Доброй ночи${n} 🌙`);
+  if (hour < 12) return L(`Good morning${n} ☀️`, `Доброе утро${n} ☀️`);
+  if (hour < 18) return L(`Good afternoon${n} 👋`, `Добрый день${n} 👋`);
+  return L(`Good evening${n} 🌇`, `Добрый вечер${n} 🌇`);
 }
 
 // ---------- Holidays (Nager.Date, no key) and fact of the day ----------

@@ -96,7 +96,7 @@ const BRIDGE: &str = r#"
 "#;
 
 /// A browser user agent the services accept (their web players reject unknown browsers).
-fn user_agent() -> Option<&'static str> {
+pub fn user_agent() -> Option<&'static str> {
     if cfg!(target_os = "macos") {
         Some("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15")
     } else if cfg!(windows) {

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-controls-read"
+description = "Enables the controls_read command without any pre-configured scope."
+commands.allow = ["controls_read"]
+
+[[permission]]
+identifier = "deny-controls-read"
+description = "Denies the controls_read command without any pre-configured scope."
+commands.deny = ["controls_read"]

@@ -138,7 +138,7 @@ function TodayCard() {
         <div>
           <div className="today-weekday">{date.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'long', month: 'long' })}</div>
           <div className="small muted">
-            <Rich text={greeting(lang, date.getHours())} size={14} />
+            <Rich text={greeting(lang, date.getHours(), useApp.getState().settings?.name ?? '')} size={14} />
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { call, type Battery, type Layout, type MediaInfo, type MusicReport, type PlannerEvent, type PlannerSnapshot, type Settings } from './ipc';
 
-export type Tab = 'home' | 'afina' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
+export type Tab = 'home' | 'library' | 'afina' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
 export type View = 'idle' | 'panel';
 
 export interface Toast {
@@ -16,6 +16,8 @@ export interface TimerState {
   endsAt: number;
   totalMs: number;
   label: string;
+  /** Set while paused: how much time was left. */
+  pausedLeft?: number;
 }
 
 export type RecStatus = 'idle' | 'starting' | 'recording' | 'paused' | 'saving';
@@ -45,7 +47,7 @@ export interface WeatherNow {
   at: number;
 }
 
-export type MediaSource = { kind: 'system' } | { kind: 'web'; service: MusicReport['service'] };
+export type MediaSource = { kind: 'system' } | { kind: 'web'; service: MusicReport['service'] } | { kind: 'radio' };
 
 interface AppState {
   settings: Settings | null;
@@ -156,10 +158,30 @@ export function stopTimer() {
   set({ timer: null });
 }
 
+export function pauseTimer() {
+  const t = get().timer;
+  if (t && t.pausedLeft == null) set({ timer: { ...t, pausedLeft: Math.max(0, t.endsAt - Date.now()) } });
+}
+
+export function resumeTimer() {
+  const t = get().timer;
+  if (t && t.pausedLeft != null) set({ timer: { ...t, endsAt: Date.now() + t.pausedLeft, pausedLeft: undefined } });
+}
+
+/** Adds time to the running (or paused) timer. */
+export function addToTimer(ms: number) {
+  const t = get().timer;
+  if (!t) return;
+  set({ timer: { ...t, endsAt: t.endsAt + ms, totalMs: t.totalMs + ms, pausedLeft: t.pausedLeft != null ? t.pausedLeft + ms : undefined } });
+}
+
+/** Time left on the timer, honouring pauses. */
+export const timerLeft = (t: TimerState, now = Date.now()) => (t.pausedLeft != null ? t.pausedLeft : Math.max(0, t.endsAt - now));
+
 /** Called once a second by the island clock. */
 export function tickTimer(now: number, onDone: (label: string) => void) {
   const t = get().timer;
-  if (t && now >= t.endsAt) {
+  if (t && t.pausedLeft == null && now >= t.endsAt) {
     set((s) => ({ timer: null, pulse: { ...s.pulse, timer: s.pulse.timer + 1 } }));
     onDone(t.label);
   }

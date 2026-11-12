@@ -1,12 +1,16 @@
 //! Eternal Helper — a dynamic island for Windows and macOS. © Eternal Inc.
 mod afina;
+mod afina_tools;
+mod ai_accounts;
 mod cloudy;
 mod music;
 mod planner;
 mod platform;
 mod recordings;
+mod screenshot;
 mod secrets;
 mod settings;
+mod syscontrol;
 mod system;
 mod updater;
 mod windows;
@@ -34,7 +38,7 @@ use tauri_plugin_opener::OpenerExt;
 
 /// Island window size in logical pixels. The window is transparent and click-through outside the
 /// pill, so it can be big enough for the open panel without the window ever resizing.
-const ISLAND_W: f64 = 760.0;
+const ISLAND_W: f64 = 860.0;
 
 struct AppState {
     settings: SettingsStore,
@@ -220,18 +224,36 @@ fn spawn_media_watch(app: AppHandle) {
 
 // ---------- Hotkey, autostart ----------
 
-fn apply_hotkey(app: &AppHandle, hotkey: &str) -> Result<(), String> {
+fn shot_hotkey(s: &Settings) -> String {
+    s.extra.get("shotHotkey").and_then(|v| v.as_str()).unwrap_or("Alt+Shift+S").to_string()
+}
+
+/// Registers the island shortcut (opens Afina) and the screenshot shortcut.
+fn apply_hotkeys(app: &AppHandle, hotkey: &str, shot: &str) -> Result<(), String> {
     let gs = app.global_shortcut();
     let _ = gs.unregister_all();
-    if hotkey.trim().is_empty() {
-        return Ok(());
+    if !hotkey.trim().is_empty() {
+        gs.on_shortcut(hotkey, |app, _sc, ev| {
+            if ev.state == ShortcutState::Pressed {
+                let _ = app.emit("island://hotkey", ());
+            }
+        })
+        .map_err(|e| format!("This shortcut is taken or not valid: {e}"))?;
     }
-    gs.on_shortcut(hotkey, |app, _sc, ev| {
-        if ev.state == ShortcutState::Pressed {
-            let _ = app.emit("island://hotkey", ());
-        }
-    })
-    .map_err(|e| format!("This shortcut is taken or not valid: {e}"))
+    if !shot.trim().is_empty() && shot != hotkey {
+        gs.on_shortcut(shot, |app, _sc, ev| {
+            if ev.state == ShortcutState::Pressed {
+                let a = app.clone();
+                std::thread::spawn(move || {
+                    if let Err(e) = screenshot::start(&a) {
+                        let _ = a.emit("island://toast", e);
+                    }
+                });
+            }
+        })
+        .map_err(|e| format!("The screenshot shortcut is taken or not valid: {e}"))?;
+    }
+    Ok(())
 }
 
 fn apply_autostart(app: &AppHandle, on: bool) {
@@ -249,9 +271,9 @@ fn get_settings(st: S) -> Settings {
 #[tauri::command]
 fn set_settings(app: AppHandle, st: S, value: Settings) -> Result<Settings, String> {
     let old = st.settings.get();
-    if value.hotkey != old.hotkey {
-        apply_hotkey(&app, &value.hotkey).inspect_err(|_| {
-            let _ = apply_hotkey(&app, &old.hotkey);
+    if value.hotkey != old.hotkey || shot_hotkey(&value) != shot_hotkey(&old) {
+        apply_hotkeys(&app, &value.hotkey, &shot_hotkey(&value)).inspect_err(|_| {
+            let _ = apply_hotkeys(&app, &old.hotkey, &shot_hotkey(&old));
         })?;
     }
     if value.autostart != old.autostart {
@@ -528,6 +550,149 @@ fn music_report(app: AppHandle, window: tauri::Window, report: music::MusicRepor
     Ok(())
 }
 
+// ---------- Screenshots ----------
+
+#[tauri::command]
+async fn shot_start(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || screenshot::start(&app)).await.map_err(|e| e.to_string())?
+}
+
+/// The captured screen as PNG bytes (binary response, no base64).
+#[tauri::command]
+fn shot_image(app: AppHandle) -> Result<tauri::ipc::Response, String> {
+    screenshot::take_png(&app).map(tauri::ipc::Response::new).ok_or_else(|| "no screenshot".into())
+}
+
+/// Saves the edited screenshot (raw PNG body) to Pictures/Eternal Helper and returns the path.
+#[tauri::command]
+fn shot_save(request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    match request.body() {
+        tauri::ipc::InvokeBody::Raw(bytes) => screenshot::save(bytes).map(|p| p.to_string_lossy().into_owned()),
+        _ => Err("expected PNG bytes".into()),
+    }
+}
+
+#[tauri::command]
+fn shot_close(app: AppHandle) {
+    *app.state::<screenshot::ShotState>().png.lock().unwrap() = None;
+    if let Some(w) = app.get_webview_window(screenshot::LABEL) {
+        let _ = w.destroy();
+    }
+}
+
+#[tauri::command]
+fn shot_reveal(app: AppHandle, path: String) -> Result<(), String> {
+    if !std::path::Path::new(&path).starts_with(screenshot::folder()) {
+        return Err("not a screenshot".into());
+    }
+    app.opener().reveal_item_in_dir(&path).map_err(|e| e.to_string())
+}
+
+// ---------- Control centre ----------
+
+#[tauri::command]
+async fn controls_read() -> Result<syscontrol::Controls, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        platform::init_thread();
+        syscontrol::read()
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn controls_set(kind: String, value: serde_json::Value) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        platform::init_thread();
+        let num = || value.as_f64().map(|v| v.clamp(0.0, 100.0) as u8).ok_or("expected a number");
+        let flag = || value.as_bool().ok_or("expected true/false");
+        match kind.as_str() {
+            "volume" => syscontrol::set_volume(num()?),
+            "muted" => syscontrol::set_muted(flag()?),
+            "brightness" => syscontrol::set_brightness(num()?),
+            "dark" => syscontrol::set_dark(flag()?),
+            "wifi" => syscontrol::set_wifi(flag()?),
+            "bluetooth" => syscontrol::set_bluetooth(flag()?),
+            "lock" => syscontrol::lock(),
+            "sleep" => syscontrol::sleep(),
+            _ => Err("unknown control".into()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn wifi_networks() -> Result<Vec<syscontrol::Network>, String> {
+    tauri::async_runtime::spawn_blocking(syscontrol::networks).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn wifi_connect(ssid: String, password: Option<String>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || syscontrol::connect(&ssid, password.as_deref().filter(|p| !p.is_empty()))).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn open_system_settings(app: AppHandle, page: String) -> Result<(), String> {
+    let url = syscontrol::settings_url(&page).ok_or("unknown page")?;
+    app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+}
+
+// ---------- Afina: computer tools and AI accounts ----------
+
+fn tools_allowed(app: &AppHandle) -> Result<(), String> {
+    if afina_tools::allowed(&app.state::<AppState>().settings.get()) { Ok(()) } else { Err("tools-off".into()) }
+}
+
+#[tauri::command]
+async fn afina_find_files(app: AppHandle, query: String) -> Result<Vec<afina_tools::Found>, String> {
+    tools_allowed(&app)?;
+    tauri::async_runtime::spawn_blocking(move || afina_tools::find_files(&afina_tools::roots(), &query, 12)).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn afina_find_text(app: AppHandle, query: String) -> Result<Vec<afina_tools::Found>, String> {
+    tools_allowed(&app)?;
+    tauri::async_runtime::spawn_blocking(move || afina_tools::find_text(&afina_tools::roots(), &query, 10)).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn afina_open(app: AppHandle, path: String, reveal: bool) -> Result<(), String> {
+    tools_allowed(&app)?;
+    if !afina_tools::inside_roots(&afina_tools::roots(), &path) {
+        return Err("Afina can only open files in your own folders.".into());
+    }
+    let o = app.opener();
+    if reveal { o.reveal_item_in_dir(&path) } else { o.open_path(&path, None::<&str>) }.map_err(|e| e.to_string())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AiServiceInfo {
+    id: &'static str,
+    name: &'static str,
+    prefill: bool,
+}
+
+#[tauri::command]
+fn ai_services() -> Vec<AiServiceInfo> {
+    ai_accounts::SERVICES.iter().map(|s| AiServiceInfo { id: s.id, name: s.name, prefill: s.ask.is_some() }).collect()
+}
+
+#[tauri::command]
+fn ai_open(app: AppHandle, service: String, prompt: Option<String>) -> Result<bool, String> {
+    ai_accounts::open(&app, &service, prompt.as_deref())
+}
+
+/// Opens a web page in the default browser (https only), e.g. a web search Afina was asked for.
+#[tauri::command]
+fn open_url(app: AppHandle, url: String) -> Result<(), String> {
+    if !url.starts_with("https://") {
+        return Err("only https links".into());
+    }
+    app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn quit(app: AppHandle) {
     app.exit(0);
@@ -540,10 +705,12 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
     let videos = MenuItem::with_id(app, "videos", "Open recordings folder", true, None::<&str>)?;
     let planner = MenuItem::with_id(app, "planner", "Open Universal Planner", true, None::<&str>)?;
+    let shot = MenuItem::with_id(app, "shot", "Take a screenshot", true, None::<&str>)?;
+    let pet = MenuItem::with_id(app, "pet", "Cloudy…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Eternal Helper", true, None::<&str>)?;
     let sep = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&toggle, &settings, &videos, &planner, &sep, &quit])?;
-    let mut tray = TrayIconBuilder::with_id("main").tooltip("Eternal Helper").menu(&menu).show_menu_on_left_click(true);
+    let menu = Menu::with_items(app, &[&toggle, &shot, &settings, &pet, &videos, &planner, &sep, &quit])?;
+    let mut tray = TrayIconBuilder::with_id("main").tooltip("Eternal Helper — Beta 0.1.1 Sunrise").menu(&menu).show_menu_on_left_click(true);
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
     }
@@ -566,6 +733,17 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
                 let _ = app.opener().open_path(dir.to_string_lossy(), None::<&str>);
             }
             "planner" => planner::open_planner(app),
+            "shot" => {
+                let a = app.clone();
+                std::thread::spawn(move || {
+                    if let Err(e) = screenshot::start(&a) {
+                        let _ = a.emit("island://toast", e);
+                    }
+                });
+            }
+            "pet" => {
+                let _ = windows::open(app, "pet");
+            }
             "quit" => app.exit(0),
             _ => {}
         }
@@ -610,12 +788,13 @@ pub fn run() {
             };
             let planner_state = state.planner.clone();
             app.manage(state);
+            app.manage(screenshot::ShotState::default());
 
             let handle = app.handle().clone();
             if s.planner.enabled {
                 planner::start_server(handle.clone(), planner_state, s.planner.port, s.planner.token.clone());
             }
-            if let Err(e) = apply_hotkey(&handle, &s.hotkey) {
+            if let Err(e) = apply_hotkeys(&handle, &s.hotkey, &shot_hotkey(&s)) {
                 log::warn!("{e}");
             }
             build_tray(&handle)?;
@@ -669,6 +848,22 @@ pub fn run() {
             music_control,
             music_sign_out,
             music_report,
+            shot_start,
+            shot_image,
+            shot_save,
+            shot_close,
+            shot_reveal,
+            controls_read,
+            controls_set,
+            wifi_networks,
+            wifi_connect,
+            open_system_settings,
+            afina_find_files,
+            afina_find_text,
+            afina_open,
+            ai_services,
+            ai_open,
+            open_url,
             quit,
         ])
         .run(tauri::generate_context!())

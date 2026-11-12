@@ -3,6 +3,7 @@
 import { call, listen, type MediaInfo, type MusicReport } from './ipc';
 import { useApp, type MediaSource } from './store';
 import { rememberTrack } from './recent';
+import { coverArt, currentTrack, next as radioNext, previous as radioPrev, toggle as radioToggle, useRadio } from '../radio/player';
 
 export const SERVICE_NAMES: Record<MusicReport['service'], string> = { spotify: 'Spotify', yandex: 'Yandex Music', soundcloud: 'SoundCloud' };
 
@@ -17,8 +18,21 @@ export function pickMedia(system: MediaInfo | null, web: Partial<Record<MusicRep
   return { media: null, source: { kind: 'system' } };
 }
 
+/** Eternal Radio as a media source, while it plays (or is paused mid-track). */
+function radioMedia(): MediaInfo | null {
+  const r = useRadio.getState();
+  if (!r.playing && r.position === 0) return null;
+  const t = currentTrack();
+  return { title: t.title, artist: 'Eternal Inc.', album: 'Eternal Radio', playing: r.playing, source: 'Eternal Radio', artwork: coverArt(t, 120), positionMs: r.position * 1000, durationMs: r.duration * 1000 };
+}
+
 function recompute() {
   const s = useApp.getState();
+  const radio = radioMedia();
+  if (radio?.playing || (radio && !s.systemMedia?.playing && !Object.values(s.webMusic).some((r) => r?.playing))) {
+    useApp.setState({ media: radio, mediaSource: { kind: 'radio' }, mediaAt: Date.now() });
+    return;
+  }
   const { media, source } = pickMedia(s.systemMedia, s.webMusic);
   useApp.setState({ media, mediaSource: source, mediaAt: Date.now() });
   if (media?.playing) rememberTrack(media);
@@ -30,6 +44,17 @@ export function setSystemMedia(m: MediaInfo | null) {
 }
 
 export function startMusicSync() {
+  // Radio changes (track, play state) recompute; position-only updates don't need to.
+  let last = '';
+  useRadio.subscribe((r) => {
+    const key = `${r.index}|${r.playing}|${r.position === 0}`;
+    if (key !== last) {
+      last = key;
+      recompute();
+    } else if (useApp.getState().mediaSource.kind === 'radio' && r.playing && Math.abs((useApp.getState().media?.positionMs ?? 0) / 1000 - r.position) > 3) {
+      recompute();
+    }
+  });
   return listen<MusicReport>('music://changed', (r) => {
     if (!r.service) {
       useApp.setState({ webMusic: {} }); // signed out of everything
@@ -43,6 +68,7 @@ export function startMusicSync() {
 /** Play/pause/next/previous on whichever source the island is showing. */
 export function mediaControl(action: 'toggle' | 'next' | 'previous') {
   const src = useApp.getState().mediaSource;
+  if (src.kind === 'radio') return Promise.resolve(action === 'toggle' ? radioToggle() : action === 'next' ? radioNext() : radioPrev());
   if (src.kind === 'web') return call('music_control', { service: src.service, action });
   return call('media_control', { action });
 }

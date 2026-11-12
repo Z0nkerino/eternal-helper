@@ -62,9 +62,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## Libraries and models used at runtime
+
+- WebLLM (`@mlc-ai/web-llm`), Apache-2.0: runs Afina's on-device model. Models are downloaded by the user from Hugging Face on first use: Qwen 2.5 (Apache-2.0), Llama 3.2 (Llama 3.2 Community License).
+- `xcap` (Apache-2.0) and `image` (MIT/Apache-2.0): screen capture and PNG encoding.
+
+## Original Eternal Inc. content
+
+Eternal Radio's eight tracks (Sunrise, Liquid Glass, Afterglow, Cloud Nine, Deep Focus, Night Drive, Rain on Glass, Eternal) are original compositions by Eternal Inc., written as code in `apps/desktop/src/radio/` and synthesised live. Cloudy's design and animations are original.
+
 ## Data services (not bundled; called at runtime, no keys)
 
 - Weather and air quality: Open-Meteo (https://open-meteo.com), CC BY 4.0 data.
 - Currency rates: ExchangeRate-API open access (https://www.exchangerate-api.com) — attribution shown in Settings.
 - Public holidays: Nager.Date (https://date.nager.at).
 - Synced lyrics: LRCLIB (https://lrclib.net).
+- Translation: MyMemory (https://mymemory.translated.net).

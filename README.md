@@ -23,6 +23,18 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.1.1 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **Cloudy, redesigned** | A minimal, cute cloud with just two eyes and a mouth and 18 expressions. He has lots of body animations: floating, bouncing, a squash when clicked, dangling when grabbed, drooping when bored, leaning in when curious, dancing, sleeping and stretching. He mostly stays at his spot so he doesn't distract you; now and then (rarely by default) he takes a lively trip anywhere on the screen. Drag him to a new spot or throw him and he glides there. **Cloudy's room** (his own window): fullness, happiness, energy and a friendship level; feed him (rainbow, candy, raindrop, sunbeam, snowflake, cookie, star, ice cream: the food flies into his mouth), play ball, tricks, nap; size, speed, how often he wanders and talks, cute sounds. He gets hungry during the day, bored when ignored and sleepy at night. |
+| **Library** (new tab next to Home) | A control centre: Wi-Fi (networks and passwords right in the island on Windows), Bluetooth, dark mode, do not disturb, volume and brightness sliders. Tools: **Timer** (presets, your own minutes/seconds, a label, pause/resume, +1 min), Screenshot, Record, Calculator, Translator, Planner, Afina, Cloudy, Weather, Text tools, Lock, Sleep. Plus Eternal Radio. |
+| **Screenshots** | **Alt+Shift+S** (changeable), the Library or the tray. Select an area (or the whole screen) and draw on it right away: pen, marker, arrow, line, rectangle, ellipse, text, numbered steps, blur. Undo/redo. **Done** copies it to the clipboard; **Ctrl+S** saves it to *Pictures/Eternal Helper*. Saved at the screen's full resolution. |
+| **Eternal Radio** | 8 original instrumental tracks by Eternal Inc. (chill, modern, no vocals): **Sunrise** (this beta's theme), Liquid Glass, Afterglow, Cloud Nine (Cloudy's theme), Deep Focus, Night Drive, Rain on Glass, Eternal. They're composed as code and played by a built-in synthesizer (pads, electric piano, glassy bells, bass, soft drums, rain and vinyl textures, reverb), so they're tiny and royalty-free. A liquid-glass player shows the track in the island. |
+| **Afina** | Her default brain now runs **on your computer**: the same engine (WebLLM, Qwen 2.5 / Llama 3.2) Afina uses in Universal Planner. Free, private and offline after a one-time download; no account or key. Or pick an **AI account**: ChatGPT, Claude, Gemini, Perplexity, Copilot or DeepSeek. You sign in once in the service's own window (no API key) and Afina opens it with your question filled in. **Computer tools** (only after you allow them): find files by name, find text inside your documents, open or reveal them, take a screenshot, search the web. |
+| **Settings** | Searchable, with a one-line description for every section. A new **Personalise** section, each option with limits: your name (used in greetings), island size (85–115%), text size (90–115%), island opacity (80–100%), 12/24-hour clock and seconds, reduced animations, and which tabs to show (Home and Settings always stay, at least 4 tabs). You can pick your own accent colour; it's adjusted to stay readable. |
+| **Smoother** | Tab content cross-fades, the Library's screens slide in, springy buttons, and a welcome for the new release. |
+
 ## What's in this build
 
 | Area | What works |
@@ -86,6 +98,11 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 
 ## OS limits found so far
 
+- **Afina's on-device brain** needs WebGPU (Windows with WebView2 on a GPU from the last few years; macOS 26 and later in WebKit). Where it's missing, Afina says so and offers the AI accounts. The first download is 0.4–2.3 GB depending on the model.
+- **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
+- **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
+- **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
+- **Version naming:** the public name is *Beta 0.1.1 “Sunrise”*; the build number is 0.3.0 so that in-app updates from 0.2.0 still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -111,6 +128,15 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.1.1 — «Sunrise» 🌅
+
+- **Новый Cloudy:** минималистичное милое облачко — только глаза и рот, 18 выражений и много анимаций тела (парит, прыгает, сплющивается от клика, болтается, когда его держат, скучает, любопытничает, танцует, спит). Почти всё время сидит на своём месте и редко улетает в путешествие по всему экрану. **Комната Cloudy:** сытость, настроение, энергия, уровень дружбы, еда (радуга, конфетка, капелька, лучик, снежинка, печенька, звёздочка, мороженое — еда летит прямо в рот), мяч, трюки, сон и все настройки.
+- **Библиотека** (новая вкладка рядом с Главной): центр управления — Wi-Fi (сети и пароль прямо в острове на Windows), Bluetooth, тёмная тема, «не беспокоить», громкость и яркость; инструменты — **таймер** (пресеты, свои минуты и секунды, название, пауза, +1 мин), скриншот, запись, калькулятор, переводчик, планер, Афина, Cloudy, погода, текст, блокировка, сон и Eternal Radio.
+- **Скриншоты:** Alt+Shift+S — выдели область и сразу рисуй: карандаш, маркер, стрелка, линия, прямоугольник, овал, текст, номера шагов, размытие; «Готово» — в буфер, Ctrl+S — сохранить.
+- **Eternal Radio:** 8 оригинальных инструментальных треков Eternal Inc. без слов, включая **«Sunrise»** — тему этой беты; играет встроенный синтезатор.
+- **Афина:** мозг на компьютере — тот же движок, что у Афины в Universal Planner (бесплатно, без интернета, без ключа); или вход в ChatGPT, Claude, Gemini, Perplexity, Copilot, DeepSeek без API-ключей; с твоего разрешения ищет файлы и текст в твоих папках, делает скриншоты, ищет в интернете.
+- **Настройки:** поиск, описания разделов и новый раздел «Под себя» с ограничениями (имя, размер острова и текста, прозрачность, часы, анимации, вкладки, свой цвет).
 
 ## Скачать
 

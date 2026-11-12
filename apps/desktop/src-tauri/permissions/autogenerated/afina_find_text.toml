@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-afina-find-text"
+description = "Enables the afina_find_text command without any pre-configured scope."
+commands.allow = ["afina_find_text"]
+
+[[permission]]
+identifier = "deny-afina-find-text"
+description = "Denies the afina_find_text command without any pre-configured scope."
+commands.deny = ["afina_find_text"]

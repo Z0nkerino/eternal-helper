@@ -1,4 +1,4 @@
-import { defaultPairs, withDefaults } from './defaults';
+import { defaultPairs, safeAccent, withDefaults } from './defaults';
 import type { Settings } from './ipc';
 
 describe('settings defaults', () => {
@@ -12,8 +12,22 @@ describe('settings defaults', () => {
   it('fills missing UI settings and keeps stored ones', () => {
     const s = withDefaults({ theme: 'neon', cloudy: { enabled: false } } as unknown as Settings);
     expect(s.theme).toBe('neon');
-    expect(s.cloudy).toMatchObject({ enabled: false, size: 64, chatter: 'rare' });
+    expect(s.cloudy).toMatchObject({ enabled: false, size: 72, chatter: 'rare', roam: 'rare' });
     expect(s.carousel.items).toContain('battery');
     expect(s.updates.auto).toBe(true);
+  });
+
+  it('keeps personalisation inside its limits', () => {
+    const s = withDefaults({ uiScale: 3, fontScale: 0.2, islandOpacity: 0, name: 'x'.repeat(50), hiddenTabs: ['home', 'weather', 'settings'] } as unknown as Settings);
+    expect([s.uiScale, s.fontScale, s.islandOpacity]).toEqual([1.15, 0.9, 0.8]);
+    expect(s.name.length).toBe(24);
+    expect(s.hiddenTabs).toEqual(['weather']);
+  });
+
+  it('keeps custom accents readable', () => {
+    expect(safeAccent('#000000')).toBe('#737373');
+    expect(safeAccent('#FFFFFF')).toBe('#BFBFBF');
+    expect(safeAccent('#2F6BFF')).toBe('#2F6BFF');
+    expect(safeAccent('nonsense')).toBe('#2F6BFF');
   });
 });

@@ -5,6 +5,8 @@ import { Island } from './island/Island';
 import { SettingsWindow } from './settings/SettingsWindow';
 import { PopOut } from './settings/PopOut';
 import { CloudyStage, type MoodSignal } from './cloudy/CloudyStage';
+import { PetWindow } from './cloudy/PetWindow';
+import { ShotEditor } from './shot/ShotEditor';
 import { call, emitEvent, inTauri, listen, type Layout, type MediaInfo, type Settings } from './lib/ipc';
 import { closePanel, openPanel, saveSettings, tickTimer, toast, useApp, type Tab } from './lib/store';
 import { refreshWeather, weatherScene } from './lib/weather';
@@ -16,15 +18,18 @@ import { withDefaults } from './lib/defaults';
 import { applyTheme } from './lib/theme';
 import { chime } from './island/bits';
 import { tNow } from './lib/i18n';
+import { RELEASE } from './lib/release';
 import './styles.css';
 
-type View = { kind: 'island' } | { kind: 'settings' } | { kind: 'panel'; tab: Tab } | { kind: 'cloudy' };
+type View = { kind: 'island' } | { kind: 'settings' } | { kind: 'panel'; tab: Tab } | { kind: 'cloudy' } | { kind: 'pet' } | { kind: 'shot' };
 
 function currentView(): View {
   const h = location.hash.replace(/^#/, '');
   if (h.startsWith('settings')) return { kind: 'settings' };
   if (h.startsWith('panel/')) return { kind: 'panel', tab: h.slice(6) as Tab };
   if (h === 'cloudy') return { kind: 'cloudy' };
+  if (h === 'pet') return { kind: 'pet' };
+  if (h === 'shot') return { kind: 'shot' };
   return { kind: 'island' };
 }
 
@@ -67,6 +72,11 @@ function bootIsland() {
     useApp.setState((x) => ({ focusAfina: x.focusAfina + 1 }));
   });
   listen<string>('island://open', (tab) => openPanel(tab as Tab));
+  // Messages from other windows (screenshot copied, errors from the Rust side…).
+  listen<string>('island://toast', (text) => toast(text, { force: true }));
+  listen<string>('island://shot-saved', (path) =>
+    toast(tNow('shot.saved'), { tone: 'ok', force: true, action: { label: tNow('rec.reveal'), run: () => void call('shot_reveal', { path }) } }),
+  );
 
   setInterval(() => {
     tickTimer(Date.now(), (label) => {
@@ -79,6 +89,23 @@ function bootIsland() {
 
   startBattery(true);
   startUpdateChecks();
+
+  // A one-time hello for this release, with its theme song.
+  try {
+    if (localStorage.getItem('eh.seen') !== RELEASE.name) {
+      localStorage.setItem('eh.seen', RELEASE.name);
+      setTimeout(
+        () =>
+          toast(tNow('rel.welcome'), {
+            force: true,
+            action: { label: tNow('rel.play'), run: () => void import('./radio/player').then((r) => r.select(0)) },
+          }),
+        2500,
+      );
+    }
+  } catch {
+    /* storage unavailable */
+  }
 
   // Music players the user wants ready in the background.
   for (const service of useApp.getState().settings?.music.startHidden ?? []) void call('music_open', { service, show: false });
@@ -126,6 +153,11 @@ if (view.kind === 'cloudy') {
   });
 }
 
+function Motion({ children }: { children: React.ReactNode }) {
+  const reduced = useApp((s) => s.settings?.motion === 'reduced');
+  return <MotionConfig reducedMotion={reduced ? 'always' : 'user'}>{children}</MotionConfig>;
+}
+
 function Root() {
   switch (view.kind) {
     case 'settings':
@@ -134,6 +166,10 @@ function Root() {
       return <PopOut tab={view.tab} />;
     case 'cloudy':
       return <CloudyStage />;
+    case 'pet':
+      return <PetWindow />;
+    case 'shot':
+      return <ShotEditor />;
     default:
       return <Island />;
   }
@@ -141,8 +177,8 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <MotionConfig reducedMotion="user">
+    <Motion>
       <Root />
-    </MotionConfig>
+    </Motion>
   </React.StrictMode>,
 );
