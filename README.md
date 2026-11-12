@@ -23,6 +23,16 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.2.0 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **A calmer island** | Just four tabs: **Home, Library, Afina, Settings**. **Rest the cursor on the pill and it opens**, with no click and without taking the keyboard from your app; move away and it closes. Click inside and it stays open so you can type. Apple-style touches: a soft light follows the cursor, a rim of light around the edge, a slow glint on the pill, a sliding glass tab selector, springy sizes and content that slides the way you move between tabs. Turn hover-to-open off in Settings → Personalise. |
+| **Home: one glance** | A big clock with digits that roll over, the date with a greeting, the weather, what's playing (or one tap for Eternal Radio), what's next in your Planner (or the running timer) and five quick actions: Screenshot, Record, 5-min timer, 25-min focus, Afina. |
+| **Library: everything else** | Control centre (Wi-Fi, Bluetooth, dark mode, do not disturb, volume, brightness) and every tool. Weather, Planner, Recordings, Text tools, Timer, Calculator, Translator, Wi-Fi and Radio open inside it. |
+| **Cloudy is a real cloud** | He's made of 16 soft, shaded puffs with fluffy edges, lit from above, and tinted by the weather and the time of day. **Click him and he dissolves into vapour**, then puffs back together. He **forms shapes** out of his puffs: heart, star, bunny, cat, fish, music note, umbrella, sun, moon, sheep, the letter E. Often he picks a shape that fits the moment, like a note when music plays, an umbrella in the rain or the moon at night. New moves: smooth stretches, jelly wobble, inflate, flips, roll-overs, yoga, sneezes (achoo, poof!), waves, nuzzles. **With your cursor:** he leans toward it, dodges a cursor that rushes at him, nuzzles one that rests next to him and sometimes chases it to boop it. **With your desktop:** he plays hide-and-seek behind the screen edge, naps melted on the taskbar, bounces off the edges and flies up to wave at the island. Rain, snow and rainbows fall from him. Right-click him for the menu. |
+| **Fixes** | Windows can no longer freeze when a window opens from a command. Settings changed in two windows at once no longer undo each other. The self-updater works with paths that contain spaces. A maximised window with an auto-hiding taskbar no longer hides the island as "fullscreen". The media session is reused instead of recreated every second. Brightness checks no longer start PowerShell over and over on displays that can't change it. Screenshots no longer capture the open panel. The pet and settings windows skip weather and Planner downloads. |
+
 ## Beta 0.1.1 — “Sunrise” 🌅
 
 | What | Details |
@@ -102,7 +112,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name is *Beta 0.1.1 “Sunrise”*; the build number is 0.3.0 so that in-app updates from 0.2.0 still see it as newer.
+- **Version naming:** the public name is *Beta 0.2.0 “Sunrise”*; the build number is 0.4.0 so that in-app updates from earlier builds (up to 0.3.1) still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -128,6 +138,14 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.2.0 — «Sunrise» 🌅
+
+- **Спокойный остров:** всего четыре вкладки — **Главная, Библиотека, Афина, Настройки**. **Наведи курсор на пилюлю — и она откроется** сама, без клика и не забирая клавиатуру у твоего приложения; убери курсор — закроется. Кликни внутри — останется открытой, чтобы печатать. Как у Apple: мягкий свет за курсором, светлый ободок, блик на пилюле, стеклянный переключатель вкладок, пружинистые анимации. Отключается в Настройки → Под себя.
+- **Главная — одним взглядом:** большие часы, дата с приветствием, погода, что играет (или Eternal Radio в один клик), что дальше в Планере и пять быстрых действий.
+- **Библиотека — всё остальное:** центр управления и все инструменты; погода, планер, записи, текст, таймер, калькулятор, переводчик, Wi-Fi и радио открываются прямо в ней.
+- **Cloudy — настоящее облако:** 16 мягких объёмных клубов с пушистыми краями. **Кликни — он рассыплется паром** и соберётся снова. Складывается в **фигуры**: сердце, звезда, зайчик, котик, рыбка, нота, зонтик, солнце, луна, овечка, буква E. Новые движения: потягушки, желе, надувается, сальто, кувырки, йога, чихает, машет. **С курсором:** тянется к нему, уворачивается от быстрого, ластится к спокойному, догоняет. **С рабочим столом:** прячется за краем экрана, спит лужицей на панели задач, отскакивает от краёв, летает помахать острову. Из него идёт дождь, снег и радуга. Меню — правый клик.
+- **Исправления:** Windows больше не зависает при открытии окон; настройки из двух окон не затирают друг друга; обновление работает с путями с пробелами; развёрнутое окно больше не считается полноэкранным; скриншот не захватывает открытую панель; меньше лишней работы в фоне.
 
 ## Beta 0.1.1 — «Sunrise» 🌅
 

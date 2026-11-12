@@ -137,6 +137,7 @@ fn refresh_layout(app: &AppHandle, x: f64, width: f64, scale: f64) {
 fn spawn_hit_test(app: AppHandle) {
     std::thread::spawn(move || {
         let mut ignoring: HashMap<String, bool> = HashMap::new();
+        let mut hovering = false;
         let mut last_cursor = (f64::NAN, f64::NAN);
         let mut tick = 0u32;
         loop {
@@ -159,6 +160,12 @@ fn spawn_hit_test(app: AppHandle) {
                 let inside = rects.get(label).is_some_and(|&(hx, hy, hw, hh)| x >= hx && x <= hx + hw && y >= hy && y <= hy + hh);
                 if ignoring.get(label) != Some(&!inside) && w.set_ignore_cursor_events(!inside).is_ok() {
                     ignoring.insert(label.to_string(), !inside);
+                }
+                // The island opens when the cursor rests on it and closes when it leaves. A click-through
+                // window gets no mouseleave, so the hover state comes from here.
+                if label == "island" && inside != hovering {
+                    hovering = inside;
+                    let _ = w.emit_to("island", "island://hover", inside);
                 }
                 if label == cloudy::LABEL && tick % 3 == 0 && (x, y) != last_cursor {
                     last_cursor = (x, y);
@@ -282,29 +289,54 @@ fn get_settings(st: S) -> Settings {
     st.settings.get()
 }
 
-#[tauri::command]
-fn set_settings(app: AppHandle, st: S, value: Settings) -> Result<Settings, String> {
+/// Applies new settings: shortcuts, autostart, Cloudy's window, monitor; saves and tells every window.
+fn apply_settings(app: &AppHandle, value: Settings) -> Result<Settings, String> {
+    let st = app.state::<AppState>();
     let old = st.settings.get();
     if value.hotkey != old.hotkey || shot_hotkey(&value) != shot_hotkey(&old) {
-        apply_hotkeys(&app, &value.hotkey, &shot_hotkey(&value)).inspect_err(|_| {
-            let _ = apply_hotkeys(&app, &old.hotkey, &shot_hotkey(&old));
+        apply_hotkeys(app, &value.hotkey, &shot_hotkey(&value)).inspect_err(|_| {
+            let _ = apply_hotkeys(app, &old.hotkey, &shot_hotkey(&old));
         })?;
     }
     if value.autostart != old.autostart {
-        apply_autostart(&app, value.autostart);
+        apply_autostart(app, value.autostart);
     }
     st.settings.set(value.clone()).map_err(|e| e.to_string())?;
     let cloud_on = cloudy::enabled(&value);
     if cloud_on != cloudy::enabled(&old) {
-        cloudy::sync(&app, cloud_on);
+        cloudy::sync(app, cloud_on);
     }
     if value.monitor != old.monitor {
-        if let Some(w) = island(&app) {
-            place(&app, &w);
+        if let Some(w) = island(app) {
+            place(app, &w);
         }
     }
     let _ = app.emit("settings://changed", &value);
     Ok(value)
+}
+
+/// Merges top-level keys into the current settings. Each window sends only what it changed, so two
+/// windows saving at the same time can no longer undo each other's changes.
+pub fn merge_settings(cur: &Settings, patch: serde_json::Value) -> Result<Settings, String> {
+    let mut base = serde_json::to_value(cur).map_err(|e| e.to_string())?;
+    let (Some(obj), serde_json::Value::Object(p)) = (base.as_object_mut(), patch) else { return Err("settings patch must be an object".into()) };
+    for (k, v) in p {
+        obj.insert(k, v);
+    }
+    serde_json::from_value(base).map_err(|e| format!("invalid settings: {e}"))
+}
+
+// Window-creating commands are async: on Windows, building a window inside a synchronous command
+// (which runs on the main thread) can deadlock.
+#[tauri::command]
+async fn set_settings(app: AppHandle, value: Settings) -> Result<Settings, String> {
+    apply_settings(&app, value)
+}
+
+#[tauri::command]
+async fn patch_settings(app: AppHandle, patch: serde_json::Value) -> Result<Settings, String> {
+    let next = merge_settings(&app.state::<AppState>().settings.get(), patch)?;
+    apply_settings(&app, next)
 }
 
 #[tauri::command]
@@ -319,9 +351,10 @@ fn island_set_hit(window: tauri::Window, st: S, x: f64, y: f64, w: f64, h: f64) 
 
 /// The open panel takes keyboard focus (so Afina and text tools can be typed into); the pill never does.
 #[tauri::command]
-fn island_set_expanded(app: AppHandle, expanded: bool) {
+fn island_set_expanded(app: AppHandle, expanded: bool, focus: Option<bool>) {
     if let Some(w) = island(&app) {
-        platform::set_activatable(&w, expanded);
+        // Opened by hovering: shown without taking the keyboard from the app the user is in.
+        platform::set_activatable(&w, expanded && focus.unwrap_or(true));
     }
 }
 
@@ -478,7 +511,7 @@ fn rec_open_folder(app: AppHandle, st: S) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn open_window(app: AppHandle, kind: String) -> Result<(), String> {
+async fn open_window(app: AppHandle, kind: String) -> Result<(), String> {
     windows::open(&app, &kind)
 }
 
@@ -530,7 +563,7 @@ fn music_services(app: AppHandle) -> Vec<MusicServiceInfo> {
 }
 
 #[tauri::command]
-fn music_open(app: AppHandle, service: String, show: bool) -> Result<(), String> {
+async fn music_open(app: AppHandle, service: String, show: bool) -> Result<(), String> {
     music::open(&app, &service, show)
 }
 
@@ -547,7 +580,7 @@ fn music_control(app: AppHandle, service: String, action: String) -> Result<(), 
 }
 
 #[tauri::command]
-fn music_sign_out(app: AppHandle) -> Result<(), String> {
+async fn music_sign_out(app: AppHandle) -> Result<(), String> {
     music::sign_out(&app)?;
     let _ = app.emit("music://changed", music::MusicReport::default());
     Ok(())
@@ -694,7 +727,7 @@ fn ai_services() -> Vec<AiServiceInfo> {
 }
 
 #[tauri::command]
-fn ai_open(app: AppHandle, service: String, prompt: Option<String>) -> Result<bool, String> {
+async fn ai_open(app: AppHandle, service: String, prompt: Option<String>) -> Result<bool, String> {
     ai_accounts::open(&app, &service, prompt.as_deref())
 }
 
@@ -802,6 +835,25 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn patches_only_given_keys() {
+        let mut cur = Settings::default();
+        cur.language = "ru".into();
+        cur.extra.insert("theme".into(), serde_json::json!("glass"));
+        let next = merge_settings(&cur, serde_json::json!({ "cloudy": { "enabled": false }, "doNotDisturb": true })).unwrap();
+        assert_eq!(next.language, "ru");
+        assert!(next.do_not_disturb);
+        assert_eq!(next.extra["theme"], "glass");
+        assert_eq!(next.extra["cloudy"]["enabled"], false);
+        assert!(merge_settings(&cur, serde_json::json!([1])).is_err());
+        assert!(merge_settings(&cur, serde_json::json!({ "doNotDisturb": "yes" })).is_err());
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -865,6 +917,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_settings,
             set_settings,
+            patch_settings,
             island_layout,
             island_set_hit,
             island_set_expanded,

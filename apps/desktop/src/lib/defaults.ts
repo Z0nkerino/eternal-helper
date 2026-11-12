@@ -93,6 +93,7 @@ export function withDefaults(s: Settings): Settings {
     clockSeconds: x.clockSeconds ?? false,
     // Home and Settings can never be hidden.
     shotHotkey: typeof x.shotHotkey === 'string' ? x.shotHotkey : 'Alt+Shift+S',
+    hoverOpen: x.hoverOpen ?? true,
     hiddenTabs: Array.isArray(x.hiddenTabs) ? x.hiddenTabs.filter((t) => t !== 'home' && t !== 'settings') : [],
   };
 }

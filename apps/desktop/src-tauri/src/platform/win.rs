@@ -43,8 +43,21 @@ fn read_thumbnail(r: &IRandomAccessStreamReference) -> ::windows::core::Result<S
     Ok(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(buf)))
 }
 
+/// The media session manager is created once and reused (it was recreated every second before).
+fn manager() -> ::windows::core::Result<Manager> {
+    use std::sync::Mutex;
+    static CACHE: Mutex<Option<Manager>> = Mutex::new(None);
+    let mut c = CACHE.lock().unwrap();
+    if let Some(m) = c.as_ref() {
+        return Ok(m.clone());
+    }
+    let m = Manager::RequestAsync()?.get()?;
+    *c = Some(m.clone());
+    Ok(m)
+}
+
 fn session() -> ::windows::core::Result<::windows::Media::Control::GlobalSystemMediaTransportControlsSession> {
-    Manager::RequestAsync()?.get()?.GetCurrentSession()
+    manager()?.GetCurrentSession()
 }
 
 impl MediaProvider for Media {
@@ -128,6 +141,12 @@ fn foreground_covers_monitor() -> bool {
         let class = String::from_utf16_lossy(&buf[..n]);
         // The desktop and the taskbar are not fullscreen apps.
         if matches!(class.as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd" | "Shell_SecondaryTrayWnd") {
+            return false;
+        }
+        // A maximised window can cover the whole monitor too (with an auto-hiding taskbar); real fullscreen
+        // windows have no title bar.
+        let style = ::windows::Win32::UI::WindowsAndMessaging::GetWindowLongPtrW(fg, ::windows::Win32::UI::WindowsAndMessaging::GWL_STYLE) as u32;
+        if style & ::windows::Win32::UI::WindowsAndMessaging::WS_CAPTION.0 == ::windows::Win32::UI::WindowsAndMessaging::WS_CAPTION.0 {
             return false;
         }
         let mut r = RECT::default();

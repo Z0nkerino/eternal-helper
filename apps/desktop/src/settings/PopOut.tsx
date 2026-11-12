@@ -1,5 +1,5 @@
 // A panel tab opened in its own window ("pop out").
-import { MODULES } from '../modules';
+import { ALL_MODULES } from '../modules';
 import { useT } from '../lib/i18n';
 import { useApp } from '../lib/store';
 import { Rich } from '../lib/emoji';
@@ -7,7 +7,7 @@ import type { Tab } from '../lib/store';
 
 export function PopOut({ tab }: { tab: Tab }) {
   const t = useT();
-  const m = MODULES.find((x) => x.id === tab) ?? MODULES[0];
+  const m = ALL_MODULES.find((x) => x.id === tab) ?? ALL_MODULES[0];
   const Body = m.tab!;
   const Icon = m.icon!;
   const toasts = useApp((x) => x.toasts);

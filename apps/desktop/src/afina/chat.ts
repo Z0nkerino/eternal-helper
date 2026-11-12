@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { call, type ChatMessage, type FoundFile } from '../lib/ipc';
 import { resolveLang, tNow } from '../lib/i18n';
-import { openPanel, saveSettings, startTimer, stopTimer, toast, useApp } from '../lib/store';
+import { openPanel, saveSettings, startTimer, stopTimer, takeScreenshot, toast, useApp } from '../lib/store';
 import { startRecording, stopRecording } from '../lib/recorder';
 import { copyText } from '../lib/clipboard';
 import { contextFor, respond, type AfinaWorld } from './engine';
@@ -73,7 +73,7 @@ async function tools(input: string): Promise<boolean> {
   const shot = /(сделай|сними|take|grab)\s.*(скриншот|снимок экрана|screenshot)/i.test(text);
   if (shot) {
     push({ role: 'assistant', text: L('Select an area — then you can draw on it ✏️', 'Выдели область — потом можно на ней рисовать ✏️') });
-    void call('shot_start').catch((e) => toast(String(e), { tone: 'error' }));
+    void takeScreenshot();
     return true;
   }
   const web = text.match(/^(?:найди в интернете|поищи в интернете|загугли|search the web for|google)\s+(.+)$/i);

@@ -662,3 +662,150 @@ html[data-motion='reduced'] *, html[data-motion='reduced'] *::before, html[data-
 .swatch.custom input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .panel-anim { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .panel-anim > * { flex: 1; min-height: 0; }
+
+/* ===================== Island 0.2 — Sunrise: lighter, calmer, made of light ===================== */
+
+/* Specular light: a soft spot that follows the cursor and a thin rim of light around the edge. */
+.island { isolation: isolate; transition: box-shadow 0.4s ease; }
+.island .sheen, .island .rim { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0; }
+.island .sheen {
+  background: radial-gradient(260px circle at var(--mx, 50%) var(--my, -40px), rgba(255, 255, 255, 0.075), transparent 60%);
+  opacity: 0; transition: opacity 0.35s ease;
+}
+.island:hover .sheen { opacity: 1; }
+.island .rim {
+  padding: 0.6px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.04) 38%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.07));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0.55;
+}
+.island.notch .rim { opacity: 0.25; }
+.island.open .rim { opacity: 0.9; }
+.island.open { box-shadow: 0 30px 70px -18px rgba(0, 0, 0, 0.85), 0 0 0 0.5px rgba(255, 255, 255, 0.07), 0 0 60px -30px color-mix(in srgb, var(--accent) 60%, transparent); }
+.island.live:not(.open) { box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.65), 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 0 22px -8px color-mix(in srgb, var(--accent) 55%, transparent); }
+/* A slow glint sweeps across the closed pill now and then. */
+.island:not(.open):not(.notch)::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.09) 50%, transparent 65%) no-repeat;
+  background-size: 250% 100%; background-position: 150% 0;
+  animation: glint 9s ease-in-out 3s infinite;
+}
+@keyframes glint { 0%, 82% { background-position: 150% 0; } 100% { background-position: -60% 0; } }
+.pill-content, .panel { z-index: 1; }
+
+/* Segmented tabs */
+.tabbar { justify-content: space-between; gap: 8px; }
+.seg { position: relative; display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); border: 0.5px solid rgba(255, 255, 255, 0.06); }
+.tabbar-side .seg { flex-direction: column; border-radius: 18px; }
+.seg-tab { position: relative; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 13px; border-radius: 999px; color: var(--muted); transition: color 0.2s; }
+.tabbar-side .seg-tab { width: 36px; padding: 0; justify-content: center; }
+.seg-tab > svg, .seg-label { position: relative; z-index: 1; }
+.seg-tab:hover, .seg-tab.on { color: var(--text); }
+.seg-pill { position: absolute; inset: 0; border-radius: 999px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.08)); box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.3), 0 4px 12px -4px #000a; }
+.seg-hover { position: absolute; inset: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.06); }
+.seg-label { font-weight: 500; white-space: nowrap; }
+.tabbar-actions { display: flex; gap: 2px; }
+.tabbar-side .tabbar-actions { flex-direction: column; order: -1; }
+
+/* Home: one glance */
+.home { display: grid; grid-template-columns: 1fr 1.25fr; grid-template-rows: 1fr auto; gap: 12px; height: 100%; }
+.glance { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; padding: 4px 8px; border-radius: 18px; transition: background 0.2s; }
+.glance:hover { background: rgba(255, 255, 255, 0.035); }
+.glance-time { font-size: 56px; font-weight: 250; letter-spacing: -0.02em; line-height: 1; display: flex; color: #fff; text-shadow: 0 0 24px rgba(255, 255, 255, 0.18); }
+.glance-time span { display: inline-block; }
+.glance-date { margin-top: 8px; font-size: 14px; font-weight: 500; text-transform: capitalize; }
+.glance-line { margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+.weather-line { margin-top: 10px; font-size: 14px; }
+.home-right { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.home .media { flex: 1; padding: 12px; border-radius: 20px; }
+.home .art-wrap, .home .art { width: 92px; height: 92px; border-radius: 14px; }
+.home .art-glow { width: 100px; height: 92px; }
+.home .empty-media { width: 100%; text-align: left; cursor: pointer; transition: background 0.2s, transform 0.2s; }
+.home .empty-media:hover { background: #1c1c21; }
+.empty-art { width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; flex: none; background: linear-gradient(135deg, #ff9a5a55, #ff4fa355 55%, #2f6bff55); }
+.next-up { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--surface-2); border: 0.5px solid var(--line); text-align: left; transition: background 0.2s; }
+.next-up:hover { background: #1c1c21; }
+.next-up.live { border-color: color-mix(in srgb, var(--accent) 50%, transparent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
+.actions { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.action { display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--muted); min-width: 0; }
+.action-icon { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.08); box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.18); transition: background 0.2s, color 0.2s; }
+.action:hover { color: var(--text); }
+.action:hover .action-icon { background: rgba(255, 255, 255, 0.15); }
+.action.hot .action-icon { background: var(--danger); color: #fff; box-shadow: 0 0 18px -2px var(--danger); }
+
+/* Library */
+.lib-tools { grid-template-columns: repeat(7, 1fr); }
+.lib-tool { min-height: 74px; border-radius: 18px; }
+.lib-sub-body > * { flex: 1; min-height: 0; }
+.cc-grid .cc-toggle { transition: background 0.25s, box-shadow 0.25s; }
+.cc-grid .cc-toggle.on { box-shadow: 0 0 22px -10px var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .island::after { animation: none !important; }
+}
+html[data-motion='reduced'] .island::after { animation: none; }
+
+/* ===================== Cloudy 0.2: a real cloud ===================== */
+
+.cloudy-svg { filter: drop-shadow(0 8px 14px rgba(40, 55, 90, 0.2)) drop-shadow(0 1px 1.5px rgba(40, 55, 90, 0.12)); }
+/* Each puff glides to its place in a new shape; a little overshoot makes it feel soft and alive. */
+.puff { transform-origin: 0 0; transition: transform 0.85s cubic-bezier(0.34, 1.32, 0.4, 1), opacity 0.5s ease; }
+.cf-base { transition: opacity 0.4s; }
+.cf-face { transform-origin: 60px 61px; transition: transform 0.75s cubic-bezier(0.34, 1.3, 0.4, 1), opacity 0.35s; }
+.cf-cheeks ellipse { fill: #ff8fb1; opacity: 0.45; }
+/* Dissolving: puffs drift outward and fade like vapour; coming back uses the soft spring above. */
+.dissolved .puff { transition: transform 0.6s cubic-bezier(0.15, 0.7, 0.3, 1), opacity 0.55s ease-out; }
+.dissolved .cf-face { transition: transform 0.3s ease-in, opacity 0.2s; }
+.cl-vapour { position: absolute; left: 50%; top: 45%; width: 0; height: 0; pointer-events: none; }
+.cl-vapour i { position: absolute; width: 14px; height: 14px; margin: -7px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, #ffffffaa 40%, transparent 70%); animation: c-vapour 0.8s ease-out forwards; }
+@keyframes c-vapour { from { transform: rotate(var(--a)) translateX(4px) scale(0.6); opacity: 0.9; } to { transform: rotate(var(--a)) translateX(58px) scale(1.8); opacity: 0; } }
+
+/* Leaning toward a cursor that comes close. */
+.cloudy-reach { transform-origin: 50% 90%; transform: translateX(calc(var(--reach, 0) * 5px)) skewX(calc(var(--reach, 0) * -7deg)) scaleX(calc(1 + var(--reach, 0) * var(--reach, 0) * 0.08)); transition: transform 0.5s cubic-bezier(0.3, 1.4, 0.5, 1); }
+
+/* More moods to move in */
+.anim-boing .cloudy-svg { animation: c-boing 0.9s cubic-bezier(0.3, 1.6, 0.5, 1); transform-origin: 50% 100%; }
+@keyframes c-boing { 0% { transform: scale(0.6, 0.6); } 35% { transform: scale(1.18, 0.86); } 60% { transform: scale(0.92, 1.1); } 80% { transform: scale(1.04, 0.97); } 100% { transform: scale(1, 1); } }
+.anim-inflate .cloudy-svg { animation: c-inflate 1.6s ease-in-out; }
+@keyframes c-inflate { 0% { transform: scale(1); } 45% { transform: scale(1.28); } 55% { transform: scale(1.3) rotate(2deg); } 70% { transform: scale(0.9); } 85% { transform: scale(1.05); } 100% { transform: scale(1); } }
+.anim-jelly .cloudy-svg { animation: c-jelly 1.1s ease-in-out; transform-origin: 50% 100%; }
+@keyframes c-jelly { 0%, 100% { transform: scale(1, 1); } 15% { transform: scale(1.22, 0.78); } 30% { transform: scale(0.8, 1.2); } 45% { transform: scale(1.12, 0.9); } 60% { transform: scale(0.94, 1.06); } 75% { transform: scale(1.03, 0.97); } }
+.anim-flip .cloudy-svg { animation: c-flip 1s cubic-bezier(0.4, 0, 0.3, 1.2); transform-origin: 50% 50%; }
+@keyframes c-flip { 0% { transform: translateY(0) rotate(0); } 25% { transform: translateY(6px) scale(1.1, 0.88); } 60% { transform: translateY(-30px) rotate(calc(var(--dir, 1) * 300deg)); } 85% { transform: translateY(0) rotate(calc(var(--dir, 1) * 360deg)) scale(1.1, 0.9); } 100% { transform: rotate(calc(var(--dir, 1) * 360deg)); } }
+.anim-sneeze .cloudy-svg { animation: c-sneeze 1.2s ease-in-out; transform-origin: 50% 100%; }
+@keyframes c-sneeze { 0% { transform: scale(1); } 40% { transform: scale(1.08, 1.06) rotate(-6deg) translateY(-3px); } 50% { transform: scale(1.12, 1.1) rotate(-8deg); } 58% { transform: scale(0.86, 1.04) rotate(8deg) translateX(4px); } 100% { transform: scale(1); } }
+.anim-wave .cloudy-svg { animation: c-wave 0.4s ease-in-out 4; transform-origin: 50% 100%; }
+@keyframes c-wave { 0%, 100% { transform: rotate(0) scale(1); } 50% { transform: rotate(-8deg) scale(1.03, 0.98) translateY(-3px); } }
+.anim-nuzzle .cloudy-svg { animation: c-nuzzle 0.6s ease-in-out 3; transform-origin: 50% 100%; }
+@keyframes c-nuzzle { 0%, 100% { transform: rotate(0) scale(1, 1); } 50% { transform: rotate(calc(var(--tilt, 0deg) * 1.5)) scale(1.06, 0.94); } }
+.anim-morph .cloudy-svg { animation: c-morph 0.9s ease-in-out; }
+@keyframes c-morph { 0%, 100% { transform: scale(1); } 30% { transform: scale(0.9, 1.08) rotate(-3deg); } 60% { transform: scale(1.06, 0.95) rotate(2deg); } }
+.anim-yoga .cloudy-svg { animation: c-yoga 2.4s ease-in-out; transform-origin: 50% 100%; }
+@keyframes c-yoga { 0%, 100% { transform: none; } 25% { transform: scale(0.84, 1.24) rotate(-10deg); } 50% { transform: scale(0.84, 1.24) rotate(10deg); } 75% { transform: scale(1.12, 0.9); } }
+.anim-rollover .cloudy-svg { animation: c-roll 1.4s cubic-bezier(0.45, 0, 0.3, 1); transform-origin: 50% 60%; }
+@keyframes c-roll { 0% { transform: translateX(0) rotate(0); } 50% { transform: translateX(calc(var(--dir, 1) * 26px)) rotate(calc(var(--dir, 1) * 180deg)) scale(0.92); } 100% { transform: translateX(0) rotate(calc(var(--dir, 1) * 360deg)); } }
+/* Hide-and-seek: slide most of the way behind the screen edge, peek out, slide back. */
+.anim-peek-l .cloudy-svg { animation: c-peek-l 3.6s ease-in-out; }
+.anim-peek-r .cloudy-svg { animation: c-peek-r 3.6s ease-in-out; }
+@keyframes c-peek-l { 0%, 100% { transform: translateX(0); } 20%, 45% { transform: translateX(-88%) rotate(8deg); } 55%, 80% { transform: translateX(-45%) rotate(-4deg); } }
+@keyframes c-peek-r { 0%, 100% { transform: translateX(0); } 20%, 45% { transform: translateX(88%) rotate(-8deg); } 55%, 80% { transform: translateX(45%) rotate(4deg); } }
+
+/* Weather from Cloudy himself */
+.cl-weather { position: absolute; left: 10%; right: 10%; top: 70%; height: 70px; pointer-events: none; overflow: visible; }
+.cl-weather i { position: absolute; top: 0; width: 2px; height: 9px; border-radius: 2px; background: linear-gradient(#9cc4ff00, #8db8ff); animation: c-drop 0.8s linear infinite; animation-delay: calc(var(--i) * -0.13s); }
+.cl-weather.storm i { background: linear-gradient(#b7c3d800, #a8b6cc); animation-duration: 0.55s; }
+.cl-weather.snow i { width: 5px; height: 5px; border-radius: 50%; background: #fff; box-shadow: 0 0 4px #fff; animation: c-flake 2.2s linear infinite; animation-delay: calc(var(--i) * -0.3s); }
+@keyframes c-drop { from { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } to { transform: translateY(62px); opacity: 0; } }
+@keyframes c-flake { from { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 50% { transform: translate(6px, 30px); } to { transform: translate(-4px, 62px); opacity: 0; } }
+.cl-rainbow { position: absolute; left: -35%; right: -35%; top: -38%; aspect-ratio: 2 / 1; border-radius: 999px 999px 0 0; pointer-events: none; z-index: -1;
+  background: radial-gradient(circle at 50% 100%, transparent 52%, #8b5cf6aa 53%, #3b82f6aa 57%, #22c55eaa 61%, #facc15aa 65%, #f97316aa 69%, #ef4444aa 73%, transparent 74%);
+  -webkit-mask: linear-gradient(#000 60%, transparent); mask: linear-gradient(#000 60%, transparent);
+  animation: c-rainbow 3.2s ease-out forwards; }
+@keyframes c-rainbow { 0% { clip-path: inset(0 100% 0 0); opacity: 0; } 25% { clip-path: inset(0 0 0 0); opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .puff, .cf-face, .cloudy-reach { transition-duration: 0.01s !important; }
+  .cl-weather i, .cl-vapour i, .cl-rainbow { animation: none !important; opacity: 0; }
+}
+.cloudy-bubble { white-space: normal; max-width: 220px; width: max-content; text-align: center; line-height: 1.35; }

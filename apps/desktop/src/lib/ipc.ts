@@ -29,6 +29,8 @@ export interface Settings {
   clock24: boolean;
   clockSeconds: boolean;
   hiddenTabs: string[];
+  /** Open the panel when the cursor rests on the island (no click needed). */
+  hoverOpen: boolean;
   shotHotkey: string;
   recording: { audio: 'none' | 'system' | 'system+mic'; folder: string };
   // UI-only preferences (stored by Rust as-is; defaults in lib/defaults.ts)
@@ -142,9 +144,10 @@ export interface ChatMessage {
 interface Commands {
   get_settings: [void, Settings];
   set_settings: [{ value: Settings }, Settings];
+  patch_settings: [{ patch: Partial<Settings> }, Settings];
   island_layout: [void, Layout];
   island_set_hit: [{ x: number; y: number; w: number; h: number }, void];
-  island_set_expanded: [{ expanded: boolean }, void];
+  island_set_expanded: [{ expanded: boolean; focus?: boolean }, void];
   media_now: [void, MediaInfo | null];
   media_control: [{ action: 'toggle' | 'next' | 'previous' }, void];
   planner_info: [void, PlannerInfo];
@@ -282,6 +285,9 @@ async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
       return structuredClone(mockSettings);
     case 'set_settings':
       Object.assign(mockSettings, (arg as { value: Settings }).value);
+      return structuredClone(mockSettings);
+    case 'patch_settings':
+      Object.assign(mockSettings, (arg as { patch: Partial<Settings> }).patch);
       return structuredClone(mockSettings);
     case 'island_layout':
       return emulatedLayout();

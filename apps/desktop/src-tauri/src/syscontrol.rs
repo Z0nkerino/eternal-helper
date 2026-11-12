@@ -152,10 +152,18 @@ mod imp {
     }
 
     pub fn brightness() -> Option<u8> {
-        run("powershell", &["-NoProfile", "-Command", "(Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness"])?
-            .trim()
-            .parse()
-            .ok()
+        // PowerShell is slow to start; once this display has shown it has no WMI brightness, stop asking.
+        use std::sync::atomic::{AtomicBool, Ordering};
+        static UNSUPPORTED: AtomicBool = AtomicBool::new(false);
+        if UNSUPPORTED.load(Ordering::Relaxed) {
+            return None;
+        }
+        let v = run("powershell", &["-NoProfile", "-Command", "(Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightness -ErrorAction Stop | Select-Object -First 1).CurrentBrightness"])
+            .and_then(|o| o.trim().parse().ok());
+        if v.is_none() {
+            UNSUPPORTED.store(true, Ordering::Relaxed);
+        }
+        v
     }
 
     pub fn set_brightness(level: u8) -> Result<(), String> {

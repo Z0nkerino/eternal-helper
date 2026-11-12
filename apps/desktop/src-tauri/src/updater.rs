@@ -128,7 +128,8 @@ pub fn install(app: &AppHandle, asset: &Asset, version: &str) -> Result<(), Stri
         download(app, asset, &file)?;
         // Give the app a moment to quit, install silently (per-user, no admin), then start the new version.
         let script = format!("timeout /t 2 /nobreak >nul & \"{}\" /S & start \"\" \"{}\"", file.display(), exe.display());
-        std::process::Command::new("cmd").args(["/C", &script]).creation_flags(0x0800_0000).spawn().map_err(|e| e.to_string())?;
+        // raw_arg: cmd.exe doesn't understand the \" escaping Rust would apply to the quoted paths.
+        std::process::Command::new("cmd").arg("/C").raw_arg(&script).creation_flags(0x0800_0000).spawn().map_err(|e| e.to_string())?;
         app.exit(0);
         Ok(())
     }

@@ -1,7 +1,9 @@
 // Cloudy's desktop layer: a transparent, click-through window over the work area. Only Cloudy and his
 // menu or bubble catch the mouse. He mostly stays at his spot doing little things (blinking, looking
-// around, getting bored or curious), reacts to the cursor, clicks, grabbing and food, and now and then
-// takes a lively trip across the screen. Moving costs CPU only while he actually moves.
+// around, stretching, forming shapes out of his puffs), plays with the cursor (dodges a fast one, leans
+// toward a slow one, nuzzles one that rests near him, sometimes chases it), plays with the desktop
+// (peeks from the screen edge, naps melted on the taskbar, bounces off the edges, visits the island),
+// dissolves into vapour when clicked and puffs back together. Moving costs CPU only while he moves.
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { call, emitEvent, inTauri, listen, type Settings } from '../lib/ipc';
@@ -10,7 +12,8 @@ import { resolveLang } from '../lib/i18n';
 import { Emoji, Rich } from '../lib/emoji';
 import { clampToArea, defaultSpot, heightOf, nextTripIn, planTrip, step, throwVelocity, type Area, type Body } from './brain';
 import { cheer, decay, feed, FOODS, loadPet, need, savePet, type FoodId, type Pet } from './pet';
-import { CloudyFace, type Expr } from './CloudyFace';
+import { CloudyFace, type Expr, type Tint } from './CloudyFace';
+import { SHAPE_NAMES, SHOW_SHAPES, type ShapeId } from './shapes';
 import { chirp } from './sounds';
 
 export interface MoodSignal {
@@ -31,7 +34,12 @@ export interface CloudyState {
 }
 
 /** Body animations (CSS classes on the body wrapper). */
-export type Anim = 'idle' | 'lean' | 'joy' | 'squish' | 'dangle' | 'droop' | 'spin' | 'shake' | 'chomp' | 'dance' | 'fly' | 'sleep' | 'wiggle' | 'stretch' | 'nope' | 'hop';
+export type Anim =
+  | 'idle' | 'lean' | 'joy' | 'squish' | 'dangle' | 'droop' | 'spin' | 'shake' | 'chomp' | 'dance' | 'fly' | 'sleep' | 'wiggle' | 'stretch' | 'nope' | 'hop'
+  | 'boing' | 'inflate' | 'jelly' | 'flip' | 'sneeze' | 'wave' | 'peek-l' | 'peek-r' | 'nuzzle' | 'reach' | 'shiver' | 'morph' | 'yoga' | 'rollover';
+
+/** Weather and fun effects drawn around him. */
+type Fx = 'rain' | 'snow' | 'rainbow' | 'storm' | null;
 
 type Line = [string, string];
 const LINES: Record<string, Line[]> = {
@@ -45,6 +53,14 @@ const LINES: Record<string, Line[]> = {
   music: [['Ooh, I love this one 🎶', 'О, люблю эту песню 🎶']],
   rain: [['It’s raining outside 🌧️', 'На улице дождь 🌧️']],
   tickle: [['Hee-hee! That tickles 😄', 'Хи-хи! Щекотно 😄']],
+  poof: [['Poof! ☁️', 'Пуф! ☁️'], ['I’m back! ✨', 'Я снова тут! ✨'], ['Ta-da! 🎩', 'Та-дам! 🎩'], ['Can’t catch vapour 😜', 'Пар не поймаешь 😜']],
+  dodge: [['Missed me! 😜', 'Не попал! 😜'], ['Whoa, too fast! 💨', 'Ого, слишком быстро! 💨']],
+  chase: [['I’ll get you, cursor! 🏃', 'Догоню тебя, курсор! 🏃'], ['Boop! 👆', 'Буп! 👆']],
+  peek: [['Peekaboo! 👀', 'Ку-ку! 👀']],
+  island: [['Hi, island! 👋', 'Привет, остров! 👋']],
+  nuzzle: [['Hehe, hello 🫶', 'Хи-хи, привет 🫶']],
+  sneeze: [['A-a-achoo! 🤧', 'А-а-апчхи! 🤧']],
+  hint: [['Click: poof! · Right-click: menu', 'Клик — пуф! · Правый клик — меню']],
 };
 
 const CHATTER_MIN: Record<Settings['cloudy']['chatter'], number> = { never: 0, rare: 18, normal: 7, often: 3 };
@@ -97,6 +113,12 @@ export function CloudyStage() {
   const [near, setNear] = useState(false);
   const [flying, setFlying] = useState<Flying[]>([]);
   const [particles, setParticles] = useState<{ id: number; e: string }[]>([]);
+  const [shape, setShape] = useState<ShapeId>('cloud');
+  const [dissolved, setDissolved] = useState(false);
+  const [fx, setFx] = useState<Fx>(null);
+  const [reach, setReach] = useState(0);
+  const shapeTimer = useRef<ReturnType<typeof setTimeout>>();
+  const fxTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const el = useRef<HTMLDivElement>(null);
   const extras = useRef<HTMLDivElement>(null);
@@ -106,7 +128,7 @@ export function CloudyStage() {
   const body = useRef<Body>({ x: 0, y: 0, vx: 0, vy: 0, facing: 1, mode: 'rest', trip: null });
   const raf = useRef(0);
   const lastT = useRef(0);
-  const tripKind = useRef<'visit' | 'move' | 'ball' | null>(null);
+  const tripKind = useRef<'visit' | 'move' | 'ball' | 'dodge' | 'peek' | 'nap' | 'island' | null>(null);
   const lastHit = useRef('');
   const lastSignal = useRef<MoodSignal | null>(null);
   const petRef = useRef(pet);
@@ -126,7 +148,39 @@ export function CloudyStage() {
     },
     [lang],
   );
+  const sayText = (text: string, ms = 2600) => {
+    lastSay.current = Date.now();
+    setBubble(text);
+    setTimeout(() => setBubble((b) => (b === text ? null : b)), ms);
+  };
   const react = (expr: Expr | undefined, anim: Anim | undefined, ms = 1600) => setFlash({ expr, anim, until: Date.now() + ms });
+  /** Forms a shape out of his puffs for a while, then turns back into himself. */
+  const formShape = (id: ShapeId, ms = 3800, talk = true) => {
+    clearTimeout(shapeTimer.current);
+    setShape(id);
+    react('joy', 'morph', 900);
+    if (talk) {
+      const [e, en, ru] = SHAPE_NAMES[id];
+      sayText(`${e} ${lang === 'ru' ? ru : en}`, Math.min(ms, 3200));
+    }
+    shapeTimer.current = setTimeout(() => setShape('cloud'), ms);
+  };
+  const showFx = (f: Fx, ms = 6000) => {
+    clearTimeout(fxTimer.current);
+    setFx(f);
+    fxTimer.current = setTimeout(() => setFx(null), ms);
+  };
+  /** Clicked: he scatters into vapour and puffs back together. */
+  const poof = () => {
+    if (dissolved) return;
+    setDissolved(true);
+    sound('pop');
+    setTimeout(() => {
+      setDissolved(false);
+      react('joy', 'boing', 1100);
+      if (Math.random() < 0.5) say('poof', true, 1800);
+    }, 720);
+  };
   const burst = (e: string, n = 5) => {
     const items = Array.from({ length: n }, (_, i) => ({ id: Date.now() + i + Math.random(), e }));
     setParticles((p) => [...p, ...items]);
@@ -146,9 +200,20 @@ export function CloudyStage() {
     return () => (offS(), offM());
   }, []);
 
+  // The cursor, a few times a second: where it is, how fast it moves, and how long it has rested.
+  const cursor = useRef({ x: -1, y: -1, t: 0, speed: 0, restSince: 0 });
+  const lastDodge = useRef(0);
+  const lastNuzzle = useRef(0);
+  const cursorPlay = useRef<(x: number, y: number, d: number, speed: number) => void>(() => {});
   useEffect(
     () =>
       listen<[number, number]>('cursor://move', ([x, y]) => {
+        const c = cursor.current;
+        const now = performance.now();
+        const moved = c.x < 0 ? 0 : Math.hypot(x - c.x, y - c.y);
+        const speed = c.t ? (moved / Math.max(16, now - c.t)) * 1000 : 0;
+        if (moved > 3 || c.x < 0) c.restSince = now;
+        Object.assign(c, { x, y, t: now, speed });
         const b = body.current;
         const cx = b.x + cfg.size / 2;
         const cy = b.y + heightOf(cfg.size) / 2;
@@ -157,6 +222,9 @@ export function CloudyStage() {
         const isNear = d < cfg.size * 1.7;
         setNear(isNear);
         setTilt(isNear ? Math.max(-12, Math.min(12, ((x - cx) / cfg.size) * 10)) : 0);
+        // He stretches a little toward a cursor that comes close (−1 left … 1 right).
+        setReach(isNear && b.mode === 'rest' ? Math.max(-1, Math.min(1, (x - cx) / (cfg.size * 1.4))) : 0);
+        cursorPlay.current(x, y, d, speed);
       }),
     [cfg.size],
   );
@@ -247,9 +315,44 @@ export function CloudyStage() {
     if (!raf.current) raf.current = requestAnimationFrame((x) => tick.current(x));
   };
 
+  const goHome = (after: number) =>
+    setTimeout(() => {
+      if (body.current.mode !== 'rest' || drag.current) return;
+      tripKind.current = 'move';
+      body.current = planTrip(body.current, area(), Date.now(), { to: spot.current, speed: cfg.speed });
+      kick();
+    }, after);
+
   function arrived(at: { x: number; y: number }) {
     const kind = tripKind.current;
     tripKind.current = null;
+    if (kind === 'dodge') {
+      react('cheeky', 'wiggle', 1200);
+      if (Math.random() < 0.5) say('dodge', true, 1800);
+      goHome(1500);
+      return;
+    }
+    if (kind === 'peek') {
+      // Hide behind the screen edge, peek out, then come back.
+      const left = at.x < innerWidth / 2;
+      react('curious', left ? 'peek-l' : 'peek-r', 3600);
+      setTimeout(() => say('peek', true, 1600), 1800);
+      goHome(3900);
+      return;
+    }
+    if (kind === 'nap') {
+      // A lazy puddle on the taskbar / Dock for a little while.
+      formShape('puddle', 9000, false);
+      react('sleep', 'sleep', 9000);
+      goHome(9400);
+      return;
+    }
+    if (kind === 'island') {
+      react('joy', 'wave', 1800);
+      say('island', true, 1800);
+      goHome(2200);
+      return;
+    }
     if (kind === 'visit') {
       // Have a look around, then fly home.
       react('curious', 'hop', 1600);
@@ -285,13 +388,72 @@ export function CloudyStage() {
   }, []);
   useEffect(() => reportHit(true), [menu, bubble, dragging, signal?.recording, cfg.size, reportHit]);
 
-  const fly = (to: { x: number; y: number } | undefined, kind: 'visit' | 'move' | 'ball') => {
+  const fly = (to: { x: number; y: number } | undefined, kind: NonNullable<typeof tripKind.current>) => {
     if (dragging || sleeping) return;
     setMenu(false);
     tripKind.current = kind;
     body.current = planTrip(body.current, area(), Date.now(), { to, speed: cfg.speed * (kind === 'ball' ? 1.6 : 1) });
     kick();
   };
+
+  // ----- playing with the cursor -----
+  cursorPlay.current = (x, y, d, speed) => {
+    const b = body.current;
+    if (b.mode !== 'rest' || dragging || menu || sleeping || dissolved || hiddenRef.current) return;
+    const now = performance.now();
+    // A cursor rushing at him: he dodges out of the way, then floats back.
+    if (d < cfg.size * 1.15 && speed > 1500 && now - lastDodge.current > 5000) {
+      lastDodge.current = now;
+      const cx = b.x + cfg.size / 2;
+      const cy = b.y + heightOf(cfg.size) / 2;
+      const ux = (cx - x) / d;
+      const uy = (cy - y) / d;
+      body.current = { ...b, vx: ux * 1100, vy: uy * 1100 - 150, mode: 'glide', trip: null };
+      tripKind.current = 'dodge';
+      react('surprised', 'fly', 600);
+      sound('lift');
+      kick();
+      return;
+    }
+    // A cursor resting right next to him: a happy nuzzle.
+    if (d < cfg.size * 1.1 && now - cursor.current.restSince > 1400 && now - lastNuzzle.current > 25_000) {
+      lastNuzzle.current = now;
+      react('love', 'nuzzle', 1800);
+      burst('💗', 3);
+      if (Math.random() < 0.4) say('nuzzle', true, 1800);
+    }
+  };
+
+  // ----- playing with the desktop -----
+  const play = {
+    /** Fly to a screen edge and peek out from behind it. */
+    peek: () => {
+      const a = area();
+      const left = Math.random() < 0.5;
+      fly({ x: left ? 0 : a.width, y: 80 + Math.random() * (a.height - 240) }, 'peek');
+    },
+    /** Melt into a puddle on the taskbar / Dock for a nap. */
+    nap: () => fly({ x: innerWidth * (0.25 + Math.random() * 0.5), y: innerHeight }, 'nap'),
+    /** Bounce off the screen edges like a balloon. */
+    bounce: () => {
+      if (body.current.mode !== 'rest') return;
+      const ang = Math.random() * Math.PI * 2;
+      body.current = { ...body.current, vx: Math.cos(ang) * 2200, vy: Math.sin(ang) * 2200, mode: 'glide', trip: null };
+      tripKind.current = 'dodge';
+      say('thrown', true, 1600);
+      kick();
+    },
+    /** Visit the island at the top of the screen and wave at it. */
+    island: () => fly({ x: innerWidth / 2 - cfg.size / 2, y: 70 }, 'island'),
+    /** Chase the cursor and boop it. */
+    chase: () => {
+      const c = cursor.current;
+      if (c.x < 0) return;
+      say('chase', true, 1800);
+      fly({ x: c.x - cfg.size / 2, y: c.y + 14 }, 'visit');
+    },
+  };
+  const hiddenRef = useRef(false);
 
   // ----- spontaneous trips (rare by default) -----
   useEffect(() => {
@@ -320,20 +482,46 @@ export function CloudyStage() {
         if (r < 0.3) react('bored', 'droop', 2600);
         else if (r < 0.4) say('bored');
         else if (r < 0.48) fly(undefined, 'visit'); // bored → go look around
+        else if (r < 0.55) formShape('puddle', 4000, false);
+        else if (r < 0.62) play.peek();
+        else if (r < 0.68) play.chase();
       } else if (n === 'sleepy') {
-        if (r < 0.3) react('yawn', 'stretch', 1800);
+        if (r < 0.3) (react('yawn', 'stretch', 1800), formShape('tall', 1400, false));
+        else if (r < 0.36) play.nap();
         if (petRef.current.energy < 12 || (isNight() && r < 0.2)) setSleeping(true);
       } else {
-        const acts: [Expr, Anim, number][] = [['curious', 'lean', 1800], ['wink', 'wiggle', 1100], ['joy', 'hop', 900], ['proud', 'idle', 1600], ['cheeky', 'wiggle', 1200], ['happy', 'spin', 1300], ['think', 'idle', 1800]];
-        if (r < 0.55) {
+        const acts: [Expr, Anim, number][] = [
+          ['curious', 'lean', 1800], ['wink', 'wiggle', 1100], ['joy', 'hop', 900], ['proud', 'idle', 1600], ['cheeky', 'wiggle', 1200], ['happy', 'spin', 1300], ['think', 'idle', 1800],
+          ['joy', 'jelly', 1200], ['happy', 'inflate', 1600], ['joy', 'flip', 1100], ['proud', 'yoga', 2400], ['cheeky', 'rollover', 1400], ['joy', 'wave', 1600], ['happy', 'boing', 1000],
+        ];
+        if (r < 0.4) {
           const [e, a, ms] = pick(acts);
           react(e, a, ms);
-          if (a === 'spin') sound('joy');
+          if (a === 'spin' || a === 'flip') sound('joy');
+        } else if (r < 0.55) {
+          // Form a shape out of his puffs — sometimes one that fits the moment.
+          const h = new Date().getHours();
+          const fits: ShapeId[] = [signal?.playing ? 'note' : null, signal?.weather === 'rain' ? 'umbrella' : null, h >= 21 || h < 6 ? 'moon' : null, signal?.weather === 'sun' && signal.isDay ? 'sun' : null].filter(Boolean) as ShapeId[];
+          formShape(fits.length && Math.random() < 0.5 ? pick(fits) : pick(SHOW_SHAPES));
+        } else if (r < 0.6) {
+          react('yawn', 'stretch', 1800);
+          formShape('tall', 1500, false);
+        } else if (r < 0.63) {
+          react('surprised', 'sneeze', 1300);
+          setTimeout(() => (say('sneeze', true, 1500), poof()), 650);
+        } else if (r < 0.66) play.peek();
+        else if (r < 0.68) play.chase();
+        else if (r < 0.7) play.island();
+        else if (r < 0.715) play.bounce();
+        else if (r < 0.74 && (signal?.weather === 'rain' || signal?.weather === 'snow' || signal?.weather === 'storm')) {
+          // It's raining outside — so it rains from him too, a little.
+          showFx(signal.weather === 'snow' ? 'snow' : signal.weather === 'storm' ? 'storm' : 'rain', 5000);
+          react('sad', 'idle', 5000);
         }
       }
     }, 7_000 + Math.random() * 6_000);
     return () => clearInterval(id);
-  }, [n, sleeping, dragging, menu, say]);
+  }, [n, sleeping, dragging, menu, say, signal]);
 
   // Chatter
   useEffect(() => {
@@ -351,12 +539,14 @@ export function CloudyStage() {
     if (signal.timerDone !== prev.timerDone) {
       setSleeping(false);
       react('joy', 'spin', 2200);
+      formShape('star', 2600, false);
       burst('🔔', 3);
       sound('joy');
     }
     if (signal.error !== prev.error) react('scared', 'shake', 1600);
-    if (signal.playing && !prev.playing) say('music', true, 2500);
-    if (signal.weather === 'rain' && prev.weather !== 'rain') say('rain', true);
+    if (signal.playing && !prev.playing) (say('music', true, 2500), formShape('note', 2600, false));
+    if (signal.weather === 'rain' && prev.weather !== 'rain') (say('rain', true), showFx('rain', 6000));
+    if (signal.weather === 'snow' && prev.weather !== 'snow') showFx('snow', 6000);
   }, [signal]);
 
   // ----- food & play (from the Cloudy window or the menu) -----
@@ -384,11 +574,11 @@ export function CloudyStage() {
         setTimeout(() => {
           updatePet(res.pet);
           const r = food.reaction;
-          if (r === 'love') (react('love', 'joy', 2200), burst('💗', 5));
-          else if (r === 'glow') (react('joy', 'hop', 2000), burst('✨', 5));
-          else if (r === 'shiver') (react('shiver', 'shiver' as Anim, 1600), burst('❄️', 3));
-          else if (r === 'sparkle') (react('proud', 'spin', 1800), burst('⭐', 5));
-          else react('joy', 'joy', 1600);
+          if (r === 'love') (react('love', 'joy', 2200), burst('💗', 5), formShape('heart', 2400, false));
+          else if (r === 'glow') (react('joy', 'hop', 2000), burst('✨', 5), showFx('rainbow', 3200));
+          else if (r === 'shiver') (react('shiver', 'shiver', 1600), burst('❄️', 3), showFx('snow', 2400));
+          else if (r === 'sparkle') (react('proud', 'spin', 1800), burst('⭐', 5), formShape('star', 2200, false));
+          else react('joy', 'jelly', 1600);
           say('fed', true, 2200);
           sound('joy');
         }, 1300);
@@ -415,6 +605,10 @@ export function CloudyStage() {
       else if (kind === 'call') fly({ x: innerWidth / 2 - cfg.size / 2, y: innerHeight / 2 - cfg.size / 2 }, 'move');
       else if (kind === 'home') fly(defaultSpot(area()), 'move');
       else if (kind === 'trick') (react('joy', 'spin', 1500), burst('✨', 5), sound('joy'));
+      else if (kind === 'shape') formShape(pick(SHOW_SHAPES.filter((x) => x !== shapeRef.current)));
+      else if (kind === 'poof') poof();
+      else if (kind === 'peek' || kind === 'nap' || kind === 'bounce' || kind === 'island' || kind === 'chase') play[kind]();
+      else if (kind === 'rainbow') (showFx('rainbow', 4000), react('joy', 'hop', 1600));
     });
     const offH = listen('cloudy://hello', () => broadcast());
     const offE = listen('cloudy://easter', () => (react('love', 'spin', 2500), burst('🎉', 6), say('thrown', true)));
@@ -422,6 +616,8 @@ export function CloudyStage() {
   }, [eat, cfg.size]);
 
   // ----- what he looks like right now -----
+  const shapeRef = useRef(shape);
+  shapeRef.current = shape;
   const now = Date.now();
   const active = flash && flash.until > now ? flash : null;
   useEffect(() => {
@@ -517,17 +713,27 @@ export function CloudyStage() {
         react('yawn', 'stretch', 1600);
         return;
       }
-      react('joy', 'squish', 700);
-      sound('pop');
       updatePet(cheer(petRef.current, 'pet'));
-      setMenu((m) => !m);
+      if (menu) return setMenu(false);
+      poof();
+      try {
+        if (!localStorage.getItem('eh.cloudy.hint')) {
+          localStorage.setItem('eh.cloudy.hint', '1');
+          setTimeout(() => say('hint', true, 4200), 1200);
+        }
+      } catch {
+        /* storage unavailable */
+      }
     }, 230);
   };
 
   const L = (en: string, ru: string) => (lang === 'ru' ? ru : en);
   const menuItems: [string, string, () => void][] = [
     ['🍽️', L('Feed me', 'Покормить'), () => void call('open_window', { kind: 'pet' })],
+    ['✨', L('Make a shape', 'Сделай фигуру'), () => formShape(pick(SHOW_SHAPES.filter((x) => x !== shape)))],
     ['🎾', L('Play ball', 'Поиграть в мяч'), playBall],
+    ['🏃', L('Catch the cursor', 'Поймай курсор'), play.chase],
+    ['👀', L('Play hide and seek', 'Поиграть в прятки'), play.peek],
     sleeping ? ['☀️', L('Wake up', 'Разбудить'), () => setSleeping(false)] : ['💤', L('Take a nap', 'Поспать'), () => setSleeping(true)],
     ['🔮', L('Call Afina', 'Позвать Афину'), () => void emitEvent('island://hotkey')],
     ['⚙️', L('Cloudy’s room', 'Комната Cloudy'), () => void call('open_window', { kind: 'pet' })],
@@ -539,10 +745,15 @@ export function CloudyStage() {
     const m = new URLSearchParams(location.search).get('mood') as Expr | null;
     if (m) setBaseExpr(m);
     if (m === 'sleep') setSleeping(true);
+    const sh = new URLSearchParams(location.search).get('shape') as ShapeId | null;
+    if (sh) setShape(sh);
+    const f = new URLSearchParams(location.search).get('fx') as Fx;
+    if (f) setFx(f);
   }, []);
 
   const hidden = !!signal?.recording || cfg.enabled === false;
-  const tint = signal?.weather === 'rain' || signal?.weather === 'storm' ? 'grey' : active?.anim === 'hop' && flash?.expr === 'joy' ? undefined : signal?.weather === 'sun' && signal.isDay ? 'warm' : undefined;
+  hiddenRef.current = hidden;
+  const tint: Tint = signal?.weather === 'rain' || signal?.weather === 'storm' || fx === 'storm' ? 'grey' : signal && !signal.isDay ? 'night' : signal?.weather === 'sun' ? 'warm' : 'white';
 
   return (
     <div className={`cloudy-stage ${hidden ? 'hidden' : ''}`} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onContextMenu={(e) => (e.preventDefault(), setMenu(true))}>
@@ -579,9 +790,26 @@ export function CloudyStage() {
             )}
           </AnimatePresence>
         </div>
+        {fx === 'rainbow' && <span className="cl-rainbow" aria-hidden />}
         <div className={`cloudy-body anim-${anim}`} style={{ ['--tilt' as string]: `${tilt}deg`, ['--dir' as string]: body.current.facing }} onPointerDown={onPointerDown}>
-          <CloudyFace expr={expr} look={dragging ? { x: 0, y: 0.8 } : look} size={cfg.size} tint={tint} />
+          <div className="cloudy-reach" style={{ ['--reach' as string]: reach }}>
+            <CloudyFace expr={expr} look={dragging ? { x: 0, y: 0.8 } : look} size={cfg.size} tint={tint} shape={dragging ? 'cloud' : shape} dissolved={dissolved} />
+          </div>
         </div>
+        {(fx === 'rain' || fx === 'storm' || fx === 'snow') && (
+          <div className={`cl-weather ${fx}`} aria-hidden>
+            {Array.from({ length: fx === 'snow' ? 8 : 10 }, (_, i) => (
+              <i key={i} style={{ ['--i' as string]: i, left: `${12 + ((i * 41) % 76)}%` }} />
+            ))}
+          </div>
+        )}
+        {dissolved && (
+          <div className="cl-vapour" aria-hidden>
+            {Array.from({ length: 7 }, (_, i) => (
+              <i key={i} style={{ ['--a' as string]: `${(i / 7) * 360}deg` }} />
+            ))}
+          </div>
+        )}
         {sleeping && !dragging && (
           <span className="cl-zzz">
             Z<small>z</small>

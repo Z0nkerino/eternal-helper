@@ -8,7 +8,6 @@ import { useT, useTr } from '../lib/i18n';
 import { saveSettings, useApp } from '../lib/store';
 import { ACCENTS, THEMES } from '../lib/theme';
 import { CAROUSEL_ITEMS, LIMITS, safeAccent } from '../lib/defaults';
-import { MODULES } from '../modules';
 import { checkForUpdates, installUpdate } from '../lib/updates';
 import { Emoji } from '../lib/emoji';
 import { RELEASE } from '../lib/release';
@@ -45,11 +44,8 @@ function Range({ label, value, set, range, step, fmt }: { label: string; value: 
 }
 
 function Personalise({ s }: { s: S }) {
-  const t = useT();
   const tr = useTr();
   const pct = (v: number) => `${Math.round(v * 100)}%`;
-  const optional = MODULES.filter((m) => m.id !== 'home' && m.id !== 'settings');
-  const visible = MODULES.length - s.hiddenTabs.length;
   return (
     <>
       <div className="setting">
@@ -62,31 +58,10 @@ function Personalise({ s }: { s: S }) {
       <Segment label={tr('Clock', 'Часы')} value={s.clock24 ? '24' : '12'} options={[['24', '24 h'], ['12', '12 h AM/PM']]} onChange={(v) => void saveSettings({ clock24: v === '24' })} />
       <Switch label={tr('Show seconds', 'Показывать секунды')} on={s.clockSeconds} onChange={(clockSeconds) => void saveSettings({ clockSeconds })} />
       <Segment label={tr('Animations', 'Анимации')} value={s.motion} options={[['full', tr('Smooth & lively', 'Плавные и живые')], ['reduced', tr('Reduced', 'Минимум')]]} onChange={(motion) => void saveSettings({ motion })} />
-      <div className="setting column">
-        <span>{tr('Tabs in the panel', 'Вкладки в панели')}</span>
-        <div className="tab-picks">
-          {optional.map((m) => {
-            const Icon = m.icon!;
-            const on = !s.hiddenTabs.includes(m.id);
-            return (
-              <label key={m.id} className={`tab-pick ${on ? 'on' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={on}
-                  // Keep at least 4 tabs so the panel stays useful.
-                  disabled={on && visible <= 4}
-                  onChange={() => void saveSettings({ hiddenTabs: on ? [...s.hiddenTabs, m.id] : s.hiddenTabs.filter((x) => x !== m.id) })}
-                />
-                <Icon size={14} /> {t(m.name)}
-              </label>
-            );
-          })}
-        </div>
-        <span className="tiny faint">{tr('Home and Settings always stay. At least 4 tabs.', 'Главная и Настройки остаются всегда. Минимум 4 вкладки.')}</span>
-      </div>
+      <Switch label={tr('Open the island when the cursor rests on it', 'Открывать остров при наведении курсора')} on={s.hoverOpen} onChange={(hoverOpen) => void saveSettings({ hoverOpen })} />
       <div className="setting">
         <span className="faint small">{tr('Back to how it came', 'Вернуть как было')}</span>
-        <button className="btn" onClick={() => void saveSettings({ name: '', uiScale: 1, fontScale: 1, islandOpacity: 1, motion: 'full', clockSeconds: false, hiddenTabs: [] })}>{tr('Reset', 'Сбросить')}</button>
+        <button className="btn" onClick={() => void saveSettings({ name: '', uiScale: 1, fontScale: 1, islandOpacity: 1, motion: 'full', clockSeconds: false, hiddenTabs: [], hoverOpen: true })}>{tr('Reset', 'Сбросить')}</button>
       </div>
     </>
   );

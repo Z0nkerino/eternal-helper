@@ -1,8 +1,14 @@
 // One store for the island: settings, which view is open, live activities and toasts.
 import { create } from 'zustand';
+import { withDefaults } from './defaults';
 import { call, type Battery, type Layout, type MediaInfo, type MusicReport, type PlannerEvent, type PlannerSnapshot, type Settings } from './ipc';
 
 export type Tab = 'home' | 'library' | 'afina' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
+/** The island has four tabs; the other screens live inside Library. */
+export type MainTab = 'home' | 'library' | 'afina' | 'settings';
+export type LibSub = 'weather' | 'planner' | 'videos' | 'text' | 'timer' | 'calc' | 'translate' | 'wifi' | 'radio';
+export const MAIN_TABS: MainTab[] = ['home', 'library', 'afina', 'settings'];
+const IN_LIBRARY: Tab[] = ['weather', 'planner', 'videos', 'text'];
 export type View = 'idle' | 'panel';
 
 export interface Toast {
@@ -53,7 +59,13 @@ interface AppState {
   settings: Settings | null;
   layout: Layout | null;
   view: View;
-  tab: Tab;
+  tab: MainTab;
+  /** The screen open inside Library (null = its main page). */
+  libSub: LibSub | null;
+  /** Opened by resting the cursor on the island; becomes pinned (keyboard focus) on the first click. */
+  pinned: boolean;
+  /** When the panel last closed, to reopen on the same tab soon after. */
+  closedAt: number;
   /** Bumped to ask the Afina input to take focus. */
   focusAfina: number;
   /** What the island shows: the system's media session or a signed-in web player, whichever is playing. */
@@ -83,6 +95,9 @@ export const useApp = create<AppState>(() => ({
   layout: null,
   view: 'idle',
   tab: 'home',
+  libSub: null,
+  pinned: false,
+  closedAt: 0,
   focusAfina: 0,
   media: null,
   mediaSource: { kind: 'system' },
@@ -105,14 +120,46 @@ export const useApp = create<AppState>(() => ({
 const set = useApp.setState;
 const get = useApp.getState;
 
-export function openPanel(tab?: Tab) {
-  set((s) => ({ view: 'panel', tab: tab ?? s.tab }));
-  void call('island_set_expanded', { expanded: true });
+/** Opens the panel. `hover`: opened by the cursor resting on it, so it doesn't take the keyboard. */
+export function openPanel(tab?: Tab, opts: { hover?: boolean } = {}) {
+  const hover = !!opts.hover;
+  set((s) => {
+    const into = tab && IN_LIBRARY.includes(tab) ? { tab: 'library' as const, libSub: tab as LibSub } : tab ? { tab: tab as MainTab } : {};
+    return { view: 'panel', pinned: s.view === 'panel' ? s.pinned || !hover : !hover, ...into };
+  });
+  void call('island_set_expanded', { expanded: true, focus: get().pinned });
+}
+
+/** Opens a screen inside Library. */
+export function openLibrary(sub: LibSub | null) {
+  set({ libSub: sub });
+  if (get().view !== 'panel') openPanel('library');
+  else set({ tab: 'library' });
+}
+
+/** The user clicked inside a hover-opened panel: now it may take the keyboard (typing to Afina…). */
+export function pinPanel() {
+  if (get().view !== 'panel' || get().pinned) return;
+  set({ pinned: true });
+  void call('island_set_expanded', { expanded: true, focus: true });
 }
 
 export function closePanel() {
-  set({ view: 'idle' });
+  if (get().view === 'idle') return;
+  set({ view: 'idle', pinned: false, closedAt: Date.now() });
   void call('island_set_expanded', { expanded: false });
+}
+
+/** Screenshots shouldn't include the open panel: close it and let it animate away first. */
+export async function takeScreenshot() {
+  const open = get().view === 'panel';
+  closePanel();
+  if (open) await new Promise((r) => setTimeout(r, 320));
+  try {
+    await call('shot_start');
+  } catch (e) {
+    toast(String(e), { tone: 'error' });
+  }
 }
 
 export function togglePanel() {
@@ -126,7 +173,8 @@ export async function saveSettings(patch: Partial<Settings>) {
   const next = { ...cur, ...patch };
   set({ settings: next });
   try {
-    set({ settings: await call('set_settings', { value: next }) });
+    // Only the changed keys go to the app, so windows saving at once don't overwrite each other.
+    set({ settings: withDefaults(await call('patch_settings', { patch })) });
   } catch (e) {
     set({ settings: cur });
     throw e;

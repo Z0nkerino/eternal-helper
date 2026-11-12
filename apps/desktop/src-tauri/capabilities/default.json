@@ -23,6 +23,7 @@
     "clipboard-manager:allow-write-image",
     "allow-get-settings",
     "allow-set-settings",
+    "allow-patch-settings",
     "allow-island-layout",
     "allow-island-set-hit",
     "allow-island-set-expanded",

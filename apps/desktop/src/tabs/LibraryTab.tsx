@@ -1,11 +1,12 @@
-// Library: the control centre and a shelf of tools. Toggles and sliders on top, tools below,
-// Eternal Radio at the bottom. Tools with their own screen slide in from the right.
+// Library: the control centre and every tool. Toggles and sliders on top, a grid of apps below.
+// Apps with their own screen (Weather, Planner, Recordings, Timer…) slide in from the right.
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Sun, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { call, emitEvent } from '../lib/ipc';
+import type { LibSub } from '../lib/store';
 import { useTr } from '../lib/i18n';
-import { openPanel, saveSettings, timerLeft, toast, useApp } from '../lib/store';
+import { openLibrary, openPanel, saveSettings, takeScreenshot, timerLeft, useApp } from '../lib/store';
 import { toggleRecording } from '../lib/recorder';
 import { readControls, setControl, systemAction, useControls } from '../lib/controls';
 import { Emoji } from '../lib/emoji';
@@ -15,8 +16,11 @@ import { TimerView } from '../library/TimerView';
 import { CalcView } from '../library/CalcView';
 import { TranslateView } from '../library/TranslateView';
 import { WifiView } from '../library/WifiView';
+import { WeatherTab } from './WeatherTab';
+import { PlannerTab } from './PlannerTab';
+import { VideosTab } from './VideosTab';
+import { TextTab } from './TextTab';
 
-type Sub = 'timer' | 'calc' | 'translate' | 'wifi' | null;
 
 function Toggle({ emoji, label, sub, on, onClick, onMore }: { emoji: string; label: string; sub?: string; on: boolean | null; onClick: () => void; onMore?: () => void }) {
   return (
@@ -72,9 +76,17 @@ function Slider({ icon, value, onChange, label, disabled, note }: { icon: ReactN
   );
 }
 
-function Tool({ emoji, label, sub, onClick, hot }: { emoji: string; label: string; sub?: string; onClick: () => void; hot?: boolean }) {
+function Tool({ emoji, label, sub, onClick, hot, i = 0 }: { emoji: string; label: string; sub?: string; onClick: () => void; hot?: boolean; i?: number }) {
   return (
-    <motion.button className={`lib-tool ${hot ? 'hot' : ''}`} onClick={onClick} whileHover={{ y: -2 }} whileTap={{ scale: 0.93 }}>
+    <motion.button
+      className={`lib-tool ${hot ? 'hot' : ''}`}
+      onClick={onClick}
+      initial={{ opacity: 0, scale: 0.8, y: 8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ delay: 0.018 * i, type: 'spring', stiffness: 520, damping: 30 }}
+      whileHover={{ y: -3, scale: 1.04 }}
+      whileTap={{ scale: 0.9 }}
+    >
       <Emoji e={emoji} size={26} />
       <span className="small">{label}</span>
       {sub && <span className="tiny faint mono">{sub}</span>}
@@ -82,54 +94,98 @@ function Tool({ emoji, label, sub, onClick, hot }: { emoji: string; label: strin
   );
 }
 
+const TITLES: Record<LibSub, [string, string, string]> = {
+  weather: ['🌤️', 'Weather', 'Погода'],
+  planner: ['🗓️', 'Planner', 'Планер'],
+  videos: ['🎬', 'Recordings', 'Записи'],
+  text: ['🔤', 'Text tools', 'Текст'],
+  timer: ['⏱️', 'Timer', 'Таймер'],
+  calc: ['🧮', 'Calculator', 'Калькулятор'],
+  translate: ['🌐', 'Translator', 'Переводчик'],
+  wifi: ['📶', 'Wi-Fi', 'Wi-Fi'],
+  radio: ['📻', 'Eternal Radio', 'Eternal Radio'],
+};
+
+function SubView({ sub }: { sub: LibSub }) {
+  switch (sub) {
+    case 'weather':
+      return <WeatherTab />;
+    case 'planner':
+      return <PlannerTab />;
+    case 'videos':
+      return <VideosTab />;
+    case 'text':
+      return <TextTab />;
+    case 'timer':
+      return <TimerView />;
+    case 'calc':
+      return <CalcView />;
+    case 'translate':
+      return <TranslateView />;
+    case 'wifi':
+      return <WifiView />;
+    case 'radio':
+      return <RadioCard />;
+  }
+}
+
 export function LibraryTab() {
   const tr = useTr();
-  const [sub, setSub] = useState<Sub>(null);
+  const sub = useApp((s) => s.libSub);
   const c = useControls((s) => s.c);
   const dnd = useApp((s) => s.settings?.doNotDisturb ?? false);
   const timer = useApp((s) => s.timer);
   const rec = useApp((s) => s.rec.status);
   const planner = useApp((s) => s.planner);
+  const weather = useApp((s) => s.weather);
   const now = useNow(1000);
 
+  // System controls are read when the page shows, then now and then (reading them isn't free).
   useEffect(() => {
+    if (sub) return;
     void readControls();
-    const id = setInterval(() => void readControls(), 8000);
+    const id = setInterval(() => void readControls(), 15_000);
     return () => clearInterval(id);
-  }, []);
+  }, [sub]);
 
-  const titles: Record<Exclude<Sub, null>, [string, string, string]> = {
-    timer: ['⏱️', 'Timer', 'Таймер'],
-    calc: ['🧮', 'Calculator', 'Калькулятор'],
-    translate: ['🌐', 'Translator', 'Переводчик'],
-    wifi: ['📶', 'Wi-Fi', 'Wi-Fi'],
-  };
-  const shot = () => void call('shot_start').catch((e) => toast(String(e), { tone: 'error' }));
   const volIcon = c?.muted || c?.volume === 0 ? <VolumeX size={16} /> : (c?.volume ?? 0) < 50 ? <Volume1 size={16} /> : <Volume2 size={16} />;
+  const tools: Parameters<typeof Tool>[0][] = [
+    { emoji: '🌤️', label: tr('Weather', 'Погода'), sub: weather ? `${weather.temp}°` : undefined, onClick: () => openLibrary('weather') },
+    { emoji: '🗓️', label: tr('Planner', 'Планер'), sub: planner ? `${planner.tasksToday.length}` : undefined, onClick: () => openLibrary('planner') },
+    { emoji: '⏱️', label: tr('Timer', 'Таймер'), sub: timer ? fmtClock(timerLeft(timer, now)) : undefined, onClick: () => openLibrary('timer'), hot: !!timer },
+    { emoji: '📷', label: tr('Screenshot', 'Скриншот'), onClick: () => void takeScreenshot() },
+    { emoji: '🎥', label: rec === 'idle' ? tr('Record', 'Запись') : tr('Stop rec', 'Стоп'), onClick: toggleRecording, hot: rec !== 'idle' },
+    { emoji: '🎬', label: tr('Recordings', 'Записи'), onClick: () => openLibrary('videos') },
+    { emoji: '📻', label: tr('Radio', 'Радио'), onClick: () => openLibrary('radio') },
+    { emoji: '🧮', label: tr('Calculator', 'Калькулятор'), onClick: () => openLibrary('calc') },
+    { emoji: '🌐', label: tr('Translator', 'Переводчик'), onClick: () => openLibrary('translate') },
+    { emoji: '🔤', label: tr('Text tools', 'Текст'), onClick: () => openLibrary('text') },
+    { emoji: '☁️', label: 'Cloudy', onClick: () => void call('open_window', { kind: 'pet' }) },
+    { emoji: '🔮', label: 'Afina', onClick: () => (openPanel('afina'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 }))) },
+    { emoji: '🔐', label: tr('Lock', 'Блокировка'), onClick: () => void systemAction('lock') },
+    { emoji: '💤', label: tr('Sleep', 'Сон'), onClick: () => void systemAction('sleep') },
+  ];
 
   return (
     <div className="library">
       <AnimatePresence mode="popLayout" initial={false}>
         {sub ? (
-          <motion.div key={sub} className="lib-sub" initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 60, opacity: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}>
+          <motion.div key={sub} className="lib-sub" initial={{ x: 60, opacity: 0, filter: 'blur(4px)' }} animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }} exit={{ x: 60, opacity: 0, filter: 'blur(4px)' }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}>
             <header className="lib-sub-head">
-              <button className="icon-btn" onClick={() => setSub(null)} aria-label={tr('Back', 'Назад')}>
+              <button className="icon-btn" onClick={() => openLibrary(null)} aria-label={tr('Back', 'Назад')}>
                 <ChevronLeft size={18} />
               </button>
-              <Emoji e={titles[sub][0]} size={20} />
-              <span className="lib-sub-title">{tr(titles[sub][1], titles[sub][2])}</span>
+              <Emoji e={TITLES[sub][0]} size={20} />
+              <span className="lib-sub-title">{tr(TITLES[sub][1], TITLES[sub][2])}</span>
             </header>
-            <div className="lib-sub-body">
-              {sub === 'timer' && <TimerView />}
-              {sub === 'calc' && <CalcView />}
-              {sub === 'translate' && <TranslateView />}
-              {sub === 'wifi' && <WifiView />}
+            <div className={`lib-sub-body sub-${sub}`}>
+              <SubView sub={sub} />
             </div>
           </motion.div>
         ) : (
           <motion.div key="main" className="lib-main scroll" initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -40, opacity: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 36 }}>
             <div className="cc-grid">
-              <Toggle emoji="📶" label="Wi-Fi" sub={c?.wifi ? c.wifiName ?? tr('On', 'Вкл') : tr('Off', 'Выкл')} on={c?.wifi ?? null} onClick={() => c && void setControl('wifi', !c.wifi)} onMore={() => setSub('wifi')} />
+              <Toggle emoji="📶" label="Wi-Fi" sub={c?.wifi ? c.wifiName ?? tr('On', 'Вкл') : tr('Off', 'Выкл')} on={c?.wifi ?? null} onClick={() => c && void setControl('wifi', !c.wifi)} onMore={() => openLibrary('wifi')} />
               <Toggle
                 emoji="🔵"
                 label="Bluetooth"
@@ -159,21 +215,10 @@ export function LibraryTab() {
             </div>
 
             <div className="lib-tools">
-              <Tool emoji="⏱️" label={tr('Timer', 'Таймер')} sub={timer ? fmtClock(timerLeft(timer, now)) : undefined} onClick={() => setSub('timer')} hot={!!timer} />
-              <Tool emoji="📷" label={tr('Screenshot', 'Скриншот')} onClick={shot} />
-              <Tool emoji="🎥" label={rec === 'idle' ? tr('Record', 'Запись') : tr('Stop rec', 'Стоп')} onClick={toggleRecording} hot={rec !== 'idle'} />
-              <Tool emoji="🧮" label={tr('Calculator', 'Калькулятор')} onClick={() => setSub('calc')} />
-              <Tool emoji="🌐" label={tr('Translator', 'Переводчик')} onClick={() => setSub('translate')} />
-              <Tool emoji="🗓️" label={tr('Planner', 'Планер')} sub={planner ? `${planner.tasksToday.length}` : undefined} onClick={() => openPanel('planner')} />
-              <Tool emoji="🔮" label="Afina" onClick={() => (openPanel('afina'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 })))} />
-              <Tool emoji="☁️" label="Cloudy" onClick={() => void call('open_window', { kind: 'pet' })} />
-              <Tool emoji="🌤️" label={tr('Weather', 'Погода')} onClick={() => openPanel('weather')} />
-              <Tool emoji="🔤" label={tr('Text tools', 'Текст')} onClick={() => openPanel('text')} />
-              <Tool emoji="🔐" label={tr('Lock', 'Блокировка')} onClick={() => void systemAction('lock')} />
-              <Tool emoji="💤" label={tr('Sleep', 'Сон')} onClick={() => void systemAction('sleep')} />
+              {tools.map((x, i) => (
+                <Tool key={x.emoji} {...x} i={i} />
+              ))}
             </div>
-
-            <RadioCard compact />
             <button className="link tiny lib-cloudy-link" onClick={() => void emitEvent('cloudy://action', { kind: 'call' })}>
               {tr('Call Cloudy to the middle of the screen', 'Позвать Cloudy в центр экрана')}
             </button>

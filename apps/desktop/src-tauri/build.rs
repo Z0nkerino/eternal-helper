@@ -4,6 +4,7 @@ fn main() {
     let commands = &[
         "get_settings",
         "set_settings",
+        "patch_settings",
         "island_layout",
         "island_set_hit",
         "island_set_expanded",

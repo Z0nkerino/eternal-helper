@@ -51,9 +51,12 @@ async function bootCommon(view: View) {
   // Moving to another display (or closing the lid) can add or remove a notch.
   listen<Layout>('island://layout', (layout) => useApp.setState({ layout }));
   startMusicSync();
-  void refreshWeather();
-  setInterval(() => void refreshWeather(), 30 * 60_000);
-  startPlannerSync();
+  // The pet and settings windows don't show weather or the Planner: skip the network work there.
+  if (view.kind === 'island' || view.kind === 'panel') {
+    void refreshWeather();
+    setInterval(() => void refreshWeather(), 30 * 60_000);
+    startPlannerSync();
+  }
   if (!inTauri && new URLSearchParams(location.search).get('demo') === '1') {
     const { demoWeather, demoPlanner } = await import('./lib/demo');
     const apply = () => useApp.setState((s) => ({ weather: demoWeather(), planner: demoPlanner(), settings: s.settings && { ...s.settings, weather: { ...s.settings.weather, place: 'Москва' } } }));

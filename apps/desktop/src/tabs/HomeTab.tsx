@@ -1,15 +1,14 @@
-import { CalendarCheck, Focus, Music, Pause, Play, SkipBack, SkipForward, Sparkles, Timer, Video } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Camera, ChevronRight, Focus, Music, Pause, Play, Radio, SkipBack, SkipForward, Sparkles, Timer, Video } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { call } from '../lib/ipc';
 import { useT, useTr } from '../lib/i18n';
-import { openPanel, recElapsed, saveSettings, startTimer, useApp } from '../lib/store';
+import { openLibrary, openPanel, recElapsed, saveSettings, startTimer, takeScreenshot, timerLeft, useApp } from '../lib/store';
 import { toggleRecording } from '../lib/recorder';
 import { describeWeather, weatherEmoji } from '../lib/weather';
 import { livePosition, mediaControl } from '../lib/music';
 import { currentLine, fetchLyrics, type LyricLine } from '../lib/lyrics';
 import { coverColor } from '../lib/color';
-import { recentTracks } from '../lib/recent';
-import { factOfDay, formatRate, greeting, holidayToday, offsetFromLocal, rate, symbol, timeIn } from '../lib/today';
+import { greeting } from '../lib/today';
 import { Emoji, Rich } from '../lib/emoji';
 import { Equalizer, fmtClock, useNow } from '../island/bits';
 
@@ -51,13 +50,16 @@ function MediaCard() {
   const lyrics = useLyrics(m?.title, m?.artist, m?.durationMs);
   if (!m) {
     return (
-      <div className="card media empty-media">
-        <Emoji e="🎧" size={44} />
-        <div>
-          <div>{tr('Nothing playing', 'Ничего не играет')}</div>
-          <div className="faint small">{tr('Play music in any app, or sign in to Spotify, Yandex Music or SoundCloud in Settings → Music.', 'Включи музыку в любом приложении или войди в Spotify, Яндекс Музыку или SoundCloud: Настройки → Музыка.')}</div>
+      <button className="card media empty-media" onClick={() => void import('../radio/player').then((r) => r.select(0))}>
+        <span className="empty-art">
+          <Radio size={26} />
+        </span>
+        <div className="media-info">
+          <div className="title">{tr('Nothing playing', 'Ничего не играет')}</div>
+          <div className="faint small">{tr('Tap for Eternal Radio — calm music made here', 'Нажми — Eternal Radio, спокойная музыка')}</div>
         </div>
-      </div>
+        <Play size={18} className="faint" />
+      </button>
     );
   }
   const pos = livePosition(m, at, now);
@@ -85,7 +87,6 @@ function MediaCard() {
         {lyrics && line >= 0 ? (
           <div className="lyrics" aria-live="off">
             <div className="lyric now ellipsis">{lyrics[line].text || '♪'}</div>
-            <div className="lyric next ellipsis">{lyrics[line + 1]?.text ?? ''}</div>
           </div>
         ) : null}
         {m.durationMs && pos != null ? (
@@ -113,129 +114,116 @@ function MediaCard() {
   );
 }
 
-function TodayCard() {
+/** The big clock, the date with a greeting, and the weather in one line. */
+function Glance() {
   const tr = useTr();
   const lang = tr.lang;
-  const now = useNow(30_000);
+  const now = useNow(1000);
   const weather = useApp((s) => s.weather);
-  const planner = useApp((s) => s.planner);
-  const pairs = useApp((s) => s.settings?.currency.pairs ?? []);
-  const clocks = useApp((s) => s.settings?.clocks ?? []);
-  const [rates, setRates] = useState<(number | null)[]>([]);
-  const [holiday, setHoliday] = useState<string | null>(null);
-
-  useEffect(() => {
-    void Promise.all(pairs.slice(0, 2).map(([a, b]) => rate(a, b))).then(setRates);
-    void holidayToday(lang).then(setHoliday);
-  }, [JSON.stringify(pairs), lang]);
-
+  const h24 = useApp((s) => s.settings?.clock24 ?? true);
+  const name = useApp((s) => s.settings?.name ?? '');
   const date = new Date(now);
-  const nextEvent = planner?.upcoming.find((e) => new Date(e.start).toDateString() === date.toDateString() && e.end > now);
+  const loc = lang === 'ru' ? 'ru-RU' : 'en-US';
+  const time = date.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit', hour12: !h24 }).replace(/\s?[AP]M$/i, '');
   return (
-    <div className="card today-card" onClick={() => openPanel('weather')} role="button" tabIndex={0}>
-      <div className="today-date">
-        <span className="today-day">{date.getDate()}</span>
-        <div>
-          <div className="today-weekday">{date.toLocaleDateString(lang === 'ru' ? 'ru-RU' : 'en-US', { weekday: 'long', month: 'long' })}</div>
-          <div className="small muted">
-            <Rich text={greeting(lang, date.getHours(), useApp.getState().settings?.name ?? '')} size={14} />
-          </div>
-        </div>
+    <button className="glance" onClick={() => openLibrary('weather')}>
+      <div className="glance-time mono">
+        {time.split('').map((ch, i) => (
+          <motion.span key={`${i}${ch}`} initial={{ y: -10, opacity: 0, filter: 'blur(3px)' }} animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }} transition={{ type: 'spring', stiffness: 500, damping: 30 }}>
+            {ch}
+          </motion.span>
+        ))}
+      </div>
+      <div className="glance-date">{date.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+      <div className="glance-line small muted">
+        <Rich text={greeting(lang, date.getHours(), name)} size={14} />
       </div>
       {weather && (
-        <div className="today-line">
-          <Emoji e={weatherEmoji(weather.code, weather.isDay)} size={18} /> {weather.temp}° · {describeWeather(weather.code, lang).label.toLowerCase()}
+        <div className="glance-line weather-line">
+          <Emoji e={weatherEmoji(weather.code, weather.isDay)} size={18} />
+          <span>{weather.temp}°</span>
+          <span className="muted small">{describeWeather(weather.code, lang).label.toLowerCase()}</span>
         </div>
       )}
-      <div className="today-line">
-        <Emoji e="📅" size={16} />{' '}
-        {nextEvent
-          ? `${new Date(nextEvent.start).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' })} ${nextEvent.title}`
-          : planner
-            ? `${planner.tasksToday.length} ${tr('tasks today', 'задач на сегодня')}`
-            : tr('Connect Universal Planner', 'Подключи Universal Planner')}
-      </div>
-      {pairs.length > 0 && (
-        <div className="today-line">
-          <Emoji e="💱" size={16} />{' '}
-          {pairs.slice(0, 2).map(([a, b], i) => (
-            <span key={a + b} className="mono">
-              {i > 0 && ' · '}
-              {symbol(a)} {rates[i] != null ? formatRate(rates[i]!, b, lang) : '…'}
-            </span>
-          ))}
-        </div>
-      )}
-      {clocks.length > 0 && (
-        <div className="clocks">
-          {clocks.slice(0, 3).map((c) => (
-            <div key={c.tz} className="clock">
-              <span className="mono">{timeIn(c.tz, lang, date)}</span>
-              <span className="faint tiny ellipsis">
-                {c.city} {offsetFromLocal(c.tz, date)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="today-fact small muted">
-        <Rich text={holiday ?? factOfDay(lang, date)} size={14} />
-      </div>
-    </div>
+    </button>
   );
 }
 
-function Recent() {
+/** The next thing in the Planner today, or the running timer. */
+function NextUp() {
   const tr = useTr();
-  const media = useApp((s) => s.media?.title);
-  const [list, setList] = useState(recentTracks);
-  useEffect(() => setList(recentTracks()), [media]);
-  const shown = list.filter((t) => t.title !== media).slice(0, 6);
-  if (!shown.length) return null;
+  const lang = tr.lang;
+  const now = useNow(1000);
+  const planner = useApp((s) => s.planner);
+  const timer = useApp((s) => s.timer);
+  if (timer) {
+    return (
+      <button className="next-up live" onClick={() => openLibrary('timer')}>
+        <Timer size={15} />
+        <span className="grow ellipsis">{timer.label === 'focus' ? tr('Focus', 'Фокус') : tr('Timer', 'Таймер')}</span>
+        <span className="mono">{fmtClock(timerLeft(timer, now))}</span>
+        <ChevronRight size={14} className="faint" />
+      </button>
+    );
+  }
+  const today = new Date(now).toDateString();
+  const next = planner?.upcoming.find((e) => new Date(e.start).toDateString() === today && e.end > now);
   return (
-    <div className="recent">
-      <div className="section-title">{tr('Recently played', 'Недавно играло')}</div>
-      <div className="recent-row">
-        {shown.map((t) => (
-          <div key={t.title + t.artist} className="recent-item" title={`${t.title} — ${t.artist}`}>
-            {t.artwork ? <img src={t.artwork} alt="" /> : <div className="recent-ph"><Music size={14} /></div>}
-            <span className="tiny ellipsis">{t.title}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <button className="next-up" onClick={() => openLibrary('planner')}>
+      <Emoji e="📅" size={15} />
+      <span className="grow ellipsis">
+        {next
+          ? `${new Date(next.start).toLocaleTimeString(lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' })} · ${next.title}`
+          : planner
+            ? planner.tasksToday.length
+              ? `${planner.tasksToday.length} ${tr('tasks today', 'задач на сегодня')}`
+              : tr('A free day — nothing planned', 'Свободный день — ничего не запланировано')
+            : tr('Connect Universal Planner', 'Подключи Universal Planner')}
+      </span>
+      <ChevronRight size={14} className="faint" />
+    </button>
   );
 }
 
 export function HomeTab() {
   const t = useT();
+  const tr = useTr();
   const rec = useApp((s) => s.rec);
   const now = useNow();
   const recording = rec.status === 'recording' || rec.status === 'paused';
 
-  const tools = [
-    { icon: <Video size={18} />, label: recording ? `${t('rec.stop')} · ${fmtClock(recElapsed(rec, now))}` : t('tool.record'), run: toggleRecording, hot: recording },
-    { icon: <Timer size={18} />, label: t('tool.timer5'), run: () => startTimer(5) },
-    { icon: <Focus size={18} />, label: t('tool.focus25'), run: () => (startTimer(25, 'focus'), void saveSettings({ doNotDisturb: true })) },
-    { icon: <Sparkles size={18} />, label: t('tool.afina'), run: () => (openPanel('afina'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 }))) },
-    { icon: <CalendarCheck size={18} />, label: t('tool.planner'), run: () => void call('planner_open') },
+  const actions = [
+    { icon: <Camera size={19} />, label: tr('Screenshot', 'Скриншот'), run: () => void takeScreenshot() },
+    { icon: <Video size={19} />, label: recording ? fmtClock(recElapsed(rec, now)) : t('tool.record'), run: toggleRecording, hot: recording },
+    { icon: <Timer size={19} />, label: t('tool.timer5'), run: () => startTimer(5) },
+    { icon: <Focus size={19} />, label: t('tool.focus25'), run: () => (startTimer(25, 'focus'), void saveSettings({ doNotDisturb: true })) },
+    { icon: <Sparkles size={19} />, label: 'Afina', run: () => (openPanel('afina'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 }))) },
   ];
 
   return (
     <div className="home">
-      <MediaCard />
-      <TodayCard />
-      <div className="tools">
-        <div className="tool-grid">
-          {tools.map((x) => (
-            <button key={x.label} className={`tool ${x.hot ? 'hot' : ''}`} onClick={x.run}>
-              {x.icon}
-              <span>{x.label}</span>
-            </button>
-          ))}
-        </div>
+      <Glance />
+      <div className="home-right">
+        <MediaCard />
+        <NextUp />
       </div>
-      <Recent />
+      <div className="actions">
+        {actions.map((x, i) => (
+          <motion.button
+            key={i}
+            className={`action ${x.hot ? 'hot' : ''}`}
+            onClick={x.run}
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: 0.04 * i, type: 'spring', stiffness: 500, damping: 30 }}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <span className="action-icon">{x.icon}</span>
+            <span className="tiny ellipsis">{x.label}</span>
+          </motion.button>
+        ))}
+      </div>
     </div>
   );
 }

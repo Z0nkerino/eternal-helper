@@ -1,7 +1,7 @@
 // Built-in modules, described with the same shape third-party plugins will use (@eternal/plugin-sdk).
 import { defineModule, type HelperModule } from '@eternal/plugin-sdk';
 import { House, Sparkles, CalendarCheck, Video, Type, Settings, CloudSun, LayoutGrid } from 'lucide-react';
-import type { Tab } from './lib/store';
+import type { MainTab, Tab } from './lib/store';
 import type { Key } from './lib/i18n';
 import { HomeTab } from './tabs/HomeTab';
 import { AfinaTab } from './tabs/AfinaTab';
@@ -14,13 +14,17 @@ import { LibraryTab } from './tabs/LibraryTab';
 
 type TabModule = HelperModule & { id: Tab; name: Key };
 
-export const MODULES: TabModule[] = [
+/** Every screen, for windows opened on their own ("pop out"). */
+export const ALL_MODULES: TabModule[] = [
   defineModule<TabModule>({ id: 'home', name: 'tab.home', icon: House, tab: HomeTab }),
   defineModule<TabModule>({ id: 'library', name: 'tab.library', icon: LayoutGrid, tab: LibraryTab }),
   defineModule<TabModule>({ id: 'afina', name: 'tab.afina', icon: Sparkles, tab: AfinaTab }),
+  defineModule<TabModule>({ id: 'settings', name: 'tab.settings', icon: Settings, tab: SettingsTab }),
   defineModule<TabModule>({ id: 'weather', name: 'tab.weather', icon: CloudSun, tab: WeatherTab }),
   defineModule<TabModule>({ id: 'planner', name: 'tab.planner', icon: CalendarCheck, tab: PlannerTab }),
   defineModule<TabModule>({ id: 'videos', name: 'tab.videos', icon: Video, tab: VideosTab }),
   defineModule<TabModule>({ id: 'text', name: 'tab.text', icon: Type, tab: TextTab }),
-  defineModule<TabModule>({ id: 'settings', name: 'tab.settings', icon: Settings, tab: SettingsTab }),
 ];
+
+/** The island's four tabs. Weather, Planner, Recordings and Text live inside Library. */
+export const MODULES = ALL_MODULES.slice(0, 4) as (TabModule & { id: MainTab })[];
