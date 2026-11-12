@@ -472,7 +472,7 @@ export function CloudyStage() {
     const wait = nextTripIn(cfg.roam);
     if (wait == null) return;
     const id = setTimeout(() => {
-      if (body.current.mode === 'rest' && !sleeping && !menu && !signal?.recording) {
+      if (body.current.mode === 'rest' && !sleeping && !menu && !signal?.recording && !directed.current) {
         react('joy', undefined, 900);
         fly(undefined, Math.random() < 0.6 ? 'visit' : 'move');
       }
@@ -485,7 +485,7 @@ export function CloudyStage() {
   useEffect(() => {
     if (sleeping) return;
     const id = setInterval(() => {
-      if (body.current.mode !== 'rest' || dragging || menu) return;
+      if (body.current.mode !== 'rest' || dragging || menu || directed.current) return;
       const r = Math.random();
       if (n === 'hungry') {
         if (r < 0.35) react('hungry', 'shake', 900);
@@ -539,7 +539,7 @@ export function CloudyStage() {
   useEffect(() => {
     const every = CHATTER_MIN[cfg.chatter];
     if (!every) return;
-    const id = setInterval(() => !sleeping && !signal?.recording && say(n === 'fine' ? 'idle' : n), every * 60_000);
+    const id = setInterval(() => !sleeping && !signal?.recording && !directed.current && say(n === 'fine' ? 'idle' : n), every * 60_000);
     return () => clearInterval(id);
   }, [cfg.chatter, sleeping, signal?.recording, n, say]);
 
@@ -749,6 +749,28 @@ export function CloudyStage() {
     sleeping ? [SunIcon, L('Wake', 'Разбудить'), () => setSleeping(false)] : [Moon, L('Nap', 'Спать'), () => setSleeping(true)],
     [House, L('Room', 'Комната'), () => void call('open_window', { kind: 'pet' })],
   ];
+
+  // Dev preview only: lets a demo page direct Cloudy with postMessage (used to film the app).
+  const direct = useRef<(d: Record<string, unknown>) => void>(() => {});
+  const directed = useRef(false);
+  direct.current = (d) => {
+    directed.current = true; // a demo is directing him: no idle surprises
+    switch (d.cloudy) {
+      case 'shape': return formShape(d.id as ShapeId, (d.ms as number) ?? 2400, false);
+      case 'poof': return poof();
+      case 'react': return react(d.expr as Expr, d.anim as Anim, (d.ms as number) ?? 1600);
+      case 'say': return sayText(d.text as string, (d.ms as number) ?? 2200);
+      case 'fly': return fly({ x: d.x as number, y: d.y as number }, 'move');
+      case 'fx': return showFx(d.fx as Fx, (d.ms as number) ?? 3000);
+      case 'look': return setLook({ x: d.x as number, y: d.y as number });
+    }
+  };
+  useEffect(() => {
+    if (inTauri || !import.meta.env.DEV) return;
+    const on = (e: MessageEvent) => e.data && typeof e.data === 'object' && 'cloudy' in e.data && direct.current(e.data);
+    addEventListener('message', on);
+    return () => removeEventListener('message', on);
+  }, []);
 
   // Browser preview (no desktop shell): ?mood=… shows a look.
   useEffect(() => {

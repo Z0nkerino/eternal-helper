@@ -21,9 +21,9 @@ export function demoPlanner(now = Date.now()): PlannerSnapshot {
   return {
     file: 'universal-planner-demo.json', exportedAt: '', doneToday: 2,
     tasksToday: [
-      { id: '1', title: 'Отправить отчёт', priority: 2, top: true, start: null },
-      { id: '2', title: 'Спортзал', priority: 0, top: false, start: at(19) },
+      { id: '1', title: 'Send the report', priority: 2, top: true, start: null },
+      { id: '2', title: 'Gym', priority: 0, top: false, start: at(19) },
     ],
-    upcoming: [{ id: 'e', title: 'Созвон с командой', start: Math.max(now + 3600_000, at(15)), end: Math.max(now + 7200_000, at(16)), allDay: false, location: null }],
+    upcoming: [{ id: 'e', title: 'Team call', start: Math.max(now + 3600_000, at(15)), end: Math.max(now + 7200_000, at(16)), allDay: false, location: null }],
   };
 }

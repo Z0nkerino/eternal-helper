@@ -59,7 +59,7 @@ async function bootCommon(view: View) {
   }
   if (!inTauri && new URLSearchParams(location.search).get('demo') === '1') {
     const { demoWeather, demoPlanner } = await import('./lib/demo');
-    const apply = () => useApp.setState((s) => ({ weather: demoWeather(), planner: demoPlanner(), settings: s.settings && { ...s.settings, weather: { ...s.settings.weather, place: 'Москва' } } }));
+    const apply = () => useApp.setState((s) => ({ weather: demoWeather(), planner: demoPlanner(), settings: s.settings && { ...s.settings, weather: { ...s.settings.weather, place: 'Saint Petersburg' } } }));
     apply();
     setTimeout(apply, 600); // after the mock's own (empty) Planner refresh
   }
@@ -142,6 +142,26 @@ function bootIsland() {
     if (pos === code.length) {
       pos = 0;
       void emitEvent('cloudy://easter');
+    }
+  });
+}
+
+// Dev preview only: lets a demo page direct the island with postMessage (used to film the app).
+if (!inTauri && import.meta.env.DEV) {
+  addEventListener('message', (e) => {
+    const d = e.data as Record<string, string> | null;
+    if (!d || typeof d !== 'object' || !('island' in d)) return;
+    if (d.island === 'open') openPanel(d.tab as Tab, { hover: true });
+    else if (d.island === 'close') closePanel();
+    else if (d.island === 'clear') useApp.setState({ toasts: [] });
+    else if (d.island === 'toast') toast(d.text, { force: true, tone: 'ok' });
+    else if (d.island === 'click') [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === d.text)?.click();
+    else if (d.island === 'ask') {
+      const input = document.querySelector<HTMLInputElement>('.composer input');
+      if (!input) return;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, d.text);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      setTimeout(() => document.querySelector<HTMLButtonElement>('.composer .send')?.click(), 50);
     }
   });
 }
