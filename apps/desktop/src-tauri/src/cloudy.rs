@@ -15,6 +15,7 @@ pub fn sync(app: &AppHandle, on: bool) {
         if let Some(w) = existing {
             let _ = w.destroy();
         }
+        app.state::<crate::AppState>().ready.lock().unwrap().remove(LABEL);
         return;
     }
     if existing.is_some() {
@@ -31,6 +32,7 @@ pub fn sync(app: &AppHandle, on: bool) {
         .shadow(false)
         .focused(false)
         .visible(false)
+        .background_color(tauri::webview::Color(0, 0, 0, 0))
         .build();
     let Ok(w) = built else { return };
     if let Ok(Some(m)) = w.primary_monitor() {
@@ -39,9 +41,8 @@ pub fn sync(app: &AppHandle, on: bool) {
         let _ = w.set_size(PhysicalSize::new(area.size.width, area.size.height));
     }
     crate::platform::style_overlay(&w);
-    let _ = w.show();
-    let _ = w.set_ignore_cursor_events(true);
-    keep_island_on_top(app);
+    // Shown by `window_ready` once the page has drawn, so Windows never flashes an empty window.
+    crate::show_when_ready(app, LABEL);
 }
 
 /// Cloudy's layer covers the whole work area; the island must always stay above it. On macOS the
@@ -51,7 +52,6 @@ pub fn keep_island_on_top(app: &AppHandle) {
         return;
     }
     if let Some(island) = app.get_webview_window("island") {
-        let _ = island.set_always_on_top(false);
-        let _ = island.set_always_on_top(true);
+        crate::platform::raise_topmost(&island);
     }
 }

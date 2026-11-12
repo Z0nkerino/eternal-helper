@@ -66,3 +66,6 @@ pub fn set_activatable(w: &tauri::WebviewWindow, on: bool) {
 }
 
 pub fn style_shot(_w: &tauri::WebviewWindow) {}
+
+/// Window levels already keep the island above Cloudy here.
+pub fn raise_topmost(_w: &tauri::WebviewWindow) {}

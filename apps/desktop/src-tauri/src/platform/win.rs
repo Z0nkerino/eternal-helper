@@ -8,7 +8,7 @@ use ::windows::{
     Win32::{
         Foundation::HWND,
         UI::{
-            Shell::{SHQueryUserNotificationState, QUNS_BUSY, QUNS_PRESENTATION_MODE, QUNS_RUNNING_D3D_FULL_SCREEN},
+            Shell::{SHQueryUserNotificationState, QUNS_PRESENTATION_MODE, QUNS_RUNNING_D3D_FULL_SCREEN},
             WindowsAndMessaging::{GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW},
         },
     },
@@ -104,11 +104,64 @@ fn friendly_source(id: &str) -> String {
 }
 
 pub struct Fullscreen;
+/// Is another app's window covering the whole monitor (a game, a video, a presentation)?
+/// Our own windows never count — Cloudy's layer covers the work area and must not hide the island.
+fn foreground_covers_monitor() -> bool {
+    use ::windows::Win32::{
+        Foundation::RECT,
+        Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST},
+        System::Threading::GetCurrentProcessId,
+        UI::WindowsAndMessaging::{GetClassNameW, GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId},
+    };
+    unsafe {
+        let fg = GetForegroundWindow();
+        if fg.0.is_null() {
+            return false;
+        }
+        let mut pid = 0u32;
+        GetWindowThreadProcessId(fg, Some(&mut pid));
+        if pid == GetCurrentProcessId() {
+            return false;
+        }
+        let mut buf = [0u16; 64];
+        let n = GetClassNameW(fg, &mut buf).max(0) as usize;
+        let class = String::from_utf16_lossy(&buf[..n]);
+        // The desktop and the taskbar are not fullscreen apps.
+        if matches!(class.as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd" | "Shell_SecondaryTrayWnd") {
+            return false;
+        }
+        let mut r = RECT::default();
+        if GetWindowRect(fg, &mut r).is_err() {
+            return false;
+        }
+        let mon = MonitorFromWindow(fg, MONITOR_DEFAULTTONEAREST);
+        let mut mi = MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, ..Default::default() };
+        if !GetMonitorInfoW(mon, &mut mi).as_bool() {
+            return false;
+        }
+        let m = mi.rcMonitor;
+        r.left <= m.left && r.top <= m.top && r.right >= m.right && r.bottom >= m.bottom
+    }
+}
+
 impl FullscreenDetector for Fullscreen {
     fn fullscreen_active(&self) -> bool {
-        unsafe { SHQueryUserNotificationState() }
-            .map(|s| s == QUNS_BUSY || s == QUNS_RUNNING_D3D_FULL_SCREEN || s == QUNS_PRESENTATION_MODE)
-            .unwrap_or(false)
+        // Exclusive-fullscreen games and presentation mode come from the shell; everything else is a
+        // foreground window of another app covering the monitor. QUNS_BUSY is not used: it also fires for
+        // borderless windows like Cloudy's layer, which made the island hide and show again.
+        let shell = unsafe { SHQueryUserNotificationState() }.map(|s| s == QUNS_RUNNING_D3D_FULL_SCREEN || s == QUNS_PRESENTATION_MODE).unwrap_or(false);
+        shell || foreground_covers_monitor()
+    }
+}
+
+/// Puts a window at the top of the topmost band without activating, moving or redrawing it
+/// (switching "always on top" off and on made the island blink).
+pub fn raise_topmost(w: &tauri::WebviewWindow) {
+    use ::windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOSENDCHANGING};
+    if let Ok(h) = w.hwnd() {
+        unsafe {
+            let _ = SetWindowPos(HWND(h.0 as _), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
+        }
     }
 }
 

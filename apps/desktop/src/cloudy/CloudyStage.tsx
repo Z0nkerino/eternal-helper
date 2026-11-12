@@ -161,16 +161,28 @@ export function CloudyStage() {
     [cfg.size],
   );
 
-  // Place him at his spot once the window size is known.
+  // Place him at his spot once the window size is known — and again whenever it changes. A hidden
+  // window can report a zero size at first, so a tiny size is ignored until the real one arrives.
+  const placed = useRef(false);
   useEffect(() => {
     if (!settings) return;
-    const a = area();
-    spot.current = loadSpot(a);
-    body.current = { ...body.current, x: spot.current.x, y: spot.current.y };
-    paint();
-    reportHit(true);
-    // A little hello.
-    react('joy', 'wiggle', 1400);
+    const place = () => {
+      if (innerWidth < 200 || innerHeight < 200) return;
+      const a = area();
+      spot.current = loadSpot(a);
+      if (body.current.mode === 'rest' || !placed.current) {
+        body.current = { ...body.current, x: spot.current.x, y: spot.current.y, mode: 'rest', trip: null };
+        paint();
+        reportHit(true);
+      }
+      if (!placed.current) {
+        placed.current = true;
+        react('joy', 'wiggle', 1400); // a little hello
+      }
+    };
+    place();
+    addEventListener('resize', place);
+    return () => removeEventListener('resize', place);
   }, [!!settings, cfg.size]);
 
   // Pet stats drift every minute; tell the Cloudy window.

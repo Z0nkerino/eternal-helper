@@ -71,6 +71,7 @@
     "allow-ai-services",
     "allow-ai-open",
     "allow-open-url",
+    "allow-window-ready",
     "allow-quit"
   ]
 }

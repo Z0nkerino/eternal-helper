@@ -175,10 +175,23 @@ function Root() {
   }
 }
 
+// The island and Cloudy are only shown once their page has rendered, so Windows never flashes an empty
+// window at start-up. (Animation frames don't run in a hidden window, so this waits for React's first
+// commit instead.)
+function ReadySignal() {
+  React.useEffect(() => {
+    if (!inTauri || (view.kind !== 'island' && view.kind !== 'cloudy')) return;
+    const id = setTimeout(() => void call('window_ready'), 60);
+    return () => clearTimeout(id);
+  }, []);
+  return null;
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Motion>
       <Root />
+      <ReadySignal />
     </Motion>
   </React.StrictMode>,
 );

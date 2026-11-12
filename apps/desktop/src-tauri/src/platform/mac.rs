@@ -172,3 +172,6 @@ mod tests {
         assert!(super::parse_osascript("").is_none());
     }
 }
+
+/// Window levels already keep the island above Cloudy here.
+pub fn raise_topmost(_w: &tauri::WebviewWindow) {}

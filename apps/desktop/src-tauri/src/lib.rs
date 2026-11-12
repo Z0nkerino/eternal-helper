@@ -52,6 +52,8 @@ struct AppState {
     user_hidden: AtomicBool,
     last_media: Mutex<Option<MediaInfo>>,
     layout: Mutex<Layout>,
+    /// Windows whose page has drawn its first frame (see `window_ready`).
+    ready: Mutex<std::collections::HashSet<String>>,
 }
 
 type S<'a> = State<'a, AppState>;
@@ -141,7 +143,13 @@ fn spawn_hit_test(app: AppHandle) {
             std::thread::sleep(Duration::from_millis(40));
             tick = tick.wrapping_add(1);
             let rects = app.state::<AppState>().hit.lock().unwrap().clone();
+            let ready = app.state::<AppState>().ready.lock().unwrap().clone();
             for label in ["island", cloudy::LABEL] {
+                // Windows not shown yet are left alone (they become click-through when revealed).
+                if !ready.contains(label) {
+                    ignoring.remove(label);
+                    continue;
+                }
                 let Some(w) = app.get_webview_window(label) else {
                     ignoring.remove(label);
                     continue;
@@ -167,6 +175,7 @@ fn spawn_screen_watch(app: AppHandle) {
         platform::init_thread();
         let detector = platform::Fullscreen;
         let mut hidden_for_fullscreen = false;
+        let mut streak = 0u8;
         let mut tick = 0u32;
         loop {
             std::thread::sleep(Duration::from_secs(1));
@@ -174,7 +183,12 @@ fn spawn_screen_watch(app: AppHandle) {
             let st = app.state::<AppState>();
             let s = st.settings.get();
             let full = s.hide_in_fullscreen && detector.fullscreen_active();
-            if full != hidden_for_fullscreen {
+            // Act only after two identical readings in a row, so a single odd reading never makes the
+            // island blink.
+            streak = if full != hidden_for_fullscreen { streak.saturating_add(1) } else { 0 };
+            let ready = |l: &str| st.ready.lock().unwrap().contains(l);
+            if streak >= 2 && ready("island") {
+                streak = 0;
                 hidden_for_fullscreen = full;
                 let cloud = app.get_webview_window(cloudy::LABEL);
                 if full {
@@ -186,7 +200,7 @@ fn spawn_screen_watch(app: AppHandle) {
                     if !st.user_hidden.load(Ordering::Relaxed) {
                         let _ = w.show();
                     }
-                    if let Some(c) = &cloud {
+                    if let Some(c) = cloud.as_ref().filter(|_| ready(cloudy::LABEL)) {
                         let _ = c.show();
                     }
                 }
@@ -693,6 +707,42 @@ fn open_url(app: AppHandle, url: String) -> Result<(), String> {
     app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
 }
 
+/// Shows a click-through window (the island or Cloudy's layer) once it's ready: when its page reports
+/// its first frame, or after 4 s as a fallback.
+pub(crate) fn show_when_ready(app: &AppHandle, label: &'static str) {
+    let a = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(4));
+        reveal(&a, label);
+    });
+}
+
+fn reveal(app: &AppHandle, label: &str) {
+    let st = app.state::<AppState>();
+    if !st.ready.lock().unwrap().insert(label.to_string()) {
+        return; // already shown
+    }
+    let Some(w) = app.get_webview_window(label) else { return };
+    if label == "island" && st.user_hidden.load(Ordering::Relaxed) {
+        return;
+    }
+    // Show first, then make it click-through (on Linux the native window must exist first).
+    let _ = w.show();
+    let _ = w.set_ignore_cursor_events(true);
+    if label == cloudy::LABEL {
+        cloudy::keep_island_on_top(app);
+    }
+}
+
+/// Called by each window's page after its first frame is on screen.
+#[tauri::command]
+fn window_ready(app: AppHandle, window: tauri::Window) {
+    let label = window.label().to_string();
+    if label == "island" || label == cloudy::LABEL {
+        reveal(&app, &label);
+    }
+}
+
 #[tauri::command]
 fn quit(app: AppHandle) {
     app.exit(0);
@@ -785,6 +835,7 @@ pub fn run() {
                 user_hidden: AtomicBool::new(false),
                 last_media: Mutex::new(None),
                 layout: Mutex::new(layout_for(None, 0.0, 1.0)),
+                ready: Mutex::new(Default::default()),
             };
             let planner_state = state.planner.clone();
             app.manage(state);
@@ -802,10 +853,9 @@ pub fn run() {
             if let Some(w) = island(&handle) {
                 platform::style_island(&w);
                 place(&handle, &w);
-                // Show before making it click-through: on Linux the native window must exist first.
-                let _ = w.show();
-                let _ = w.set_ignore_cursor_events(true);
             }
+            // The island appears once its page has drawn (no empty-window flash on Windows).
+            show_when_ready(&handle, "island");
             cloudy::sync(&handle, cloudy::enabled(&s));
             spawn_hit_test(handle.clone());
             spawn_screen_watch(handle.clone());
@@ -864,6 +914,7 @@ pub fn run() {
             ai_services,
             ai_open,
             open_url,
+            window_ready,
             quit,
         ])
         .run(tauri::generate_context!())

@@ -53,6 +53,7 @@ fn main() {
         "ai_services",
         "ai_open",
         "open_url",
+        "window_ready",
         "quit",
     ];
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(commands)))

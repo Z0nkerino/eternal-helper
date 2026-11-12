@@ -187,6 +187,7 @@ interface Commands {
   ai_services: [void, { id: string; name: string; prefill: boolean }[]];
   ai_open: [{ service: string; prompt: string | null }, boolean];
   open_url: [{ url: string }, void];
+  window_ready: [void, void];
   quit: [void, void];
 }
 
