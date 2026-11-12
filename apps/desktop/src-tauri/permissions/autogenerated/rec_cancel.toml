@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-rec-cancel"
+description = "Enables the rec_cancel command without any pre-configured scope."
+commands.allow = ["rec_cancel"]
+
+[[permission]]
+identifier = "deny-rec-cancel"
+description = "Denies the rec_cancel command without any pre-configured scope."
+commands.deny = ["rec_cancel"]

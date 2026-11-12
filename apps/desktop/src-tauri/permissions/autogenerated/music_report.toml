@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-music-report"
+description = "Enables the music_report command without any pre-configured scope."
+commands.allow = ["music_report"]
+
+[[permission]]
+identifier = "deny-music-report"
+description = "Denies the music_report command without any pre-configured scope."
+commands.deny = ["music_report"]

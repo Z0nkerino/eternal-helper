@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-planner-open"
+description = "Enables the planner_open command without any pre-configured scope."
+commands.allow = ["planner_open"]
+
+[[permission]]
+identifier = "deny-planner-open"
+description = "Denies the planner_open command without any pre-configured scope."
+commands.deny = ["planner_open"]

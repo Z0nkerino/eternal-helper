@@ -101,6 +101,24 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with: { path: out, merge-multiple: true }
+      - name: Update feed for in-app updates (latest.json)
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          base="https://github.com/$REPO/releases/download/v$VERSION"
+          win_sha=$(sha256sum out/Eternal-Helper-windows-setup.exe | cut -d' ' -f1)
+          mac_sha=$(sha256sum out/Eternal-Helper-mac.dmg | cut -d' ' -f1)
+          jq -n --arg v "$VERSION" --arg base "$base" \
+            --arg ws "$win_sha" --argjson wz "$(stat -c%s out/Eternal-Helper-windows-setup.exe)" \
+            --arg ms "$mac_sha" --argjson mz "$(stat -c%s out/Eternal-Helper-mac.dmg)" \
+            '{version: $v, notes: ("Eternal Helper " + $v), pub_date: (now | todate),
+              platforms: {
+                "windows-x86_64": {url: ($base + "/Eternal-Helper-windows-setup.exe"), sha256: $ws, size: $wz},
+                "macos-universal": {url: ($base + "/Eternal-Helper-mac.dmg"), sha256: $ms, size: $mz}
+              }}' > out/latest.json
+          cat out/latest.json
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,15 +1,21 @@
 //! Eternal Helper — a dynamic island for Windows and macOS. © Eternal Inc.
 mod afina;
+mod cloudy;
+mod music;
 mod planner;
 mod platform;
 mod recordings;
 mod secrets;
 mod settings;
+mod system;
+mod updater;
+mod windows;
 
 use platform::{FullscreenDetector, MediaAction, MediaInfo, MediaProvider};
 use serde::Serialize;
 use settings::{Settings, SettingsStore};
 use std::{
+    collections::HashMap,
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -35,8 +41,9 @@ struct AppState {
     planner: Arc<planner::PlannerState>,
     recorder: recordings::RecorderState,
     media: Arc<platform::Media>,
-    /// Interactive rectangle (logical px, relative to the window): the pill or the open panel.
-    hit: Mutex<(f64, f64, f64, f64)>,
+    /// Interactive rectangle per click-through window (logical px, relative to that window):
+    /// the island's pill or open panel, and Cloudy himself.
+    hit: Mutex<HashMap<String, (f64, f64, f64, f64)>>,
     /// Hidden by the user from the tray (separate from auto-hide in fullscreen).
     user_hidden: AtomicBool,
     last_media: Mutex<Option<MediaInfo>>,
@@ -118,20 +125,33 @@ fn refresh_layout(app: &AppHandle, x: f64, width: f64, scale: f64) {
 
 // ---------- Background loops ----------
 
-/// Click-through everywhere except the pill/panel. Checks the cursor 25×/s, which costs next to nothing
-/// and only touches the window when the answer changes.
+/// Click-through everywhere except the interactive parts (the island's pill/panel, Cloudy). Checks the
+/// cursor 25×/s, which costs next to nothing, and only touches a window when its answer changes.
+/// Also tells Cloudy where the cursor is (~8×/s, only when it moved) so he can look at it.
 fn spawn_hit_test(app: AppHandle) {
     std::thread::spawn(move || {
-        let mut ignoring: Option<bool> = None;
+        let mut ignoring: HashMap<String, bool> = HashMap::new();
+        let mut last_cursor = (f64::NAN, f64::NAN);
+        let mut tick = 0u32;
         loop {
             std::thread::sleep(Duration::from_millis(40));
-            let Some(w) = island(&app) else { continue };
-            let (Ok(c), Ok(p), Ok(scale)) = (w.cursor_position(), w.outer_position(), w.scale_factor()) else { continue };
-            let (x, y) = ((c.x - p.x as f64) / scale, (c.y - p.y as f64) / scale);
-            let (hx, hy, hw, hh) = *app.state::<AppState>().hit.lock().unwrap();
-            let inside = x >= hx && x <= hx + hw && y >= hy && y <= hy + hh;
-            if ignoring != Some(!inside) && w.set_ignore_cursor_events(!inside).is_ok() {
-                ignoring = Some(!inside);
+            tick = tick.wrapping_add(1);
+            let rects = app.state::<AppState>().hit.lock().unwrap().clone();
+            for label in ["island", cloudy::LABEL] {
+                let Some(w) = app.get_webview_window(label) else {
+                    ignoring.remove(label);
+                    continue;
+                };
+                let (Ok(c), Ok(p), Ok(scale)) = (w.cursor_position(), w.outer_position(), w.scale_factor()) else { continue };
+                let (x, y) = ((c.x - p.x as f64) / scale, (c.y - p.y as f64) / scale);
+                let inside = rects.get(label).is_some_and(|&(hx, hy, hw, hh)| x >= hx && x <= hx + hw && y >= hy && y <= hy + hh);
+                if ignoring.get(label) != Some(&!inside) && w.set_ignore_cursor_events(!inside).is_ok() {
+                    ignoring.insert(label.to_string(), !inside);
+                }
+                if label == cloudy::LABEL && tick % 3 == 0 && (x, y) != last_cursor {
+                    last_cursor = (x, y);
+                    let _ = w.emit_to(cloudy::LABEL, "cursor://move", (x, y));
+                }
             }
         }
     });
@@ -143,6 +163,7 @@ fn spawn_screen_watch(app: AppHandle) {
         platform::init_thread();
         let detector = platform::Fullscreen;
         let mut hidden_for_fullscreen = false;
+        let mut tick = 0u32;
         loop {
             std::thread::sleep(Duration::from_secs(1));
             let Some(w) = island(&app) else { continue };
@@ -151,15 +172,28 @@ fn spawn_screen_watch(app: AppHandle) {
             let full = s.hide_in_fullscreen && detector.fullscreen_active();
             if full != hidden_for_fullscreen {
                 hidden_for_fullscreen = full;
+                let cloud = app.get_webview_window(cloudy::LABEL);
                 if full {
                     let _ = w.hide();
-                } else if !st.user_hidden.load(Ordering::Relaxed) {
-                    let _ = w.show();
+                    if let Some(c) = &cloud {
+                        let _ = c.hide();
+                    }
+                } else {
+                    if !st.user_hidden.load(Ordering::Relaxed) {
+                        let _ = w.show();
+                    }
+                    if let Some(c) = &cloud {
+                        let _ = c.show();
+                    }
                 }
             }
             // Cheap when nothing changed; follows the cursor's monitor and display changes (lid closed,
             // monitor plugged in) so the notch-safe layout always matches the current screen.
             place(&app, &w);
+            tick = tick.wrapping_add(1);
+            if tick % 5 == 0 && app.get_webview_window(cloudy::LABEL).is_some() {
+                cloudy::keep_island_on_top(&app);
+            }
         }
     });
 }
@@ -224,6 +258,10 @@ fn set_settings(app: AppHandle, st: S, value: Settings) -> Result<Settings, Stri
         apply_autostart(&app, value.autostart);
     }
     st.settings.set(value.clone()).map_err(|e| e.to_string())?;
+    let cloud_on = cloudy::enabled(&value);
+    if cloud_on != cloudy::enabled(&old) {
+        cloudy::sync(&app, cloud_on);
+    }
     if value.monitor != old.monitor {
         if let Some(w) = island(&app) {
             place(&app, &w);
@@ -239,8 +277,8 @@ fn island_layout(st: S) -> Layout {
 }
 
 #[tauri::command]
-fn island_set_hit(st: S, x: f64, y: f64, w: f64, h: f64) {
-    *st.hit.lock().unwrap() = (x, y, w, h);
+fn island_set_hit(window: tauri::Window, st: S, x: f64, y: f64, w: f64, h: f64) {
+    st.hit.lock().unwrap().insert(window.label().to_string(), (x, y, w, h));
 }
 
 /// The open panel takes keyboard focus (so Afina and text tools can be typed into); the pill never does.
@@ -404,6 +442,93 @@ fn rec_open_folder(app: AppHandle, st: S) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn open_window(app: AppHandle, kind: String) -> Result<(), String> {
+    windows::open(&app, &kind)
+}
+
+#[tauri::command]
+fn battery() -> system::Battery {
+    system::battery()
+}
+
+#[tauri::command]
+async fn update_check() -> Result<updater::UpdateInfo, String> {
+    tauri::async_runtime::spawn_blocking(|| updater::check(env!("CARGO_PKG_VERSION"))).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn update_install(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let info = updater::check(env!("CARGO_PKG_VERSION"))?;
+        match (&info.asset, info.available) {
+            (Some(asset), true) => updater::install(&app, asset, &info.latest),
+            (None, true) => {
+                let _ = app.opener().open_url(updater::RELEASES, None::<&str>);
+                Ok(())
+            }
+            _ => Err("You already have the latest version.".into()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MusicServiceInfo {
+    id: &'static str,
+    name: &'static str,
+    open: bool,
+    visible: bool,
+}
+
+#[tauri::command]
+fn music_services(app: AppHandle) -> Vec<MusicServiceInfo> {
+    music::SERVICES
+        .iter()
+        .map(|s| {
+            let w = app.get_webview_window(&music::label(s.id));
+            MusicServiceInfo { id: s.id, name: s.name, open: w.is_some(), visible: w.and_then(|w| w.is_visible().ok()).unwrap_or(false) }
+        })
+        .collect()
+}
+
+#[tauri::command]
+fn music_open(app: AppHandle, service: String, show: bool) -> Result<(), String> {
+    music::open(&app, &service, show)
+}
+
+#[tauri::command]
+fn music_hide(app: AppHandle, service: String) {
+    if let Some(w) = app.get_webview_window(&music::label(&service)) {
+        let _ = w.hide();
+    }
+}
+
+#[tauri::command]
+fn music_control(app: AppHandle, service: String, action: String) -> Result<(), String> {
+    music::control(&app, &service, &action)
+}
+
+#[tauri::command]
+fn music_sign_out(app: AppHandle) -> Result<(), String> {
+    music::sign_out(&app)?;
+    let _ = app.emit("music://changed", music::MusicReport::default());
+    Ok(())
+}
+
+/// Called by the bridge script inside a music player window (the only command that window may call).
+#[tauri::command]
+fn music_report(app: AppHandle, window: tauri::Window, report: music::MusicReport) -> Result<(), String> {
+    // A player may only speak for its own service.
+    if window.label() != music::label(&report.service) {
+        return Err("wrong window".into());
+    }
+    let _ = app.emit("music://changed", report);
+    Ok(())
+}
+
+#[tauri::command]
 fn quit(app: AppHandle) {
     app.exit(0);
 }
@@ -433,11 +558,7 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
                 }
             }
             "settings" => {
-                if let Some(w) = island(app) {
-                    st.user_hidden.store(false, Ordering::Relaxed);
-                    let _ = w.show();
-                }
-                let _ = app.emit("island://open", "settings");
+                let _ = windows::open(app, "settings");
             }
             "videos" => {
                 let dir = rec_dir(&st);
@@ -461,6 +582,15 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
+        // Closing a music player only hides it, so the music keeps playing.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label().starts_with("music-") {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
@@ -473,7 +603,7 @@ pub fn run() {
                 planner: Arc::new(planner::PlannerState::default()),
                 recorder: recordings::RecorderState::default(),
                 media: Arc::new(platform::Media::default()),
-                hit: Mutex::new((ISLAND_W / 2.0 - 100.0, 0.0, 200.0, 40.0)),
+                hit: Mutex::new(HashMap::from([("island".to_string(), (ISLAND_W / 2.0 - 100.0, 0.0, 200.0, 40.0))])),
                 user_hidden: AtomicBool::new(false),
                 last_media: Mutex::new(None),
                 layout: Mutex::new(layout_for(None, 0.0, 1.0)),
@@ -497,6 +627,7 @@ pub fn run() {
                 let _ = w.show();
                 let _ = w.set_ignore_cursor_events(true);
             }
+            cloudy::sync(&handle, cloudy::enabled(&s));
             spawn_hit_test(handle.clone());
             spawn_screen_watch(handle.clone());
             spawn_media_watch(handle);
@@ -528,6 +659,16 @@ pub fn run() {
             rec_delete,
             rec_open,
             rec_open_folder,
+            open_window,
+            battery,
+            update_check,
+            update_install,
+            music_services,
+            music_open,
+            music_hide,
+            music_control,
+            music_sign_out,
+            music_report,
             quit,
         ])
         .run(tauri::generate_context!())

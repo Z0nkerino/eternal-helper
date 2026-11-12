@@ -49,6 +49,8 @@ impl FullscreenDetector for Fullscreen {
 
 pub fn style_island(_w: &tauri::WebviewWindow) {}
 
+pub fn style_overlay(_w: &tauri::WebviewWindow) {}
+
 pub fn notch_for(_x: f64, _width: f64) -> Option<Notch> {
     None
 }

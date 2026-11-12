@@ -1,8 +1,8 @@
 // One store for the island: settings, which view is open, live activities and toasts.
 import { create } from 'zustand';
-import { call, type Layout, type MediaInfo, type PlannerEvent, type PlannerSnapshot, type Settings } from './ipc';
+import { call, type Battery, type Layout, type MediaInfo, type MusicReport, type PlannerEvent, type PlannerSnapshot, type Settings } from './ipc';
 
-export type Tab = 'home' | 'afina' | 'planner' | 'videos' | 'text' | 'settings';
+export type Tab = 'home' | 'afina' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
 export type View = 'idle' | 'panel';
 
 export interface Toast {
@@ -30,11 +30,22 @@ export interface RecState {
 
 export interface WeatherNow {
   temp: number;
+  feels: number;
   code: number;
   isDay: boolean;
-  daily: { date: string; max: number; min: number; code: number }[];
+  humidity: number;
+  /** km/h (mph when °F is chosen is not converted: Open-Meteo returns km/h by default). */
+  wind: number;
+  windDir: number;
+  pressure: number;
+  precipitation: number;
+  aqi: number | null;
+  hourly: { time: number; temp: number; code: number; rain: number; isDay: boolean }[];
+  daily: { date: string; max: number; min: number; code: number; sunrise: number; sunset: number; uv: number; rain: number; rainSum: number }[];
   at: number;
 }
+
+export type MediaSource = { kind: 'system' } | { kind: 'web'; service: MusicReport['service'] };
 
 interface AppState {
   settings: Settings | null;
@@ -43,7 +54,16 @@ interface AppState {
   tab: Tab;
   /** Bumped to ask the Afina input to take focus. */
   focusAfina: number;
+  /** What the island shows: the system's media session or a signed-in web player, whichever is playing. */
   media: MediaInfo | null;
+  mediaSource: MediaSource;
+  /** When `media.positionMs` was read, to move the progress bar between updates. */
+  mediaAt: number;
+  systemMedia: MediaInfo | null;
+  webMusic: Partial<Record<MusicReport['service'], MusicReport>>;
+  battery: Battery | null;
+  /** Shown in Settings → Updates and as a toast. */
+  update: { latest: string; available: boolean; progress: number | null; error: string | null } | null;
   timer: TimerState | null;
   rec: RecState;
   afinaThinking: boolean;
@@ -52,6 +72,8 @@ interface AppState {
   plannerFlash: PlannerEvent | null;
   weather: WeatherNow | null;
   toasts: Toast[];
+  /** Counters Cloudy reacts to (a timer finished, something went wrong). */
+  pulse: { timer: number; error: number };
 }
 
 export const useApp = create<AppState>(() => ({
@@ -61,6 +83,12 @@ export const useApp = create<AppState>(() => ({
   tab: 'home',
   focusAfina: 0,
   media: null,
+  mediaSource: { kind: 'system' },
+  mediaAt: 0,
+  systemMedia: null,
+  webMusic: {},
+  battery: null,
+  update: null,
   timer: null,
   rec: { status: 'idle', startedAt: 0, pausedMs: 0, pausedAt: 0, native: false },
   afinaThinking: false,
@@ -69,6 +97,7 @@ export const useApp = create<AppState>(() => ({
   plannerFlash: null,
   weather: null,
   toasts: [],
+  pulse: { timer: 0, error: 0 },
 }));
 
 const set = useApp.setState;
@@ -106,6 +135,7 @@ let toastId = 0;
 export function toast(text: string, opts: Omit<Toast, 'id' | 'text'> & { force?: boolean } = {}) {
   // "Do not disturb" mutes toasts, except errors the user needs to see.
   if (get().settings?.doNotDisturb && !opts.force && opts.tone !== 'error') return;
+  if (opts.tone === 'error') set((s) => ({ pulse: { ...s.pulse, error: s.pulse.error + 1 } }));
   const t: Toast = { id: ++toastId, text, tone: opts.tone, action: opts.action };
   set((s) => ({ toasts: [...s.toasts.slice(-2), t] }));
   setTimeout(() => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== t.id) })), opts.action ? 6000 : 3200);
@@ -130,7 +160,7 @@ export function stopTimer() {
 export function tickTimer(now: number, onDone: (label: string) => void) {
   const t = get().timer;
   if (t && now >= t.endsAt) {
-    set({ timer: null });
+    set((s) => ({ timer: null, pulse: { ...s.pulse, timer: s.pulse.timer + 1 } }));
     onDone(t.label);
   }
 }

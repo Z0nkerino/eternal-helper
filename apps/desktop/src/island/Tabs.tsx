@@ -1,16 +1,18 @@
 // The panel's tab bar: icons with a label on hover (the active tab shows its label in the pill),
 // placed on top, at the bottom or as a side column. Too many tabs scroll sideways with faded edges.
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { ExternalLink, X } from 'lucide-react';
 import { springs } from '@eternal/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MODULES } from '../modules';
-import { useT } from '../lib/i18n';
+import { useT, useTr } from '../lib/i18n';
+import { call } from '../lib/ipc';
 import { closePanel, openPanel, useApp } from '../lib/store';
 import type { TabsPosition } from '../lib/safeArea';
 
 export function Tabs({ position }: { position: TabsPosition }) {
   const t = useT();
+  const tr = useTr();
   const tab = useApp((s) => s.tab);
   const scroller = useRef<HTMLDivElement>(null);
   const [fade, setFade] = useState({ start: false, end: false });
@@ -104,6 +106,14 @@ export function Tabs({ position }: { position: TabsPosition }) {
           {tip.label}
         </span>
       )}
+      <button
+        className="icon-btn tab-popout"
+        aria-label={tr('Open in a window', 'Открыть в отдельном окне')}
+        title={tr('Open in a window', 'Открыть в отдельном окне')}
+        onClick={() => (closePanel(), void call('open_window', { kind: tab }))}
+      >
+        <ExternalLink size={15} />
+      </button>
       <button className="icon-btn tab-close" aria-label={t('close')} onClick={closePanel}>
         <X size={16} />
       </button>

@@ -122,6 +122,11 @@ pub fn style_island(w: &tauri::WebviewWindow) {
     }
 }
 
+/// Cloudy's overlay gets the same tool-window, never-activate styles as the island.
+pub fn style_overlay(w: &tauri::WebviewWindow) {
+    style_island(w);
+}
+
 /// The island is WS_EX_NOACTIVATE so clicks never steal focus; while the panel is open and the user
 /// may type (Afina, text tools) we drop the flag and take focus, then restore it on collapse.
 pub fn set_activatable(w: &tauri::WebviewWindow, on: bool) {

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-afina-ask"
+description = "Enables the afina_ask command without any pre-configured scope."
+commands.allow = ["afina_ask"]
+
+[[permission]]
+identifier = "deny-afina-ask"
+description = "Denies the afina_ask command without any pre-configured scope."
+commands.deny = ["afina_ask"]

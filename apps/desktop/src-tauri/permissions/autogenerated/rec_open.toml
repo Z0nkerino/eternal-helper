@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-rec-open"
+description = "Enables the rec_open command without any pre-configured scope."
+commands.allow = ["rec_open"]
+
+[[permission]]
+identifier = "deny-rec-open"
+description = "Denies the rec_open command without any pre-configured scope."
+commands.deny = ["rec_open"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-rec-append"
+description = "Enables the rec_append command without any pre-configured scope."
+commands.allow = ["rec_append"]
+
+[[permission]]
+identifier = "deny-rec-append"
+description = "Denies the rec_append command without any pre-configured scope."
+commands.deny = ["rec_append"]

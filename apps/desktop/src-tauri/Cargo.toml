@@ -1,6 +1,6 @@
 [package]
 name = "eternal-helper"
-version = "0.1.1"
+version = "0.2.0"
 description = "Eternal Helper — a dynamic island for Windows and macOS"
 authors = ["Eternal Inc."]
 edition = "2021"
@@ -30,6 +30,7 @@ log = "0.4"
 reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "native-tls"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 base64 = "0.22"
+sha2 = "0.10"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -43,6 +44,7 @@ windows = { version = "0.58", features = [
   "Win32_UI_WindowsAndMessaging",
   "Win32_Foundation",
   "Win32_System_WinRT",
+  "Win32_System_Power",
 ] }
 
 [target.'cfg(target_os = "macos")'.dependencies]

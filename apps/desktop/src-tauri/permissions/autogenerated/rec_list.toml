@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-rec-list"
+description = "Enables the rec_list command without any pre-configured scope."
+commands.allow = ["rec_list"]
+
+[[permission]]
+identifier = "deny-rec-list"
+description = "Denies the rec_list command without any pre-configured scope."
+commands.deny = ["rec_list"]

@@ -5,6 +5,7 @@ import { Orb } from '../afina/Orb';
 import { send, useChat } from '../afina/chat';
 import { useT } from '../lib/i18n';
 import { useApp } from '../lib/store';
+import { Rich } from '../lib/emoji';
 
 export function AfinaTab() {
   const t = useT();
@@ -48,7 +49,9 @@ export function AfinaTab() {
           <motion.div key={b.id} className={`bubble-msg ${b.role} ${b.error ? 'error' : ''}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
             {b.role === 'assistant' && <Orb size={16} />}
             <div>
-              <div className="msg-text">{b.text}</div>
+              <div className="msg-text">
+                <Rich text={b.text} />
+              </div>
               {b.chips && i === bubbles.length - 1 && (
                 <div className="chips">
                   {b.chips.map((c) => (

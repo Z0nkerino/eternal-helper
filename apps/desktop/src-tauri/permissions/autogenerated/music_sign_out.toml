@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-music-sign-out"
+description = "Enables the music_sign_out command without any pre-configured scope."
+commands.allow = ["music_sign_out"]
+
+[[permission]]
+identifier = "deny-music-sign-out"
+description = "Denies the music_sign_out command without any pre-configured scope."
+commands.deny = ["music_sign_out"]

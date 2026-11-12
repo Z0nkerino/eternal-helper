@@ -10,17 +10,21 @@ import { Bubble, PillContent, useActivities } from './Pill';
 import { Tabs } from './Tabs';
 import { NotchStrip } from './NotchStrip';
 import { SafeAreaOverlay } from './SafeAreaOverlay';
+import { Rich } from '../lib/emoji';
+import { recentTracks } from '../lib/recent';
 
 const PANEL_W = 720;
 /** Each tab gets the height it needs; the island springs between them. */
-const PANEL_H: Record<Tab, number> = { home: 336, afina: 470, planner: 420, videos: 420, text: 360, settings: 476 };
+const PANEL_H: Record<Tab, number> = { home: 372, afina: 470, planner: 420, videos: 420, text: 360, weather: 476, settings: 476 };
 
 /** Normal top padding of the open panel when there's no notch to clear. */
 const PANEL_PAD = 10;
 
 function useSize(activity: boolean, notch: { width: number; height: number } | null, panel: boolean, tab: Tab, p: PanelLayout) {
   // On a notched display the panel grows by the info strip, so the content keeps its full height below it.
-  if (panel) return { w: PANEL_W, h: PANEL_H[tab] + (p.notch ? p.contentTop - PANEL_PAD : 0), r: 28 };
+  // Home grows by one row when there's a "Recently played" strip to show.
+  const extra = tab === 'home' && recentTracks().length > 1 ? 88 : 0;
+  if (panel) return { w: PANEL_W, h: PANEL_H[tab] + extra + (p.notch ? p.contentTop - PANEL_PAD : 0), r: 28 };
   // Pill "wings" either side of the notch, wide enough for the clock and weather.
   if (notch) return { w: notch.width + (activity ? 260 : 200), h: Math.max(32, notch.height), r: 14 };
   return activity ? { w: 290, h: 38, r: 19 } : { w: 200, h: 34, r: 17 };
@@ -89,7 +93,9 @@ function Toasts({ innerRef }: { innerRef: React.RefObject<HTMLDivElement> }) {
             exit={{ opacity: 0, y: -12, scale: 0.94 }}
             transition={springs.soft}
           >
-            <span>{x.text}</span>
+            <span>
+              <Rich text={x.text} />
+            </span>
             {x.action && (
               <button
                 className="toast-action"
@@ -117,7 +123,10 @@ export function Island() {
   const notch = layout?.notch ?? null;
   const tabsPref = useApp((s) => s.settings?.tabsPosition);
   const debug = useApp((s) => !!s.settings?.debugSafeAreas);
-  const size = useSize(activities.length > 0, notch, panel, tab, panelLayout(layout, tabsPref, PANEL_W));
+  const radiusScale = useApp((s) => s.settings?.radius ?? 1);
+  const tinted = useApp((s) => s.tab === 'home' && !!s.media?.artwork);
+  const baseSize = useSize(activities.length > 0, notch, panel, tab, panelLayout(layout, tabsPref, PANEL_W));
+  const size = { ...baseSize, r: Math.round(baseSize.r * radiusScale) };
   const p = panelLayout(layout, tabsPref, size.w);
   const islandRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -144,7 +153,7 @@ export function Island() {
       <div className="island-row">
         <motion.div
           ref={islandRef}
-          className={`island ${panel ? 'open' : ''} ${notch && !panel ? 'notch' : ''}`}
+          className={`island ${panel ? 'open' : ''} ${notch && !panel ? 'notch' : ''} ${panel && tinted ? 'tinted' : ''}`}
           initial={false}
           animate={{ width: size.w, height: size.h, borderRadius: notch && !panel ? `0px 0px ${size.r}px ${size.r}px` : size.r }}
           transition={springs.island}

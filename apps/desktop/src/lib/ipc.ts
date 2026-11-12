@@ -1,7 +1,7 @@
 // Typed bridge to the Rust side. Outside Tauri (plain `vite` in a browser) a small mock answers, so the
 // UI can be developed and screenshot-tested without the desktop shell.
 import { invoke as tauriInvoke, type InvokeOptions } from '@tauri-apps/api/core';
-import { listen as tauriListen } from '@tauri-apps/api/event';
+import { emit as tauriEmit, listen as tauriListen } from '@tauri-apps/api/event';
 
 export const inTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
@@ -19,7 +19,19 @@ export interface Settings {
   planner: { enabled: boolean; port: number; token: string; backupDir: string };
   afina: { enabled: boolean; provider: 'anthropic' | 'openai' | 'ollama' | 'off'; model: string; baseUrl: string };
   recording: { audio: 'none' | 'system' | 'system+mic'; folder: string };
+  // UI-only preferences (stored by Rust as-is; defaults in lib/defaults.ts)
+  theme: 'classic' | 'glass' | 'neon' | 'minimal';
+  /** Corner roundness multiplier, 0.5 … 1.4. */
+  radius: number;
+  carousel: { enabled: boolean; interval: number; items: CarouselItem[] };
+  currency: { pairs: [string, string][] };
+  clocks: { tz: string; city: string }[];
+  cloudy: { enabled: boolean; size: number; speed: number; chatter: 'never' | 'rare' | 'normal' | 'often' };
+  music: { startHidden: string[] };
+  updates: { auto: boolean };
 }
+
+export type CarouselItem = 'time' | 'event' | 'battery' | 'currency' | 'track';
 
 export interface MediaInfo {
   title: string;
@@ -77,6 +89,39 @@ export interface Recording {
   createdAt: number;
 }
 
+export interface Battery {
+  present: boolean;
+  percent: number;
+  charging: boolean;
+  plugged: boolean;
+}
+
+export interface UpdateInfo {
+  current: string;
+  latest: string;
+  available: boolean;
+  notes: string;
+  asset: { url: string; sha256: string; size: number } | null;
+}
+
+export interface MusicService {
+  id: 'spotify' | 'yandex' | 'soundcloud';
+  name: string;
+  open: boolean;
+  visible: boolean;
+}
+
+export interface MusicReport {
+  service: MusicService['id'];
+  title: string;
+  artist: string;
+  album: string;
+  artwork: string | null;
+  playing: boolean;
+  positionMs: number | null;
+  durationMs: number | null;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -107,6 +152,15 @@ interface Commands {
   rec_delete: [{ path: string }, void];
   rec_open: [{ path: string; reveal: boolean }, void];
   rec_open_folder: [void, void];
+  open_window: [{ kind: string }, void];
+  battery: [void, Battery];
+  update_check: [void, UpdateInfo];
+  update_install: [void, void];
+  music_services: [void, MusicService[]];
+  music_open: [{ service: string; show: boolean }, void];
+  music_hide: [{ service: string }, void];
+  music_control: [{ service: string; action: 'toggle' | 'next' | 'previous' }, void];
+  music_sign_out: [void, void];
   quit: [void, void];
 }
 
@@ -120,6 +174,11 @@ export function appendChunk(id: string, bytes: Uint8Array) {
   if (!inTauri) return Promise.resolve();
   const opts: InvokeOptions = { headers: { 'x-rec-id': id } };
   return tauriInvoke('rec_append', bytes, opts);
+}
+
+/** Sends an app-wide event to every window (e.g. Cloudy asking the island to open Afina). */
+export function emitEvent(event: string, payload?: unknown) {
+  return inTauri ? tauriEmit(event, payload) : Promise.resolve();
 }
 
 export function listen<T>(event: string, cb: (payload: T) => void): () => void {
@@ -170,7 +229,7 @@ const mockSettings: Settings = {
   planner: { enabled: true, port: 45123, token: 'demo-token', backupDir: '' },
   afina: { enabled: true, provider: 'anthropic', model: 'claude-opus-5-5', baseUrl: '' },
   recording: { audio: 'system', folder: '' },
-};
+} as Settings;
 const mockRecs: Recording[] = [
   { id: 'r1', title: 'Recording 2026-11-11 10-02-11', path: '/Videos/Eternal Helper/a.mp4', size: 18_400_000, durationMs: 74_000, createdAt: Date.now() - 3_600_000 },
 ];
@@ -208,6 +267,16 @@ async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
       return mockRecs;
     case 'rec_begin':
       return 'mock';
+    case 'battery':
+      return { present: true, percent: 76, charging: false, plugged: false } satisfies Battery;
+    case 'update_check':
+      return { current: '0.2.0', latest: '0.2.0', available: false, notes: '', asset: null } satisfies UpdateInfo;
+    case 'music_services':
+      return [
+        { id: 'spotify', name: 'Spotify', open: false, visible: false },
+        { id: 'yandex', name: 'Yandex Music', open: false, visible: false },
+        { id: 'soundcloud', name: 'SoundCloud', open: false, visible: false },
+      ] satisfies MusicService[];
     default:
       return undefined;
   }

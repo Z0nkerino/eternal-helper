@@ -1,0 +1,21 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "music-players",
+  "description": "Music web players may only report what's playing",
+  "windows": [
+    "music-spotify",
+    "music-yandex",
+    "music-soundcloud"
+  ],
+  "remote": {
+    "urls": [
+      "https://open.spotify.com/*",
+      "https://music.yandex.ru/*",
+      "https://music.yandex.com/*",
+      "https://soundcloud.com/*"
+    ]
+  },
+  "permissions": [
+    "allow-music-report"
+  ]
+}

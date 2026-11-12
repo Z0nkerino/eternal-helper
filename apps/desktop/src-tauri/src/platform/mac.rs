@@ -101,6 +101,18 @@ pub fn style_island(w: &tauri::WebviewWindow) {
     });
 }
 
+/// Cloudy's desktop overlay: floats above normal windows on every Space, below menus and the island.
+pub fn style_overlay(w: &tauri::WebviewWindow) {
+    let Ok(ptr) = w.ns_window() else { return };
+    let ptr = ptr as usize;
+    let _ = w.run_on_main_thread(move || {
+        let win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
+        win.setLevel(3); // NSFloatingWindowLevel
+        win.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::Stationary | NSWindowCollectionBehavior::IgnoresCycle);
+        win.setHasShadow(false);
+    });
+}
+
 pub fn set_activatable(w: &tauri::WebviewWindow, on: bool) {
     if on {
         let _ = w.set_focus();

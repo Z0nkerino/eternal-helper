@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-rec-begin"
+description = "Enables the rec_begin command without any pre-configured scope."
+commands.allow = ["rec_begin"]
+
+[[permission]]
+identifier = "deny-rec-begin"
+description = "Denies the rec_begin command without any pre-configured scope."
+commands.deny = ["rec_begin"]

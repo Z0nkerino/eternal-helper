@@ -1,12 +1,13 @@
 // What the closed island shows: the clock and weather at rest, or the most important live activity.
-import { Music, Pause, Play, Square, Timer, Video } from 'lucide-react';
+import { Music, Pause, Play, Square, Timer } from 'lucide-react';
 import { colors } from '@eternal/ui';
 import { Orb } from '../afina/Orb';
 import { useT } from '../lib/i18n';
 import { recElapsed, stopTimer, useApp } from '../lib/store';
 import { pauseRecording, stopRecording } from '../lib/recorder';
-import { call } from '../lib/ipc';
-import { Equalizer, Ring, WeatherIcon, fmtClock, useNow } from './bits';
+import { mediaControl } from '../lib/music';
+import { Carousel } from './Carousel';
+import { Equalizer, Ring, fmtClock, useNow } from './bits';
 
 export type ActivityId = 'rec' | 'timer' | 'afina' | 'planner' | 'media';
 
@@ -28,7 +29,7 @@ export function useActivities(): ActivityId[] {
 
 const stop = (e: React.MouseEvent) => e.stopPropagation();
 
-function Wings({ left, right, notch }: { left: React.ReactNode; right: React.ReactNode; notch: number }) {
+export function Wings({ left, right, notch }: { left: React.ReactNode; right: React.ReactNode; notch: number }) {
   return (
     <div className="pill-row">
       <div className="pill-side left">{left}</div>
@@ -130,7 +131,7 @@ export function PillContent({ activity, notch }: { activity: ActivityId | undefi
         }
         right={
           <>
-            <button className="pill-btn ghost" onClick={(e) => (stop(e), void call('media_control', { action: 'toggle' }))} aria-label="Play/Pause">
+            <button className="pill-btn ghost" onClick={(e) => (stop(e), void mediaControl('toggle'))} aria-label="Play/Pause">
               {m.playing ? <Pause size={12} /> : <Play size={12} />}
             </button>
             <Equalizer playing={m.playing} color={colors.accent2} />
@@ -140,31 +141,8 @@ export function PillContent({ activity, notch }: { activity: ActivityId | undefi
     );
   }
 
-  // At rest: Afina, the clock, the weather.
-  const time = new Date(now).toLocaleTimeString(t.lang === 'ru' ? 'ru-RU' : 'en-US', { hour: '2-digit', minute: '2-digit' });
-  return (
-    <Wings
-      notch={notch}
-      left={
-        <>
-          <Orb size={14} />
-          <span className="mono">{time}</span>
-        </>
-      }
-      right={
-        s.weather ? (
-          <>
-            <WeatherIcon code={s.weather.code} lang={t.lang} />
-            <span className="mono">{s.weather.temp}°</span>
-          </>
-        ) : s.rec.status === 'idle' && s.media ? (
-          <Equalizer playing={false} />
-        ) : (
-          <Video size={13} className="faint" />
-        )
-      }
-    />
-  );
+  // At rest: a carousel of mini widgets (time + weather, next event, battery, currency, track).
+  return <Carousel notch={notch} />;
 }
 
 /** The second activity, as a small round bubble beside the pill. */

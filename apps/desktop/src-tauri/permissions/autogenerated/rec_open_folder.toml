@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-rec-open-folder"
+description = "Enables the rec_open_folder command without any pre-configured scope."
+commands.allow = ["rec_open_folder"]
+
+[[permission]]
+identifier = "deny-rec-open-folder"
+description = "Denies the rec_open_folder command without any pre-configured scope."
+commands.deny = ["rec_open_folder"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-rec-native-stop"
+description = "Enables the rec_native_stop command without any pre-configured scope."
+commands.allow = ["rec_native_stop"]
+
+[[permission]]
+identifier = "deny-rec-native-stop"
+description = "Denies the rec_native_stop command without any pre-configured scope."
+commands.deny = ["rec_native_stop"]

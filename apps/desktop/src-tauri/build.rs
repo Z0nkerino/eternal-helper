@@ -1,3 +1,44 @@
 fn main() {
-    tauri_build::build()
+    // Every app command is listed here so access is granted per window in capabilities/: the island and
+    // app windows get all of them; the music web players get only `music_report`.
+    let commands = &[
+        "get_settings",
+        "set_settings",
+        "island_layout",
+        "island_set_hit",
+        "island_set_expanded",
+        "media_now",
+        "media_control",
+        "planner_info",
+        "planner_snapshot",
+        "planner_open",
+        "secret_set",
+        "secret_has",
+        "afina_ask",
+        "rec_info",
+        "rec_begin",
+        "rec_append",
+        "rec_finish",
+        "rec_cancel",
+        "rec_native_start",
+        "rec_native_stop",
+        "rec_list",
+        "rec_rename",
+        "rec_delete",
+        "rec_open",
+        "rec_open_folder",
+        "open_window",
+        "battery",
+        "update_check",
+        "update_install",
+        "music_services",
+        "music_open",
+        "music_hide",
+        "music_control",
+        "music_sign_out",
+        "music_report",
+        "quit",
+    ];
+    tauri_build::try_build(tauri_build::Attributes::new().app_manifest(tauri_build::AppManifest::new().commands(commands)))
+        .expect("failed to run tauri-build");
 }

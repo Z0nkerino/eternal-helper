@@ -22,6 +22,10 @@ pub struct Settings {
     pub planner: PlannerSettings,
     pub afina: AfinaSettings,
     pub recording: RecordingSettings,
+    /// UI-only preferences (theme, pill carousel, currencies, world clocks, Cloudy, music, updates…).
+    /// Kept as-is so the UI can add settings without a Rust change; Rust reads the few it needs.
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -82,6 +86,7 @@ impl Default for Settings {
             planner: PlannerSettings::default(),
             afina: AfinaSettings::default(),
             recording: RecordingSettings::default(),
+            extra: serde_json::Map::new(),
         }
     }
 }
@@ -156,6 +161,15 @@ mod tests {
         assert_eq!(s.planner.port, 45000);
         assert!(s.planner.token.len() == 24, "missing token gets generated");
         assert_eq!(s.hotkey, "Alt+Space");
+    }
+
+    #[test]
+    fn keeps_unknown_ui_settings() {
+        let s: Settings = serde_json::from_str(r#"{"theme":"glass","cloudy":{"enabled":false}}"#).unwrap();
+        assert_eq!(s.extra["theme"], "glass");
+        let back = serde_json::to_value(&s).unwrap();
+        assert_eq!(back["cloudy"]["enabled"], false);
+        assert_eq!(back["hotkey"], "Alt+Space");
     }
 
     #[test]
