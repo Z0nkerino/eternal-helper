@@ -51,6 +51,7 @@ fn main() {
         "afina_find_files",
         "afina_find_text",
         "afina_open",
+        "afina_launch",
         "ai_services",
         "ai_open",
         "open_url",

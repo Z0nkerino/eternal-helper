@@ -176,6 +176,46 @@ fn spawn_hit_test(app: AppHandle) {
     });
 }
 
+/// "Full access" (granted by the user in the app): the island stays above everything, fullscreen apps
+/// included, and Afina may open apps. Stored as `fullAccess.granted` in the settings.
+pub fn full_access(s: &Settings) -> bool {
+    s.extra.get("fullAccess").and_then(|v| v.get("granted")).and_then(|v| v.as_bool()).unwrap_or(false)
+}
+
+/// Windows: reads the speakers' peak level while music plays and sends it to the island and Cloudy
+/// (`audio://level`, ~25 times a second), so they can move with the beat. Idle when nothing plays.
+#[cfg(windows)]
+fn spawn_audio_watch(app: AppHandle) {
+    std::thread::spawn(move || {
+        let mut meter: Option<syscontrol::Meter> = None;
+        let mut retry = 0u32;
+        loop {
+            let playing = app.state::<AppState>().last_media.lock().unwrap().as_ref().is_some_and(|m| m.playing);
+            let wanted = app.state::<AppState>().settings.get().extra.get("liquid").and_then(|v| v.get("beat")).and_then(|v| v.as_bool()).unwrap_or(true);
+            if !playing || !wanted {
+                std::thread::sleep(Duration::from_millis(500));
+                continue;
+            }
+            if meter.is_none() {
+                if retry > 0 {
+                    retry -= 1;
+                } else {
+                    meter = syscontrol::Meter::open();
+                    retry = 50; // the default speakers can change: try again in ~2 s if it failed
+                }
+            }
+            match meter.as_ref().and_then(|m| m.peak()) {
+                Some(p) => {
+                    let _ = app.emit_to("island", "audio://level", p);
+                    let _ = app.emit_to(cloudy::LABEL, "audio://level", p);
+                }
+                None => meter = None,
+            }
+            std::thread::sleep(Duration::from_millis(40));
+        }
+    });
+}
+
 /// Once a second: hide in fullscreen apps, follow the cursor's monitor.
 fn spawn_screen_watch(app: AppHandle) {
     std::thread::spawn(move || {
@@ -189,7 +229,9 @@ fn spawn_screen_watch(app: AppHandle) {
             let Some(w) = island(&app) else { continue };
             let st = app.state::<AppState>();
             let s = st.settings.get();
-            let full = s.hide_in_fullscreen && detector.fullscreen_active();
+            let priority = full_access(&s);
+            // With full access the island never hides for fullscreen apps: it is always there.
+            let full = s.hide_in_fullscreen && !priority && detector.fullscreen_active();
             // Act only after two identical readings in a row, so a single odd reading never makes the
             // island blink.
             streak = if full != hidden_for_fullscreen { streak.saturating_add(1) } else { 0 };
@@ -216,7 +258,10 @@ fn spawn_screen_watch(app: AppHandle) {
             // monitor plugged in) so the notch-safe layout always matches the current screen.
             place(&app, &w);
             tick = tick.wrapping_add(1);
-            if tick % 5 == 0 && app.get_webview_window(cloudy::LABEL).is_some() {
+            if priority {
+                // Re-assert the top spot every second, so other always-on-top windows can't cover it.
+                platform::raise_topmost(&w);
+            } else if tick % 5 == 0 && app.get_webview_window(cloudy::LABEL).is_some() {
                 cloudy::keep_island_on_top(&app);
             }
         }
@@ -305,6 +350,11 @@ fn apply_settings(app: &AppHandle, value: Settings) -> Result<Settings, String> 
     let cloud_on = cloudy::enabled(&value);
     if cloud_on != cloudy::enabled(&old) {
         cloudy::sync(app, cloud_on);
+    }
+    if full_access(&value) != full_access(&old) {
+        if let Some(w) = island(app) {
+            platform::set_priority(&w, full_access(&value));
+        }
     }
     if value.monitor != old.monitor {
         if let Some(w) = island(app) {
@@ -703,6 +753,15 @@ async fn afina_find_text(app: AppHandle, query: String) -> Result<Vec<afina_tool
     tauri::async_runtime::spawn_blocking(move || afina_tools::find_text(&afina_tools::roots(), &query, 10)).await.map_err(|e| e.to_string())
 }
 
+/// Opens an app by name ("Spotify", "Calculator"). Only with full access.
+#[tauri::command]
+async fn afina_launch(app: AppHandle, name: String) -> Result<(), String> {
+    if !full_access(&app.state::<AppState>().settings.get()) {
+        return Err("full-access".into());
+    }
+    tauri::async_runtime::spawn_blocking(move || syscontrol::launch(&name)).await.map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 fn afina_open(app: AppHandle, path: String, reveal: bool) -> Result<(), String> {
     tools_allowed(&app)?;
@@ -904,6 +963,7 @@ pub fn run() {
 
             if let Some(w) = island(&handle) {
                 platform::style_island(&w);
+                platform::set_priority(&w, full_access(&app.state::<AppState>().settings.get()));
                 place(&handle, &w);
             }
             // The island appears once its page has drawn (no empty-window flash on Windows).
@@ -911,6 +971,8 @@ pub fn run() {
             cloudy::sync(&handle, cloudy::enabled(&s));
             spawn_hit_test(handle.clone());
             spawn_screen_watch(handle.clone());
+            #[cfg(windows)]
+            spawn_audio_watch(handle.clone());
             spawn_media_watch(handle);
             Ok(())
         })
@@ -964,6 +1026,7 @@ pub fn run() {
             afina_find_files,
             afina_find_text,
             afina_open,
+            afina_launch,
             ai_services,
             ai_open,
             open_url,

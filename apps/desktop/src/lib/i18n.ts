@@ -4,6 +4,7 @@ import { useApp } from './store';
 const ru = {
   'tab.home': 'Главная',
   'tab.music': 'Музыка',
+  'access.granted': 'Полный доступ включён — остров всегда на месте',
   'tab.afina': 'Afina',
   'tab.planner': 'Планер',
   'tab.videos': 'Записи',
@@ -12,7 +13,7 @@ const ru = {
   'tab.weather': 'Погода',
   'tab.library': 'Библиотека',
   'shot.saved': 'Скриншот сохранён',
-  'rel.welcome': 'Beta 0.3.0 «Sunrise»: вкладка «Музыка», виджеты на Главной и новый Cloudy',
+  'rel.welcome': 'Beta 0.3.1 «Sunrise»: остров из жидкого стекла и новый Cloudy',
   'rel.play': 'Включить «Sunrise»',
   'upd.available': 'Доступна новая версия',
   'upd.install': 'Обновить',
@@ -116,6 +117,7 @@ export type Key = keyof typeof ru;
 const en: Record<Key, string> = {
   'tab.home': 'Home',
   'tab.music': 'Music',
+  'access.granted': 'Full access is on — the island is always there',
   'tab.afina': 'Afina',
   'tab.planner': 'Planner',
   'tab.videos': 'Videos',
@@ -124,7 +126,7 @@ const en: Record<Key, string> = {
   'tab.weather': 'Weather',
   'tab.library': 'Library',
   'shot.saved': 'Screenshot saved',
-  'rel.welcome': 'Beta 0.3.0 “Sunrise”: a Music tab, widgets on Home and a new Cloudy',
+  'rel.welcome': 'Beta 0.3.1 “Sunrise”: a liquid-glass island and a new Cloudy',
   'rel.play': 'Play “Sunrise”',
   'upd.available': 'A new version is available:',
   'upd.install': 'Update',

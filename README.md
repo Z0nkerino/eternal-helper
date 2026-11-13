@@ -23,6 +23,16 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.3.1 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **Liquid glass island** | The island leans toward your cursor and swells under it. When you press it, it squishes and a ripple of light spreads from your finger. Opening, closing, switching tabs and the hotkey make it wobble like gel. While music plays it **pulses with the beat**: on Windows it follows your speakers' real sound, and elsewhere it uses Eternal Radio's levels or a gentle simulated beat. |
+| **Cloudy, minimal** | A clean three-bump cloud with big black rounded-rectangle eyes and a small mouth. New moves: head tilt, shake-off, a wide stretch and looking up. He bounces to the beat. Wiggle the cursor at him and he gets dizzy. When you're idle his eyes wander around, and he glances up (sometimes waves) when the island opens. |
+| **Full access (your choice)** | One clear screen explains it, and nothing changes until you tap **Allow**: the island stays on top of everything (fullscreen apps too) and never hides, it starts with your computer, and Afina can open apps ("open Spotify"). Turn it off any time in Settings → Full access & motion. |
+| **Hotkey → Home** | Alt+Space (⌥Space) opens Home; press again to close. |
+| **Developer notice** | At start the island shows news and updates from Eternal Inc., read from `NEWS.json` in this repository so news can be posted without a release. It can be turned off. |
+
 ## Beta 0.3.0 — “Sunrise” 🌅
 
 | What | Details |
@@ -63,7 +73,7 @@ New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and pu
 | Area | What works |
 | --- | --- |
 | **Island** | Frameless, transparent, always-on-top window, hidden from the taskbar / Dock, on every desktop / Space. Clicks pass through everywhere except the pill. It springs between rest → live activity → panel; a second activity shows as a side bubble. Toasts slide out from under it. On a MacBook with a notch the pill grows out of the notch. |
-| **Afina** | Built into the island (tab + orb in the pill, global shortcut **Alt+Space / ⌥Space**). She handles these herself, in Russian and English: today's Planner tasks, the next event, time/date, weather, timers and focus sessions, starting and stopping screen recordings, maths, fixing the keyboard layout and do-not-disturb. Anything else goes to a language model with **your own key**: Claude (default `claude-opus-5-5`), any OpenAI-compatible API, or a local Ollama. Keys are stored in the system keychain. |
+| **Afina** | Built into the island (its own tab and an orb in the pill; the global shortcut **Alt+Space / ⌥Space** opens Home). She handles these herself, in Russian and English: today's Planner tasks, the next event, time/date, weather, timers and focus sessions, starting and stopping screen recordings, maths, fixing the keyboard layout and do-not-disturb. Anything else goes to a language model with **your own key**: Claude (default `claude-opus-5-5`), any OpenAI-compatible API, or a local Ollama. Keys are stored in the system keychain. |
 | **Universal Planner connector** | **Live events:** the Planner's *Webhook → Custom* connector posts to the island's local receiver (`127.0.0.1` only, with a secret token), so finished tasks, new events and so on appear in the pill. **Today's tasks:** the island reads the newest backup from the Planner's *Backup folder* connector and shows today's tasks, what's done and upcoming events, in the Planner tab, on Home and to Afina. Plus an **Open Planner** button, which opens the desktop app or falls back to the web app. |
 | **Screen recording + library** | Record the screen with no sound, with system sound, or with system sound + microphone. Pause/stop from the pill, with a live timer. Videos are saved to `Videos/Eternal Helper` (`Movies` on Mac, or a folder you choose) and listed in the **Videos** tab: open, show in folder, rename, delete. Files you add to the folder by hand show up too. |
 | **Media** | Now playing, with cover art, progress and play/pause/next/previous. Windows: every app that reports to the system (Spotify, browsers, Yandex Music, AIMP…). macOS: Spotify and Apple Music. |
@@ -125,7 +135,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name is *Beta 0.3.0 “Sunrise”*; the build number is 0.5.0 so that in-app updates from earlier builds (up to 0.4.0) still see it as newer.
+- **Version naming:** the public name is *Beta 0.3.1 “Sunrise”*; the build number is 0.5.1 so that in-app updates from earlier builds still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -151,6 +161,14 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.3.1 — «Sunrise» 🌅
+
+- **Остров из жидкого стекла:** тянется к курсору, пружинит при нажатии со световой волной, колышется при открытии и смене вкладок и **двигается в такт музыке** (на Windows — по реальному звуку).
+- **Минималистичный Cloudy:** чистое облачко с большими чёрными глазами-прямоугольниками со скруглёнными углами; качается в ритм, у него кружится голова, если трясти курсором, сам оглядывается и смотрит на остров.
+- **Полный доступ (по твоему решению):** всегда поверх всех окон (даже в полноэкранных приложениях), запуск с системой, Афина открывает приложения. Выключается в Настройках.
+- **Горячая клавиша открывает Главную.**
+- **Новости от разработчика при запуске** (из `NEWS.json` в репозитории).
 
 ## Beta 0.3.0 — «Sunrise» 🌅
 

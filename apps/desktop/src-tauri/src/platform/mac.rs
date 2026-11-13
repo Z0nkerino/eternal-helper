@@ -101,6 +101,24 @@ pub fn style_island(w: &tauri::WebviewWindow) {
     });
 }
 
+/// Full access: lift the island above fullscreen apps (pop-up menu level, shown beside fullscreen
+/// windows); without it, back to the normal level just above the menu bar.
+pub fn set_priority(w: &tauri::WebviewWindow, high: bool) {
+    let Ok(ptr) = w.ns_window() else { return };
+    let ptr = ptr as usize;
+    let _ = w.run_on_main_thread(move || {
+        let win: &NSWindow = unsafe { &*(ptr as *const NSWindow) };
+        let base = NSWindowCollectionBehavior::CanJoinAllSpaces | NSWindowCollectionBehavior::Stationary | NSWindowCollectionBehavior::IgnoresCycle;
+        if high {
+            win.setLevel(101); // NSPopUpMenuWindowLevel
+            win.setCollectionBehavior(base | NSWindowCollectionBehavior::FullScreenAuxiliary);
+        } else {
+            win.setLevel(25);
+            win.setCollectionBehavior(base);
+        }
+    });
+}
+
 /// Cloudy's desktop overlay: floats above normal windows on every Space, below menus and the island.
 pub fn style_overlay(w: &tauri::WebviewWindow) {
     let Ok(ptr) = w.ns_window() else { return };

@@ -1,4 +1,5 @@
-// Cloudy: a simple, clean little cloud — one soft white silhouette, black oval eyes and an oval mouth.
+// Cloudy: a minimal little cloud — one soft white silhouette, two big black rounded-rectangle eyes and a
+// small mouth.
 // The silhouette is made of 16 puffs (one shared gradient, so they merge into a single shape) that can
 // glide into other shapes (see shapes.ts) or scatter like vapour when he dissolves.
 // Every feature is drawn once and only scaled or faded between expressions, so changes are smooth.
@@ -7,16 +8,20 @@ import { SHAPES, scatter, type ShapeId } from './shapes';
 
 export type Expr =
   | 'happy' | 'joy' | 'curious' | 'bored' | 'sleepy' | 'sleep' | 'hungry' | 'eat' | 'love' | 'surprised'
-  | 'scared' | 'think' | 'sad' | 'yawn' | 'shiver' | 'wink' | 'proud' | 'cheeky' | 'tongue';
+  | 'scared' | 'think' | 'sad' | 'yawn' | 'shiver' | 'wink' | 'proud' | 'cheeky' | 'tongue' | 'dizzy' | 'squint';
 
 const INK = '#16181d';
-const EYE_L = 48;
-const EYE_R = 72;
-const EYE_Y = 56;
-const MOUTH_Y = 67;
+const EYE_L = 49;
+const EYE_R = 73;
+const EYE_Y = 57;
+const MOUTH_Y = 69;
+/** Eye size: a tall rectangle with soft, oval corners. */
+const EW = 8.8;
+const EH = 14.6;
+const ER = 4.1;
 
 /** How an eye looks: an open oval (scaled by `open`), a happy ^ arc, or closed (a soft ∪ line). */
-type Eye = 'open' | 'happy' | 'closed';
+type Eye = 'open' | 'happy' | 'closed' | 'dizzy';
 interface Look {
   eyes: [Eye, Eye];
   open: number;
@@ -50,6 +55,8 @@ const LOOKS: Record<Expr, Look> = {
   proud: { eyes: ['happy', 'happy'], open: 1, mouth: [1.1, 0.7] },
   cheeky: { eyes: ['open', 'happy'], open: 1, mouth: [1, 0.85], tongue: true },
   tongue: { eyes: ['happy', 'happy'], open: 1, mouth: [1, 0.9], tongue: true, cheeks: true },
+  dizzy: { eyes: ['dizzy', 'dizzy'], open: 1, mouth: [0.9, 0.6] },
+  squint: { eyes: ['open', 'open'], open: 0.45, mouth: [1.2, 0.5] },
 };
 
 function OneEye({ cx, mode, open, big, dx, dy }: { cx: number; mode: Eye; open: number; big: number; dx: number; dy: number }) {
@@ -57,10 +64,11 @@ function OneEye({ cx, mode, open, big, dx, dy }: { cx: number; mode: Eye; open: 
   return (
     <g className="cf-eye" style={{ transform: `translate(${dx}px, ${dy}px)` }}>
       <g className={mode === 'open' ? 'cf-blink' : ''} style={{ transformOrigin: `${cx}px ${EYE_Y}px` }}>
-        <ellipse className="cf-eye-oval" cx={cx} cy={EYE_Y} rx={3.7} ry={5.1} fill={INK} style={{ ...show('open'), transform: `scale(${big}, ${big * Math.max(0.08, open)})`, transformOrigin: `${cx}px ${EYE_Y}px` }} />
+        <rect className="cf-eye-oval" x={cx - EW / 2} y={EYE_Y - EH / 2} width={EW} height={EH} rx={ER} fill={INK} style={{ ...show('open'), transform: `scale(${big}, ${big * Math.max(0.1, open)})`, transformOrigin: `${cx}px ${EYE_Y}px` }} />
       </g>
-      <path className="cf-line cf-eye-arc" d={`M${cx - 4.6} ${EYE_Y + 1.8} Q${cx} ${EYE_Y - 4.6} ${cx + 4.6} ${EYE_Y + 1.8}`} style={show('happy')} />
-      <path className="cf-line cf-eye-arc" d={`M${cx - 4.6} ${EYE_Y - 0.6} Q${cx} ${EYE_Y + 4} ${cx + 4.6} ${EYE_Y - 0.6}`} style={show('closed')} />
+      <path className="cf-line cf-eye-arc" d={`M${cx - 4.8} ${EYE_Y + 2} Q${cx} ${EYE_Y - 4.8} ${cx + 4.8} ${EYE_Y + 2}`} style={show('happy')} />
+      <path className="cf-line cf-eye-arc" d={`M${cx - 4.8} ${EYE_Y - 0.4} Q${cx} ${EYE_Y + 4.2} ${cx + 4.8} ${EYE_Y - 0.4}`} style={show('closed')} />
+      <rect className="cf-dizzy" x={cx - 3.4} y={EYE_Y - 3.4} width={6.8} height={6.8} rx={1.8} fill="none" stroke={INK} strokeWidth={2.2} style={{ ...show('dizzy'), transformOrigin: `${cx}px ${EYE_Y}px` }} />
     </g>
   );
 }
@@ -75,21 +83,21 @@ function Face({ expr, look }: { expr: Expr; look: { x: number; y: number } }) {
       <OneEye cx={EYE_R} mode={l.eyes[1]} open={l.open} big={l.big ?? 1} dx={dx} dy={dy} />
       <g style={{ transform: `translate(${dx * 0.5}px, ${dy * 0.4}px)` }} className="cf-mouth-wrap">
         <g className={expr === 'eat' ? 'cf-chomp' : ''} style={{ transformOrigin: `60px ${MOUTH_Y}px` }}>
-          <ellipse className="cf-mouth" cx="60" cy={MOUTH_Y} rx="3.4" ry="2.6" fill={INK} style={{ transform: `scale(${l.mouth[0]}, ${l.mouth[1]})`, transformOrigin: `60px ${MOUTH_Y}px` }} />
+          <rect className="cf-mouth" x="57" y={MOUTH_Y - 2} width="6" height="4" rx="2" fill={INK} style={{ transform: `scale(${l.mouth[0]}, ${l.mouth[1]})`, transformOrigin: `60px ${MOUTH_Y}px` }} />
         </g>
         {/* Tongue: tucked away inside the mouth until he sticks it out. */}
-        <path className="cf-tongue" d={`M56.6 ${MOUTH_Y + 0.5} h6.8 v2.6 a3.4 3.4 0 0 1 -6.8 0 Z`} style={{ transform: l.tongue ? 'translateY(0) scaleY(1)' : 'translateY(-2px) scaleY(0)', opacity: l.tongue ? 1 : 0, transformOrigin: `60px ${MOUTH_Y}px` }} />
+        <path className="cf-tongue" d={`M57.4 ${MOUTH_Y + 0.6} h5.2 v2.4 a2.6 2.6 0 0 1 -5.2 0 Z`} style={{ transform: l.tongue ? 'translateY(0) scaleY(1)' : 'translateY(-2px) scaleY(0)', opacity: l.tongue ? 1 : 0, transformOrigin: `60px ${MOUTH_Y}px` }} />
       </g>
       <g className="cf-cheeks" style={{ opacity: l.cheeks ? 1 : 0 }}>
-        <ellipse cx="39" cy="64" rx="4.2" ry="2.4" />
-        <ellipse cx="81" cy="64" rx="4.2" ry="2.4" />
+        <ellipse cx="40" cy="66" rx="3.6" ry="2" />
+        <ellipse cx="82" cy="66" rx="3.6" ry="2" />
       </g>
     </>
   );
 }
 
 const TINTS = {
-  white: ['#ffffff', '#e8eef7'],
+  white: ['#ffffff', '#eef2f8'],
   grey: ['#eef1f5', '#c3cad6'],
   warm: ['#fffdf7', '#f5e6cf'],
   night: ['#f1f3ff', '#cdd3f2'],

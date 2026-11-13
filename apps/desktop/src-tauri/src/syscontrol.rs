@@ -114,7 +114,7 @@ mod imp {
         core::{w, Interface},
         Devices::Radios::{Radio, RadioKind, RadioState},
         Win32::{
-            Media::Audio::{eConsole, eRender, Endpoints::IAudioEndpointVolume, IMMDeviceEnumerator, MMDeviceEnumerator},
+            Media::Audio::{eConsole, eRender, Endpoints::{IAudioEndpointVolume, IAudioMeterInformation}, IMMDeviceEnumerator, MMDeviceEnumerator},
             System::Com::{CoCreateInstance, CoInitializeEx, CLSCTX_ALL, COINIT_MULTITHREADED},
             UI::WindowsAndMessaging::{SendMessageTimeoutW, HWND_BROADCAST, SMTO_ABORTIFHUNG, WM_SETTINGCHANGE},
         },
@@ -127,6 +127,34 @@ mod imp {
             let dev = en.GetDefaultAudioEndpoint(eRender, eConsole)?;
             dev.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None)
         }
+    }
+
+    /// The output's peak meter, for making the island move with the music.
+    pub struct Meter(IAudioMeterInformation);
+    impl Meter {
+        pub fn open() -> Option<Meter> {
+            unsafe {
+                let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+                let en: IMMDeviceEnumerator = CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).ok()?;
+                let dev = en.GetDefaultAudioEndpoint(eRender, eConsole).ok()?;
+                dev.Activate::<IAudioMeterInformation>(CLSCTX_ALL, None).ok().map(Meter)
+            }
+        }
+        /// Current peak, 0..1.
+        pub fn peak(&self) -> Option<f32> {
+            unsafe { self.0.GetPeakValue().ok() }
+        }
+    }
+
+    pub fn launch(name: &str) -> Result<(), String> {
+        use std::os::windows::process::CommandExt;
+        // `name` is validated (letters, digits, spaces, . _ -) so it can sit inside single quotes.
+        std::process::Command::new("powershell")
+            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &format!("Start-Process -FilePath '{name}'")])
+            .creation_flags(0x0800_0000)
+            .status()
+            .map_err(|e| e.to_string())
+            .and_then(|st| if st.success() { Ok(()) } else { Err(format!("Couldn't find an app called “{name}”.")) })
     }
 
     pub fn volume() -> (Option<u8>, Option<bool>) {
@@ -275,6 +303,10 @@ mod imp {
         run("/usr/bin/osascript", &["-e", script]).map(|s| s.trim().to_string())
     }
 
+    pub fn launch(name: &str) -> Result<(), String> {
+        std::process::Command::new("open").args(["-a", name]).status().map_err(|e| e.to_string()).and_then(|st| if st.success() { Ok(()) } else { Err(format!("Couldn't find an app called “{name}”.")) })
+    }
+
     pub fn volume() -> (Option<u8>, Option<bool>) {
         (osa("output volume of (get volume settings)").and_then(|s| s.parse().ok()), osa("output muted of (get volume settings)").map(|s| s == "true"))
     }
@@ -359,6 +391,10 @@ mod imp {
 #[cfg(not(any(windows, target_os = "macos")))]
 mod imp {
     use super::*;
+    pub fn launch(name: &str) -> Result<(), String> {
+        std::process::Command::new("gtk-launch").arg(name).status().map_err(|e| e.to_string()).and_then(|st| if st.success() { Ok(()) } else { Err(format!("Couldn't find an app called “{name}”.")) })
+    }
+
     pub fn volume() -> (Option<u8>, Option<bool>) {
         (Some(50), Some(false))
     }
@@ -412,6 +448,8 @@ mod imp {
     }
 }
 
+#[cfg(windows)]
+pub use imp::Meter;
 pub use imp::{connect, lock, networks, set_bluetooth, set_brightness, set_dark, set_muted, set_volume, set_wifi, sleep};
 
 pub fn read() -> Controls {
@@ -440,6 +478,11 @@ pub fn settings_url(page: &str) -> Option<&'static str> {
         ("display", true) => "x-apple.systempreferences:com.apple.Displays-Settings.extension",
         ("sound", false) => "ms-settings:sound",
         ("sound", true) => "x-apple.systempreferences:com.apple.Sound-Settings.extension",
+        ("accessibility", true) => "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        ("accessibility", false) => "ms-settings:easeofaccess",
+        ("screen", true) => "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+        ("startup", false) => "ms-settings:startupapps",
+        ("startup", true) => "x-apple.systempreferences:com.apple.LoginItems-Settings.extension",
         _ => return None,
     })
 }
@@ -462,5 +505,31 @@ mod tests {
         let x = wlan_profile_xml("A&B <net>", Some("p\"w'd"));
         assert!(x.contains("A&amp;B &lt;net&gt;") && x.contains("p&quot;w&apos;d") && x.contains("WPA2PSK"));
         assert!(wlan_profile_xml("Open", None).contains("<authentication>open</authentication>"));
+    }
+}
+
+/// App names Afina may launch: plain words only, so nothing can be smuggled into the command.
+pub fn valid_app_name(name: &str) -> bool {
+    let n = name.trim();
+    !n.is_empty() && n.len() <= 60 && n.chars().all(|c| c.is_alphanumeric() || " ._-+".contains(c)) && !n.starts_with(['-', '.'])
+}
+
+pub fn launch(name: &str) -> Result<(), String> {
+    if !valid_app_name(name) {
+        return Err("That doesn't look like an app name.".into());
+    }
+    imp::launch(name.trim())
+}
+
+#[cfg(test)]
+mod launch_tests {
+    #[test]
+    fn app_names() {
+        assert!(super::valid_app_name("Spotify"));
+        assert!(super::valid_app_name("Google Chrome"));
+        assert!(!super::valid_app_name("calc; rm -rf"));
+        assert!(!super::valid_app_name("x' ; Remove-Item"));
+        assert!(!super::valid_app_name("-flag"));
+        assert!(!super::valid_app_name(""));
     }
 }

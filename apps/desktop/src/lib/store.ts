@@ -68,6 +68,8 @@ interface AppState {
   pinned: boolean;
   /** When the panel last closed, to reopen on the same tab soon after. */
   closedAt: number;
+  /** A sheet over the panel: the developer notice or the full-access request. */
+  sheet: 'news' | 'access' | null;
   /** Bumped to ask the Afina input to take focus. */
   focusAfina: number;
   /** What the island shows: the system's media session or a signed-in web player, whichever is playing. */
@@ -100,6 +102,7 @@ export const useApp = create<AppState>(() => ({
   libSub: null,
   pinned: false,
   closedAt: 0,
+  sheet: null,
   focusAfina: 0,
   media: null,
   mediaSource: { kind: 'system' },
@@ -132,6 +135,12 @@ export function openPanel(tab?: Tab, opts: { hover?: boolean } = {}) {
   void call('island_set_expanded', { expanded: true, focus: get().pinned });
 }
 
+/** Opens a sheet (developer notice, full-access request) over the panel. */
+export function openSheet(sheet: 'news' | 'access', opts: { hover?: boolean } = {}) {
+  if (get().view !== 'panel') openPanel('home', opts);
+  set({ sheet });
+}
+
 /** Opens a screen inside Library. */
 export function openLibrary(sub: LibSub | null) {
   set({ libSub: sub });
@@ -148,7 +157,7 @@ export function pinPanel() {
 
 export function closePanel() {
   if (get().view === 'idle') return;
-  set({ view: 'idle', pinned: false, closedAt: Date.now() });
+  set({ view: 'idle', pinned: false, closedAt: Date.now(), sheet: null });
   void call('island_set_expanded', { expanded: false });
 }
 

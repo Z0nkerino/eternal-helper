@@ -76,6 +76,21 @@ async function tools(input: string): Promise<boolean> {
     void takeScreenshot();
     return true;
   }
+  const app = text.match(/^(?:open|launch|start|run|открой|запусти|включи приложение)\s+(?:the\s+|app\s+|приложение\s+)?([\p{L}\p{N} ._+-]{2,60})$/iu);
+  if (app && !/(файл|документ|папк|file|document|folder|\.\w{2,4}$|http|www)/i.test(app[1])) {
+    const name = app[1].trim();
+    if (!useApp.getState().settings?.fullAccess?.granted) {
+      push({ role: 'assistant', text: L(`I can open ${name} for you once you give me full access.`, `Я открою ${name}, когда ты дашь мне полный доступ.`), action: { label: L('Give full access…', 'Дать полный доступ…'), run: () => useApp.setState({ sheet: 'access' }) } });
+      return true;
+    }
+    try {
+      await call('afina_launch', { name });
+      push({ role: 'assistant', text: L(`Opening ${name}`, `Открываю ${name}`) });
+    } catch (e) {
+      push({ role: 'assistant', text: String(e), error: true });
+    }
+    return true;
+  }
   const web = text.match(/^(?:найди в интернете|поищи в интернете|загугли|search the web for|google)\s+(.+)$/i);
   if (web) {
     const ru = /[а-яё]/i.test(web[1]);

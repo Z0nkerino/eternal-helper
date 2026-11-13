@@ -69,6 +69,7 @@
     "allow-afina-find-files",
     "allow-afina-find-text",
     "allow-afina-open",
+    "allow-afina-launch",
     "allow-ai-services",
     "allow-ai-open",
     "allow-open-url",

@@ -99,6 +99,9 @@ export function withDefaults(s: Settings): Settings {
     // Home and Settings can never be hidden.
     shotHotkey: typeof x.shotHotkey === 'string' ? x.shotHotkey : 'Alt+Shift+S',
     hoverOpen: x.hoverOpen ?? true,
+    fullAccess: { granted: !!x.fullAccess?.granted, at: x.fullAccess?.at ?? 0 },
+    newsAtStart: x.newsAtStart ?? true,
+    liquid: { enabled: true, beat: true, ...x.liquid },
     homeWidgets: Array.isArray(x.homeWidgets) ? x.homeWidgets.filter((w) => typeof w === 'string').slice(0, 16) : DEFAULT_WIDGET_IDS,
     account: { signedIn: false, name: '', email: '', city: SPB.place, color: '#2f6bff', bio: '', since: 0, ...x.account },
     weather: x.weather?.lat == null ? { ...x.weather, place: SPB.place, lat: SPB.lat, lon: SPB.lon, unit: x.weather?.unit || 'c' } : x.weather,

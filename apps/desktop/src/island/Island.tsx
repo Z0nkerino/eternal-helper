@@ -9,9 +9,12 @@ import { panelLayout, type PanelLayout } from '../lib/safeArea';
 import { Bubble, PillContent, useActivities } from './Pill';
 import { Tabs } from './Tabs';
 import { Boundary } from '../components/Boundary';
+import { Sheet } from './Sheets';
 import { useHomeWidgets } from '../tabs/HomeTab';
 import { homeHeight } from '../home/widgets';
 import { useCoverTint } from '../music/hooks';
+import { startBeat } from '../lib/beat';
+import { useRadio } from '../radio/player';
 import { NotchStrip } from './NotchStrip';
 import { SafeAreaOverlay } from './SafeAreaOverlay';
 import { Rich } from '../lib/emoji';
@@ -26,7 +29,8 @@ const PANEL_PAD = 10;
 
 function useSize(activity: boolean, notch: { width: number; height: number } | null, panel: boolean, tab: MainTab, sub: LibSub | null, p: PanelLayout, homeH: number) {
   // On a notched display the panel grows by the info strip, so the content keeps its full height below it.
-  const h = tab === 'library' && sub ? SUB_H[sub] : tab === 'home' ? homeH : PANEL_H[tab];
+  const sheet = useApp.getState().sheet;
+  const h = sheet ? Math.max(470, tab === 'home' ? homeH : PANEL_H[tab]) : tab === 'library' && sub ? SUB_H[sub] : tab === 'home' ? homeH : PANEL_H[tab];
   if (panel) return { w: PANEL_W, h: h + (p.notch ? p.contentTop - PANEL_PAD : 0), r: 30 };
   // Pill "wings" either side of the notch, wide enough for the clock and weather.
   if (notch) return { w: notch.width + (activity ? 260 : 200), h: Math.max(32, notch.height), r: 14 };
@@ -88,6 +92,9 @@ function Panel({ p }: { p: PanelLayout }) {
         </div>
       </div>
       {p.tabs === 'bottom' && <Tabs position="bottom" />}
+      <AnimatePresence>
+        <Sheet />
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -102,8 +109,8 @@ function Toasts({ innerRef }: { innerRef: React.RefObject<HTMLDivElement> }) {
             key={x.id}
             layout
             className={`toast ${x.tone ?? ''}`}
-            initial={{ opacity: 0, y: -18, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            initial={{ opacity: 0, y: -22, scaleX: 0.55, scaleY: 1.3 }}
+            animate={{ opacity: 1, y: 0, scaleX: 1, scaleY: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.94 }}
             transition={springs.soft}
           >
@@ -192,6 +199,90 @@ function useHoverOpen(islandRef: React.RefObject<HTMLDivElement>, activity: stri
   }, [hoverOpen, islandRef]);
 }
 
+/**
+ * Liquid glass: the island leans toward the cursor, squishes when pressed (with a ripple of light where
+ * you touched), wobbles like gel when it opens, closes or changes tab, and pulses with the music's beat.
+ * Everything runs through CSS variables and individual transform properties, so React never re-renders
+ * for it and it composes with the island's own size spring.
+ */
+function useLiquid(islandRef: React.RefObject<HTMLDivElement>, outerRef: React.RefObject<HTMLDivElement>, beatRef: React.RefObject<HTMLDivElement>) {
+  const view = useApp((s) => s.view);
+  const tab = useApp((s) => s.tab);
+  const on = useApp((s) => (s.settings as unknown as { liquid?: { enabled?: boolean } })?.liquid?.enabled !== false && s.settings?.motion !== 'reduced');
+  // Gel wobble on every change of state.
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el || !on) return;
+    el.classList.remove('gel');
+    void el.offsetWidth;
+    el.classList.add('gel');
+    const id = setTimeout(() => el.classList.remove('gel'), 700);
+    return () => clearTimeout(id);
+  }, [view, tab, on, outerRef]);
+  useEffect(() => {
+    const el = islandRef.current;
+    const outer = outerRef.current;
+    if (!el || !outer || !on) return;
+    let raf = 0;
+    const move = (e: PointerEvent) => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const r = el.getBoundingClientRect();
+        const nx = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (r.width / 2)));
+        const ny = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (r.height / 2)));
+        // An open panel only leans a little; the small pill follows the cursor more.
+        const k = useApp.getState().view === 'panel' ? 0.35 : 1;
+        outer.style.setProperty('--jx', (nx * k).toFixed(3));
+        outer.style.setProperty('--jy', (ny * k).toFixed(3));
+        outer.style.setProperty('--hov', '1');
+      });
+    };
+    const leave = () => {
+      cancelAnimationFrame(raf);
+      outer.style.setProperty('--jx', '0');
+      outer.style.setProperty('--jy', '0');
+      outer.style.setProperty('--hov', '0');
+      outer.style.setProperty('--press', '0');
+    };
+    const down = (e: PointerEvent) => {
+      outer.style.setProperty('--press', '1');
+      const r = el.getBoundingClientRect();
+      const dot = document.createElement('span');
+      dot.className = 'ripple';
+      dot.style.left = `${e.clientX - r.left}px`;
+      dot.style.top = `${e.clientY - r.top}px`;
+      el.appendChild(dot);
+      setTimeout(() => dot.remove(), 750);
+    };
+    const up = () => outer.style.setProperty('--press', '0');
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerleave', leave);
+    el.addEventListener('pointerdown', down);
+    addEventListener('pointerup', up);
+    const offHover = listen<boolean>('island://hover', (h) => !h && leave());
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerleave', leave);
+      el.removeEventListener('pointerdown', down);
+      removeEventListener('pointerup', up);
+      offHover();
+    };
+  }, [islandRef, outerRef, on]);
+  // The beat.
+  useEffect(() => {
+    if (!on) return;
+    return startBeat(() => beatRef.current, {
+      playing: () => !!useApp.getState().media?.playing && useApp.getState().settings?.liquid?.beat !== false,
+      local: () => {
+        if (useApp.getState().mediaSource.kind !== 'radio') return null;
+        const lv = useRadio.getState().levels;
+        return lv.length ? Math.min(1, (lv[0] * 1.4 + lv[1]) / 2) : null;
+      },
+    });
+  }, [beatRef, on]);
+}
+
 /** A soft light that follows the cursor across the island, set through CSS variables (no re-render). */
 function useSheen(ref: React.RefObject<HTMLDivElement>) {
   useEffect(() => {
@@ -215,6 +306,7 @@ export function Island() {
   const view = useApp((s) => s.view);
   const tab = useApp((s) => s.tab);
   const libSub = useApp((s) => s.libSub);
+  useApp((s) => s.sheet); // re-size when a sheet opens or closes
   const rawLayout = useApp((s) => s.layout);
   const uiScale = useApp((s) => s.settings?.uiScale ?? 1);
   // The island may be scaled (Settings → Personalise); the notch keeps its real size, so in the
@@ -242,6 +334,9 @@ export function Island() {
   useHitArea([islandRef, bubbleRef, toastRef]);
   useHoverOpen(islandRef, activities[0]);
   useSheen(islandRef);
+  const outerRef = useRef<HTMLDivElement>(null);
+  const beatRef = useRef<HTMLDivElement>(null);
+  useLiquid(islandRef, outerRef, beatRef);
 
   // Escape closes; clicking anywhere else (the window loses focus) closes too.
   useEffect(() => {
@@ -263,14 +358,14 @@ export function Island() {
       <div className="island-row">
         {/* A soft glow behind the island: breathes in the cover's colour while music plays. */}
         <motion.span className={`island-glow ${playing ? 'music' : ''} ${activities.length ? 'on' : ''} ${panel ? 'open' : ''}`} initial={false} animate={{ width: size.w, height: size.h }} transition={springs.island} aria-hidden />
+        <div className="liquid" ref={outerRef}>
+        <div className={`beat-layer ${playing ? 'on' : ''}`} ref={beatRef}>
         <motion.div
           ref={islandRef}
           className={`island ${panel ? 'open' : ''} ${notch && !panel ? 'notch' : ''} ${panel && tinted ? 'tinted' : ''} ${activities.length ? 'live' : ''}`}
           initial={false}
           animate={{ width: size.w, height: size.h, borderRadius: notch && !panel ? `0px 0px ${size.r}px ${size.r}px` : size.r }}
           transition={springs.island}
-          whileHover={panel ? undefined : { scale: 1.045, y: 1 }}
-          whileTap={panel ? undefined : { scale: 0.97 }}
           onClick={panel ? undefined : () => openPanel(targetFor(activities[0]))}
           role={panel ? 'dialog' : 'button'}
           aria-label="Eternal Helper"
@@ -289,6 +384,8 @@ export function Island() {
             )}
           </AnimatePresence>
         </motion.div>
+        </div>
+        </div>
         <AnimatePresence>
           {second && (
             <motion.div ref={bubbleRef} className="side-bubble" style={{ left: `calc(50% + ${size.w / 2 + 8}px)`, height: size.h, width: size.h }} initial={{ scale: 0, opacity: 0, x: -20 }} animate={{ scale: 1, opacity: 1, x: 0 }} exit={{ scale: 0, opacity: 0, x: -20 }} transition={springs.island} onClick={() => openPanel(targetFor(second))}>

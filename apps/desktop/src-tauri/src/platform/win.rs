@@ -184,6 +184,13 @@ pub fn raise_topmost(w: &tauri::WebviewWindow) {
     }
 }
 
+/// Full access: the island is put back on top right away (and then every second by the screen watch).
+pub fn set_priority(w: &tauri::WebviewWindow, high: bool) {
+    if high {
+        raise_topmost(w);
+    }
+}
+
 pub fn style_island(w: &tauri::WebviewWindow) {
     if let Ok(hwnd) = w.hwnd() {
         let hwnd = HWND(hwnd.0 as _);

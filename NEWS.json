@@ -1,0 +1,23 @@
+{
+  "updated": "2026-11-13",
+  "items": [
+    {
+      "date": "2026-11-13",
+      "tag": "update",
+      "title": "Beta 0.3.1 — liquid glass",
+      "body": "The island now moves like liquid glass: it leans toward your cursor, squishes when you press it and pulses with the beat of your music. Cloudy got a cleaner look with big eyes and plays on his own more."
+    },
+    {
+      "date": "2026-11-13",
+      "tag": "tip",
+      "title": "Your hotkey opens Home",
+      "body": "Press Alt+Space (⌥Space on Mac) to open Home from anywhere. Press it again to close."
+    },
+    {
+      "date": "2026-11-12",
+      "tag": "news",
+      "title": "Music tab and widgets",
+      "body": "Beta 0.3.0 added a Music tab with smooth lyrics and widgets you can arrange on Home. Tap Edit on Home to try it."
+    }
+  ]
+}

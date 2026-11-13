@@ -35,6 +35,12 @@ export interface Settings {
   homeWidgets: string[];
   /** The Eternal account shown in Settings and greetings (kept on this computer). */
   account: Account;
+  /** Granted by the user: always on top (even over fullscreen apps), Afina may open apps. */
+  fullAccess: { granted: boolean; at: number };
+  /** Show the developer notice (news and updates) when the app starts. */
+  newsAtStart: boolean;
+  /** Liquid-glass motion of the island and moving with the music's beat. */
+  liquid: { enabled: boolean; beat: boolean };
   shotHotkey: string;
   recording: { audio: 'none' | 'system' | 'system+mic'; folder: string };
   // UI-only preferences (stored by Rust as-is; defaults in lib/defaults.ts)
@@ -200,6 +206,7 @@ interface Commands {
   wifi_networks: [void, { ssid: string; signal: number; secure: boolean; known: boolean }[]];
   wifi_connect: [{ ssid: string; password: string | null }, void];
   open_system_settings: [{ page: string }, void];
+  afina_launch: [{ name: string }, void];
   afina_find_files: [{ query: string }, FoundFile[]];
   afina_find_text: [{ query: string }, FoundFile[]];
   afina_open: [{ path: string; reveal: boolean }, void];

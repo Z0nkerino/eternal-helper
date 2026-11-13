@@ -15,6 +15,7 @@ import { clampToArea, defaultSpot, heightOf, nextTripIn, planTrip, step, throwVe
 import { cheer, decay, feed, FOODS, loadPet, need, savePet, type FoodId, type Pet } from './pet';
 import { CloudyFace, type Expr, type Tint } from './CloudyFace';
 import { SHAPE_NAMES, SHOW_SHAPES, type ShapeId } from './shapes';
+import { startBeat } from '../lib/beat';
 import { chirp } from './sounds';
 
 export interface MoodSignal {
@@ -37,7 +38,8 @@ export interface CloudyState {
 /** Body animations (CSS classes on the body wrapper). */
 export type Anim =
   | 'idle' | 'lean' | 'joy' | 'squish' | 'dangle' | 'droop' | 'spin' | 'shake' | 'chomp' | 'dance' | 'fly' | 'sleep' | 'wiggle' | 'stretch' | 'nope' | 'hop'
-  | 'boing' | 'inflate' | 'jelly' | 'flip' | 'sneeze' | 'wave' | 'peek-l' | 'peek-r' | 'nuzzle' | 'reach' | 'shiver' | 'morph' | 'yoga' | 'rollover';
+  | 'boing' | 'inflate' | 'jelly' | 'flip' | 'sneeze' | 'wave' | 'peek-l' | 'peek-r' | 'nuzzle' | 'reach' | 'shiver' | 'morph' | 'yoga' | 'rollover'
+  | 'tilt' | 'shakeoff' | 'widen' | 'lookup';
 
 /** Weather and fun effects drawn around him. */
 type Fx = 'rain' | 'snow' | 'rainbow' | 'storm' | null;
@@ -65,6 +67,7 @@ const LINES: Record<string, Line[]> = {
 };
 
 const CHATTER_MIN: Record<Settings['cloudy']['chatter'], number> = { never: 0, rare: 18, normal: 7, often: 3 };
+const hidden0 = (s: MoodSignal | null, c: { enabled?: boolean }) => !!s?.recording || c.enabled === false;
 const isNight = () => {
   const h = new Date().getHours();
   return h >= 23 || h < 6;
@@ -203,7 +206,8 @@ export function CloudyStage() {
   }, []);
 
   // The cursor, a few times a second: where it is, how fast it moves, and how long it has rested.
-  const cursor = useRef({ x: -1, y: -1, t: 0, speed: 0, restSince: 0 });
+  const cursor = useRef({ x: -1, y: -1, t: 0, speed: 0, restSince: 0, dir: 0, flips: [] as number[] });
+  const lastDizzy = useRef(0);
   const lastDodge = useRef(0);
   const lastNuzzle = useRef(0);
   const cursorPlay = useRef<(x: number, y: number, d: number, speed: number) => void>(() => {});
@@ -215,6 +219,12 @@ export function CloudyStage() {
         const moved = c.x < 0 ? 0 : Math.hypot(x - c.x, y - c.y);
         const speed = c.t ? (moved / Math.max(16, now - c.t)) * 1000 : 0;
         if (moved > 3 || c.x < 0) c.restSince = now;
+        // Wiggling the cursor back and forth right next to him makes him dizzy.
+        const dir = Math.sign(x - c.x);
+        if (dir && dir !== c.dir) {
+          c.flips = c.flips.filter((t) => now - t < 1200).concat(now);
+          c.dir = dir;
+        }
         Object.assign(c, { x, y, t: now, speed });
         const b = body.current;
         const cx = b.x + cfg.size / 2;
@@ -427,6 +437,14 @@ export function CloudyStage() {
       kick();
       return;
     }
+    // Shaken around him: dizzy.
+    if (d < cfg.size * 2 && cursor.current.flips.length >= 6 && now - lastDizzy.current > 8000) {
+      lastDizzy.current = now;
+      cursor.current.flips = [];
+      react('dizzy', 'spin', 2200);
+      setTimeout(() => sayText(lang === 'ru' ? 'Голова кружится…' : 'So dizzy…', 1800), 700);
+      return;
+    }
     // A cursor resting right next to him: a happy nuzzle.
     if (d < cfg.size * 1.1 && now - cursor.current.restSince > 1400 && now - lastNuzzle.current > 25_000) {
       lastNuzzle.current = now;
@@ -504,7 +522,7 @@ export function CloudyStage() {
       } else {
         const acts: [Expr, Anim, number][] = [
           ['curious', 'lean', 1800], ['wink', 'wiggle', 1100], ['joy', 'hop', 900], ['proud', 'idle', 1600], ['cheeky', 'wiggle', 1200], ['happy', 'spin', 1300], ['think', 'idle', 1800],
-          ['joy', 'jelly', 1200], ['tongue', 'wiggle', 1600], ['tongue', 'jelly', 1400], ['cheeky', 'hop', 1200], ['happy', 'inflate', 1600], ['joy', 'flip', 1100], ['proud', 'yoga', 2400], ['cheeky', 'rollover', 1400], ['joy', 'wave', 1600], ['happy', 'boing', 1000],
+          ['joy', 'jelly', 1200], ['tongue', 'wiggle', 1600], ['tongue', 'jelly', 1400], ['cheeky', 'hop', 1200], ['happy', 'inflate', 1600], ['joy', 'flip', 1100], ['proud', 'yoga', 2400], ['cheeky', 'rollover', 1400], ['joy', 'wave', 1600], ['happy', 'boing', 1000], ['curious', 'tilt', 1800], ['squint', 'shakeoff', 1300], ['joy', 'widen', 1400], ['tongue', 'tilt', 1600],
         ];
         if (r < 0.4) {
           const [e, a, ms] = pick(acts);
@@ -534,6 +552,35 @@ export function CloudyStage() {
     }, 7_000 + Math.random() * 6_000);
     return () => clearInterval(id);
   }, [n, sleeping, dragging, menu, say, signal]);
+
+  // Moving with the music: --beat on his body follows the speakers (or a gentle simulated beat).
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const playingRef = useRef(false);
+  playingRef.current = !!signal?.playing && !hidden0(signal, cfg);
+  useEffect(() => startBeat(() => bodyRef.current, { playing: () => playingRef.current }), []);
+
+  // When nobody's moving the cursor, his eyes wander around on their own.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (sleeping || dragging || performance.now() - cursor.current.restSince < 3500) return;
+      if (Math.random() < 0.55) setLook({ x: (Math.random() - 0.5) * 1.6, y: (Math.random() - 0.5) * 1.0 });
+      else setLook({ x: 0, y: 0 });
+    }, 2600);
+    return () => clearInterval(id);
+  }, [sleeping, dragging]);
+
+  // The island opening: he glances up at it, and sometimes waves.
+  useEffect(
+    () =>
+      listen<{ open: boolean }>('island://state', ({ open }) => {
+        if (!open || sleeping || body.current.mode !== 'rest' || directed.current) return;
+        const b = body.current;
+        setLook({ x: Math.max(-1, Math.min(1, (innerWidth / 2 - b.x) / 400)), y: -1 });
+        if (Math.random() < 0.35) react('curious', 'lookup', 1400);
+        else if (Math.random() < 0.2) react('joy', 'wave', 1400);
+      }),
+    [sleeping],
+  );
 
   // Chatter
   useEffect(() => {
@@ -834,7 +881,7 @@ export function CloudyStage() {
           </AnimatePresence>
         </div>
         {fx === 'rainbow' && <span className="cl-rainbow" aria-hidden />}
-        <div className={`cloudy-body anim-${anim}`} style={{ ['--tilt' as string]: `${tilt}deg`, ['--dir' as string]: body.current.facing }} onPointerDown={onPointerDown}>
+        <div ref={bodyRef} className={`cloudy-body anim-${anim} ${signal?.playing ? 'beat' : ''}`} style={{ ['--tilt' as string]: `${tilt}deg`, ['--dir' as string]: body.current.facing }} onPointerDown={onPointerDown}>
           <div className="cloudy-reach" style={{ ['--reach' as string]: reach }}>
             <CloudyFace expr={expr} look={dragging ? { x: 0, y: 0.8 } : look} size={cfg.size} tint={tint} shape={dragging ? 'cloud' : shape} dissolved={dissolved} />
           </div>

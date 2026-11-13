@@ -1032,3 +1032,71 @@ html[data-motion='reduced'] .island-glow, html[data-motion='reduced'] .island.op
 .boundary code { white-space: pre-wrap; user-select: text; -webkit-user-select: text; }
 .widget-in > * { width: 100%; }
 .panel-body { position: relative; }
+
+/* ===================== Cloudy 0.3.1: minimal ===================== */
+.cloudy-svg { filter: drop-shadow(0 5px 9px rgba(40, 55, 90, 0.14)); }
+.cf-eye-oval { transition: transform 0.3s cubic-bezier(0.3, 1.35, 0.5, 1), opacity 0.16s; }
+.cf-dizzy { transition: opacity 0.2s; }
+.expr-dizzy .cf-dizzy { animation: cf-dizzy 0.7s linear infinite; }
+@keyframes cf-dizzy { to { transform: rotate(360deg); } }
+/* Bouncing to the beat: squash and stretch from his base. */
+.cloudy-body.beat .cloudy-reach { scale: calc(1 + var(--beat, 0) * 0.07) calc(1 - var(--beat, 0) * 0.06 + var(--lvl, 0) * 0.02); transform-origin: 50% 100%; }
+.anim-tilt .cloudy-svg { animation: c-tilt 1.8s cubic-bezier(0.3, 1.4, 0.5, 1); transform-origin: 50% 90%; }
+@keyframes c-tilt { 0%, 100% { transform: rotate(0); } 25%, 70% { transform: rotate(calc(var(--dir, 1) * -12deg)) translateY(-2px); } }
+.anim-shakeoff .cloudy-svg { animation: c-shakeoff 1.2s ease-in-out; transform-origin: 50% 80%; }
+@keyframes c-shakeoff { 0%, 100% { transform: none; } 10%, 30%, 50%, 70% { transform: rotate(-9deg) scale(1.03, 0.97); } 20%, 40%, 60% { transform: rotate(9deg) scale(1.03, 0.97); } 85% { transform: scale(0.96, 1.05); } }
+.anim-widen .cloudy-svg { animation: c-widen 1.4s cubic-bezier(0.3, 1.4, 0.5, 1); transform-origin: 50% 100%; }
+@keyframes c-widen { 0%, 100% { transform: none; } 35% { transform: scale(1.32, 0.78); } 60% { transform: scale(0.94, 1.08); } 80% { transform: scale(1.04, 0.97); } }
+.anim-lookup .cloudy-svg { animation: c-lookup 1.4s ease-in-out; transform-origin: 50% 100%; }
+@keyframes c-lookup { 0%, 100% { transform: none; } 30%, 70% { transform: translateY(-5px) scale(0.97, 1.05); } }
+
+/* ===================== Liquid glass island ===================== */
+.liquid, .beat-layer { position: relative; display: flex; justify-content: center; }
+/* Leans toward the cursor, swells a touch under it, squishes when pressed — with a soft, springy settle. */
+.liquid {
+  --jx: 0; --jy: 0; --hov: 0; --press: 0;
+  translate: calc(var(--jx) * 5px) calc(var(--jy) * 2.5px);
+  scale: calc(1 + var(--hov) * 0.022 + var(--press) * 0.035 + var(--jx) * var(--jx) * 0.012) calc(1 + var(--hov) * 0.022 - var(--press) * 0.055);
+  transition: translate 0.55s cubic-bezier(0.25, 1.45, 0.45, 1), scale 0.42s cubic-bezier(0.3, 1.8, 0.5, 1);
+  transform-origin: 50% 0;
+}
+/* Gel: the whole shape wobbles after opening, closing or changing tab. */
+.liquid.gel { animation: gel 0.68s cubic-bezier(0.3, 0.9, 0.4, 1); }
+@keyframes gel { 0% { transform: scale(1, 1); } 22% { transform: scale(1.035, 0.965); } 45% { transform: scale(0.985, 1.02); } 68% { transform: scale(1.008, 0.995); } 100% { transform: scale(1, 1); } }
+/* The beat: a quick bump on every kick, the glass breathing with the loudness. */
+.beat-layer { --beat: 0; --lvl: 0; transform-origin: 50% 0; }
+.beat-layer.on { scale: calc(1 + var(--beat) * 0.028 + var(--lvl) * 0.01) calc(1 + var(--beat) * 0.07 + var(--lvl) * 0.02); }
+.beat-layer.on .island { box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.65), 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 0 calc(14px + var(--beat) * 30px) calc(var(--beat) * 4px) color-mix(in srgb, var(--cover, var(--accent)) calc(30% + var(--beat) * 50%), transparent); }
+.beat-layer.on .island .rim { opacity: calc(0.55 + var(--beat) * 0.45); }
+/* Glass material: a lit edge on top, depth below, a lens of light that follows the cursor. */
+.island { background: linear-gradient(180deg, #121216 0%, #000 55%, #050507 100%); }
+.island .sheen { background: radial-gradient(160px circle at var(--mx, 50%) var(--my, -40px), rgba(255, 255, 255, 0.1), transparent 55%), radial-gradient(300px circle at var(--mx, 50%) var(--my, -40px), transparent 45%, rgba(255, 255, 255, 0.035) 55%, transparent 65%); }
+/* A ripple of light where you touched. */
+.ripple { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; pointer-events: none; z-index: 3; background: radial-gradient(circle, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 70%); animation: ripple 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) forwards; }
+@keyframes ripple { to { transform: scale(22); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .liquid, .liquid.gel, .beat-layer.on, .ripple { animation: none !important; scale: none !important; translate: none !important; } }
+html[data-motion='reduced'] .liquid, html[data-motion='reduced'] .beat-layer { scale: none !important; translate: none !important; animation: none !important; }
+
+/* ===================== Sheets: developer notice, full access ===================== */
+.sheet { position: absolute; inset: 8px; z-index: 20; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 24px; background: linear-gradient(180deg, #1c1c22, #0c0c10); border: 0.5px solid rgba(255, 255, 255, 0.1); box-shadow: 0 20px 50px -10px #000, inset 0 0.5px 0 rgba(255, 255, 255, 0.15); }
+.sheet-head { display: flex; align-items: center; gap: 12px; }
+.sheet-badge { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #ff4fa3)); box-shadow: 0 6px 18px -6px var(--accent); }
+.sheet-badge.access { background: linear-gradient(135deg, #22c55e, #0ea5e9); box-shadow: 0 6px 18px -6px #22c55e; }
+.sheet-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.sheet-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.sheet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sheet-card { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border-radius: 16px; text-align: left; background: rgba(255, 255, 255, 0.06); border: 0.5px solid rgba(255, 255, 255, 0.08); transition: background 0.2s; }
+.sheet-card:hover { background: rgba(255, 255, 255, 0.1); }
+.sheet-card .grow { display: flex; flex-direction: column; gap: 2px; }
+.sheet-card.accent { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 40%, transparent), rgba(255, 255, 255, 0.04)); }
+.news-item { padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, 0.035); border-left: 3px solid var(--accent); }
+.news-item.tip { border-left-color: #ffcf4d; } .news-item.news { border-left-color: #ff6b8f; }
+.news-item p { margin: 4px 0 0; line-height: 1.45; }
+.news-meta { display: flex; align-items: center; gap: 5px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.news-title { font-weight: 650; font-size: 14px; margin-top: 4px; }
+.access-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; background: rgba(255, 255, 255, 0.04); }
+.access-row > span:last-child { display: flex; flex-direction: column; gap: 2px; }
+.access-ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; background: rgba(34, 197, 94, 0.16); color: #4cd97b; }
+.access-status { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 0.5px solid var(--line); margin-bottom: 6px; color: var(--muted); }
+.access-status.on { color: #4cd97b; background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.3); }
+.access-status .grow { display: flex; flex-direction: column; gap: 2px; color: var(--text); }

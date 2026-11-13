@@ -8,7 +8,7 @@ import { CloudyStage, type MoodSignal } from './cloudy/CloudyStage';
 import { PetWindow } from './cloudy/PetWindow';
 import { ShotEditor } from './shot/ShotEditor';
 import { call, emitEvent, inTauri, listen, type Layout, type MediaInfo, type Settings } from './lib/ipc';
-import { closePanel, openPanel, saveSettings, tickTimer, toast, useApp, type Tab } from './lib/store';
+import { closePanel, openPanel, openSheet, saveSettings, tickTimer, toast, useApp, type Tab } from './lib/store';
 import { refreshWeather, weatherScene } from './lib/weather';
 import { startPlannerSync } from './lib/planner';
 import { setSystemMedia, startMusicSync } from './lib/music';
@@ -67,12 +67,11 @@ async function bootCommon(view: View) {
 
 /** Island-only duties: the hotkey, timers, battery toasts, updates, Cloudy's signals. */
 function bootIsland() {
-  // The global shortcut opens Afina, ready to type — she doubles as the command palette.
+  // The global shortcut opens Home (press again to close).
   listen('island://hotkey', () => {
     const s = useApp.getState();
-    if (s.view === 'panel' && s.tab === 'afina') return closePanel();
-    openPanel('afina');
-    useApp.setState((x) => ({ focusAfina: x.focusAfina + 1 }));
+    if (s.view === 'panel' && s.tab === 'home' && !s.sheet) return closePanel();
+    openPanel('home');
   });
   listen<string>('island://open', (tab) => openPanel(tab as Tab));
   // Messages from other windows (screenshot copied, errors from the Rust side…).
@@ -93,9 +92,13 @@ function bootIsland() {
   startBattery(true);
   startUpdateChecks();
 
+  // The developer notice: news and updates from Eternal Inc., shown at start (it can be turned off).
+  if (useApp.getState().settings?.newsAtStart !== false) setTimeout(() => openSheet('news', { hover: true }), 1400);
+
   // A one-time hello for this release, with its theme song.
   try {
-    if (localStorage.getItem('eh.seen') !== RELEASE.name) {
+    // (The developer notice already says what's new, so the toast only shows when the notice is off.)
+    if (localStorage.getItem('eh.seen') !== RELEASE.name && useApp.getState().settings?.newsAtStart === false) {
       localStorage.setItem('eh.seen', RELEASE.name);
       setTimeout(
         () =>
@@ -131,6 +134,16 @@ function bootIsland() {
     if (key !== last) {
       last = key;
       void emitEvent('cloudy://mood', signal);
+    }
+  });
+
+  // Cloudy glances up when the island opens.
+  let wasOpen = false;
+  useApp.subscribe((st) => {
+    const open = st.view === 'panel';
+    if (open !== wasOpen) {
+      wasOpen = open;
+      void emitEvent('island://state', { open, tab: st.tab });
     }
   });
 

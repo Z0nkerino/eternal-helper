@@ -30,14 +30,15 @@ const line = (x1: number, y1: number, x2: number, y2: number, n: number, r: numb
     return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, r];
   });
 
-/** His everyday look: a fluffy cumulus with a flat-ish base. */
+/** His everyday look: a simple, clean cloud — a soft flat base and three round bumps. */
 const cloud: Shape = {
   puffs: [
-    [22, 70, 13], [38, 73, 15], [57, 74, 16], [76, 73, 15], [94, 70, 14], [107, 64, 10],
-    [13, 62, 10], [30, 55, 15], [50, 42, 19], [71, 39, 18], [88, 49, 15], [102, 55, 12],
-    [60, 59, 21], [42, 61, 16], [80, 61, 16], [63, 27, 11],
+    [28, 68, 15], [44, 70, 16], [61, 70, 16], [78, 70, 16], [94, 68, 15],
+    [40, 54, 17], [63, 42, 22], [87, 55, 15],
+    [61, 60, 20], [50, 62, 16], [74, 62, 16], [63, 48, 18],
+    [28, 68, 15], [94, 68, 15], [40, 54, 17], [87, 55, 15],
   ],
-  face: [60, 61, 1],
+  face: [61, 61, 1],
 };
 
 const heart: Shape = {
