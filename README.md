@@ -23,6 +23,15 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.8.2 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **Tabs always fit** | When the six tab names don't fit (Russian, bigger text), the active tab keeps its name and the others show only their icons. |
+| **Nothing gets stuck open** | Chats close when you click anywhere else, they no longer grab the keyboard when the island only opens on hover, and leaving the island while typing in a chat keeps it open. A panel that opened by itself (the start-up notice) closes after a few seconds if you don't use it. |
+| **Every screen opens in a window** | "Open in a window" works for Time, Calendar, Notes, Shelf and Notifications too (it failed before). |
+| **Sizes** | Panels are never taller than the island's window (bigger text, bigger island), tall screens scroll instead of being cut off, and the panel holds still under a chat so they stay lined up. |
+
 ## Beta 0.8.1 — “Sunrise” 🌅
 
 | What | Details |
@@ -199,7 +208,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name and build number are both *0.8.1* (“Sunrise”) so that in-app updates from earlier builds still see it as newer.
+- **Version naming:** the public name and build number are both *0.8.2* (“Sunrise”) so that in-app updates from earlier builds still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -225,6 +234,13 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.8.2 — «Sunrise» 🌅
+
+- **Вкладки всегда помещаются:** если названия не влезают, у неактивных остаются только значки.
+- **Ничего не зависает открытым:** чаты закрываются кликом мимо, не перехватывают клавиатуру при наведении; панель, открывшаяся сама, закрывается через несколько секунд.
+- **«Открыть в окне»** работает для Времени, Календаря, Заметок, Полки и Уведомлений.
+- **Размеры:** панель не выходит за окно острова, длинные экраны прокручиваются, а не обрезаются.
 
 ## Beta 0.8.1 — «Sunrise» 🌅
 

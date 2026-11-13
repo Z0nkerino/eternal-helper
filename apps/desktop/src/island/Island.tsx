@@ -24,7 +24,7 @@ import { LiquidBurst } from './LiquidBurst';
 
 const PANEL_W = 660;
 /** Each tab gets the height it needs; the island springs between them. */
-const PANEL_H: Record<MainTab, number> = { home: 350, music: 500, time: 470, library: 470, ai: 560, settings: 470 };
+const PANEL_H: Record<MainTab, number> = { home: 350, music: 500, time: 486, library: 470, ai: 560, settings: 470 };
 const SUB_H: Record<LibSub, number> = { weather: 500, calendar: 470, notes: 500, shelf: 460, notify: 480, videos: 500, text: 470, timer: 452, calc: 452, translate: 500, wifi: 452, radio: 400 };
 
 /** Normal top padding of the open panel when there's no notch to clear. */
@@ -38,8 +38,14 @@ function useSize(activity: boolean, notch: { width: number; height: number } | n
   // On a notched display the panel grows by the info strip, so the content keeps its full height below it.
   const sheet = useApp.getState().sheet;
   if (panel && useApp.getState().update?.available) return { w: 460, h: 300 + (p.notch ? p.contentTop - PANEL_PAD : 0), r: 30 };
-  const h = sheet ? Math.max(470, tab === 'home' ? homeH : PANEL_H[tab]) : tab === 'library' && sub ? SUB_H[sub] : tab === 'home' ? homeH : PANEL_H[tab];
-  if (panel) return { w: PANEL_W, h: h + (p.notch ? p.contentTop - PANEL_PAD : 0), r: 30 };
+  const base = sheet ? Math.max(470, tab === 'home' ? homeH : PANEL_H[tab]) : tab === 'library' && sub ? SUB_H[sub] : tab === 'home' ? homeH : PANEL_H[tab];
+  // Bigger text needs a bit more room; but the panel never grows past the island's window (it would be cut off).
+  const font = useApp.getState().settings?.fontScale ?? 1;
+  const ui = useApp.getState().settings?.uiScale ?? 1;
+  const extra = p.notch ? p.contentTop - PANEL_PAD : 0;
+  const room = (typeof innerHeight === 'number' && innerHeight > 200 ? innerHeight : 760) / ui - 24;
+  const h = Math.min(Math.round(base * (1 + Math.max(0, font - 1) * 0.6)) + extra, Math.max(300, room));
+  if (panel) return { w: PANEL_W, h, r: 30 };
   // Pill "wings" either side of the notch, wide enough for the clock and weather.
   if (notch) return { w: notch.width + (activity ? 260 : 200), h: Math.max(32, notch.height), r: 14 };
   if (shape === 'capsule') return activity ? { w: 320, h: 40, r: 20 } : { w: 236, h: 36, r: 18 };
@@ -253,9 +259,26 @@ function useHoverOpen(islandRef: React.RefObject<HTMLDivElement>, activity: stri
       // A pinned panel waits longer, and never closes under the user's typing.
       closeT = setTimeout(() => {
         const now = useApp.getState();
-        if (now.view === 'panel' && !inside && !(now.pinned && (typing() || now.chatOpen))) closePanel();
+        if (now.view !== 'panel' || inside || (now.pinned && typing())) return;
+        // Typing in a chat (its own window, over the panel) keeps it open; otherwise leaving closes it.
+        if (now.chatOpen) return void call('chat_focused').then((busy) => !busy && !inside && useApp.getState().view === 'panel' && closePanel());
+        closePanel();
       }, s.pinned ? 900 : CLOSE_DELAY);
     };
+    // Opened without the cursor on it (the start-up notice, a notification): it closes by itself after a
+    // while unless the cursor comes over or it is clicked — otherwise nothing would ever close it.
+    let idleT: ReturnType<typeof setTimeout> | undefined;
+    const offView = useApp.subscribe((st, prev) => {
+      if (st.view === 'panel' && prev.view !== 'panel') {
+        clearTimeout(idleT);
+        idleT = setTimeout(function check() {
+          const now = useApp.getState();
+          if (now.view !== 'panel' || inside || now.pinned || now.chatOpen) return;
+          closePanel();
+        }, 8000);
+      }
+      if (st.view !== 'panel') clearTimeout(idleT);
+    });
     const el = islandRef.current;
     el?.addEventListener('pointerenter', enter);
     const onLeave = () => leave();
@@ -265,6 +288,8 @@ function useHoverOpen(islandRef: React.RefObject<HTMLDivElement>, activity: stri
     return () => {
       clearTimeout(openT);
       clearTimeout(closeT);
+      clearTimeout(idleT);
+      offView();
       el?.removeEventListener('pointerenter', enter);
       el?.removeEventListener('pointerleave', onLeave);
       off();
@@ -452,6 +477,7 @@ export function Island() {
   });
   const dropping = useApp((s) => s.dropping);
   const moving = useApp((s) => s.moving);
+  const chatOpen = useApp((s) => s.chatOpen);
   const homeIds = useHomeWidgets();
   // Home fits its widget rows (66 = tab bar and padding); never shorter than two rows, so the gallery fits.
   const homeH = Math.max(homeHeight(homeIds), 228) + 66;
@@ -485,6 +511,8 @@ export function Island() {
     const onBlur = () => useApp.getState().view === 'panel' && !useApp.getState().chatOpen && closePanel();
     addEventListener('keydown', onKey);
     addEventListener('blur', onBlur);
+    // A click outside while typing in a chat (Rust sees the chat window lose focus).
+    const offOutside = listen('island://outside', () => useApp.getState().chatOpen && closePanel());
     // With a chat open, the island closes when another app takes the focus.
     let offFocus: (() => void) | undefined;
     // (Focus moving into the chat's own window doesn't count: it sits over the panel, part of the island.)
@@ -499,6 +527,7 @@ export function Island() {
       removeEventListener('keydown', onKey);
       removeEventListener('blur', onBlur);
       offFocus?.();
+      offOutside();
     };
   }, []);
 
@@ -510,7 +539,7 @@ export function Island() {
 
   return (
     <div className={`stage ${bottom ? 'bottom' : ''}`} style={bottom ? { paddingBottom: 6 } : { paddingTop: top }}>
-      <div className={`island-row ${moving ? 'moving' : ''} shape-${shape} ${attached ? 'attached' : ''} ${panel ? 'is-open' : ''}`}>
+      <div className={`island-row ${chatOpen && panel ? 'chat-open' : ''} ${moving ? 'moving' : ''} shape-${shape} ${attached ? 'attached' : ''} ${panel ? 'is-open' : ''}`}>
         {liquidOn && panel && <LiquidBurst key={opens.current} width={size.w} />}
 
         {/* A soft glow behind the island: breathes in the cover's colour while music plays. */}

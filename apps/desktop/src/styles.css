@@ -1839,3 +1839,17 @@ html[data-level='calm'] .cover3d.playing .vinyl2 { animation-duration: 9s; }
 .notch-ear { position: absolute; top: 0; width: 12px; height: 12px; pointer-events: none; z-index: 1; }
 .notch-ear.l { left: -11.5px; background: radial-gradient(circle at 0 100%, transparent 11.5px, rgb(0 0 0 / var(--island-alpha, 1)) 12px); }
 .notch-ear.r { right: -11.5px; background: radial-gradient(circle at 100% 100%, transparent 11.5px, rgb(0 0 0 / var(--island-alpha, 1)) 12px); }
+
+/* 0.8.2: a chat window sits exactly over the panel, so the panel holds still under it. */
+.island-row.chat-open .liquid { translate: none !important; scale: none !important; animation: none !important; transition: none !important; }
+.island-row.chat-open .panel-anim { transform: none !important; }
+/* Tabs whose content can be taller than the panel scroll instead of being cut off. */
+.timetab, .cal-left { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #ffffff22 transparent; }
+.time-cards { flex: none; min-height: 150px; }
+.seg { min-width: 0; flex: 0 1 auto; }
+.seg-tab { flex: none; }
+.seg.compact .seg-tab:not(.on) { padding: 0 10px; }
+.tabbar-actions { flex: none; }
+.time-date, .cal-month, .cal-day-title { text-transform: none; }
+.time-date::first-letter, .cal-month::first-letter, .cal-day-title::first-letter { text-transform: uppercase; }
+.weather-tab { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #ffffff22 transparent; }

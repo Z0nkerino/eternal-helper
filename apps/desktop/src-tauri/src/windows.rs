@@ -2,7 +2,7 @@
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 /// Panel tabs that may be opened in their own window.
-pub const TABS: [&str; 9] = ["home", "music", "library", "ai", "planner", "videos", "text", "weather", "settings"];
+pub const TABS: [&str; 13] = ["home", "music", "time", "library", "ai", "calendar", "notes", "shelf", "notify", "videos", "text", "weather", "settings"];
 
 pub fn open(app: &AppHandle, kind: &str) -> Result<(), String> {
     let (label, route, title, size, min) = if kind == "pet" {

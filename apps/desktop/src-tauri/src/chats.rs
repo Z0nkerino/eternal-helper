@@ -83,7 +83,6 @@ pub fn show(app: &AppHandle, id: &str, rect: (f64, f64, f64, f64), prompt: Optio
         let _ = win.set_size(size);
         let _ = win.set_position(pos);
         let _ = win.show();
-        let _ = win.set_focus();
         return Ok(prefilled);
     }
     let island = app.get_webview_window("island").ok_or("no island")?;
@@ -103,9 +102,22 @@ pub fn show(app: &AppHandle, id: &str, rect: (f64, f64, f64, f64), prompt: Optio
         b = b.user_agent(ua);
     }
     let win = b.build().map_err(|e| e.to_string())?;
+    // Clicking somewhere else (not the island, not another chat) closes the island, like any panel.
+    let handle = app.clone();
+    win.on_window_event(move |e| {
+        if let tauri::WindowEvent::Focused(false) = e {
+            let h = handle.clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                let island_focused = h.get_webview_window("island").and_then(|w| w.is_focused().ok()).unwrap_or(false);
+                if !focused(&h) && !island_focused {
+                    let _ = tauri::Emitter::emit_to(&h, "island", "island://outside", ());
+                }
+            });
+        }
+    });
     let _ = win.set_position(pos);
     let _ = win.show();
-    let _ = win.set_focus();
     Ok(prefilled)
 }
 

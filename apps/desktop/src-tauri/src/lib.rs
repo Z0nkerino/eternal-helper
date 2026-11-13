@@ -47,7 +47,7 @@ use tauri_plugin_opener::OpenerExt;
 /// Island window size in logical pixels. The window is transparent and click-through outside the
 /// pill, so it can be big enough for the open panel without the window ever resizing.
 const ISLAND_W: f64 = 860.0;
-const ISLAND_H: f64 = 680.0;
+const ISLAND_H: f64 = 760.0;
 
 struct AppState {
     settings: SettingsStore,
@@ -1045,10 +1045,6 @@ fn ai_services() -> Vec<ChatServiceInfo> {
 /// Shows a chat (AI or messenger) over the open panel, at the panel body's place.
 #[tauri::command]
 fn chat_show(app: AppHandle, service: String, x: f64, y: f64, w: f64, h: f64, prompt: Option<String>) -> Result<bool, String> {
-    if let Some(isl) = island(&app) {
-        // Typing into the chat needs the keyboard.
-        platform::set_activatable(&isl, true);
-    }
     chats::show(&app, &service, (x, y, w, h), prompt.as_deref())
 }
 

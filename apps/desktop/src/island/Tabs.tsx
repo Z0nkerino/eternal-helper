@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { ExternalLink, X } from 'lucide-react';
 import { springs } from '@eternal/ui';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { MODULES } from '../modules';
 import { useT, useTr } from '../lib/i18n';
 import { call } from '../lib/ipc';
@@ -18,6 +18,34 @@ export function Tabs({ position }: { position: TabsPosition }) {
   const [hover, setHover] = useState<string | null>(null);
   const update = useApp((s) => !!s.update?.available);
   const side = position === 'side';
+  // When all six labels don't fit (longer words in Russian, bigger text), only the active tab keeps its
+  // label and the others show just their icon — the bar never spills out of the island.
+  const seg = useRef<HTMLDivElement>(null);
+  const font = useApp((s) => s.settings?.fontScale ?? 1);
+  const [compact, setCompact] = useState(false);
+  const labels = MODULES.map((m) => t(m.name)).join('|');
+  useLayoutEffect(() => {
+    const el = seg.current;
+    const bar = el?.parentElement;
+    if (!el || !bar || side) return;
+    // The width all labels need, measured from the text itself (not the bar, which is still growing
+    // while the island opens), compared with the room the bar has now.
+    const ctx = document.createElement('canvas').getContext('2d');
+    const check = () => {
+      const tab = el.querySelector<HTMLElement>('.seg-tab');
+      if (!ctx || !tab) return;
+      const cs = getComputedStyle(tab);
+      ctx.font = `500 ${cs.fontSize} ${cs.fontFamily}`;
+      const need = labels.split('|').reduce((n, l) => n + ctx.measureText(l).width + 15 + 6 + 26 + 2, 8);
+      const actions = bar.querySelector<HTMLElement>('.tabbar-actions')?.offsetWidth ?? 0;
+      setCompact(need > bar.clientWidth - actions - 12);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, [labels, font, side]);
+  const SUBS = ['weather', 'calendar', 'notes', 'shelf', 'notify', 'videos', 'text'];
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     const keys = side ? ['ArrowUp', 'ArrowDown'] : ['ArrowLeft', 'ArrowRight'];
@@ -31,7 +59,7 @@ export function Tabs({ position }: { position: TabsPosition }) {
 
   return (
     <nav className={`tabbar tabbar-${position}`}>
-      <div className="seg" role="tablist" aria-orientation={side ? 'vertical' : 'horizontal'} onKeyDown={onKeyDown} onMouseLeave={() => setHover(null)}>
+      <div ref={seg} className={`seg ${compact ? 'compact' : ''}`} role="tablist" aria-orientation={side ? 'vertical' : 'horizontal'} onKeyDown={onKeyDown} onMouseLeave={() => setHover(null)}>
         {MODULES.map((m) => {
           const Icon = m.icon!;
           const on = tab === m.id;
@@ -42,7 +70,7 @@ export function Tabs({ position }: { position: TabsPosition }) {
               role="tab"
               aria-selected={on}
               aria-label={label}
-              title={side ? label : undefined}
+              title={side || (compact && !on) ? label : undefined}
               tabIndex={on ? 0 : -1}
               className={`seg-tab ${on ? 'on' : ''}`}
               onClick={() => (on && m.id === 'library' && libSub ? useApp.setState({ libSub: null }) : openPanel(m.id))}
@@ -51,16 +79,19 @@ export function Tabs({ position }: { position: TabsPosition }) {
               {hover === m.id && !on && <motion.span layoutId="seg-hover" className="seg-hover" transition={springs.snappy} />}
               {on && <motion.span layoutId="seg-pill" className="seg-pill" transition={springs.snappy} />}
               <Icon size={15} aria-hidden />
-              {!side && <span className="seg-label">{label}</span>}
+              {!side && !(compact && !on) && <span className="seg-label">{label}</span>}
               {m.id === 'settings' && update && <span className="seg-dot" aria-label="update" />}
             </button>
           );
         })}
       </div>
       <div className="tabbar-actions">
-        <button className="icon-btn" aria-label={tr('Open in a window', 'Открыть в отдельном окне')} title={tr('Open in a window', 'Открыть в отдельном окне')} onClick={() => (closePanel(), void call('open_window', { kind: tab === 'library' && libSub && ['weather', 'planner', 'videos', 'text'].includes(libSub) ? libSub : tab }))}>
-          <ExternalLink size={14} />
-        </button>
+        {/* Chats live over the panel, so they have no window of their own; Library tools without a screen stay in the island. */}
+        {tab !== 'ai' && (
+          <button className="icon-btn" aria-label={tr('Open in a window', 'Открыть в отдельном окне')} title={tr('Open in a window', 'Открыть в отдельном окне')} onClick={() => (closePanel(), void call('open_window', { kind: tab === 'library' && libSub && SUBS.includes(libSub) ? libSub : tab }).catch(() => undefined))}>
+            <ExternalLink size={14} />
+          </button>
+        )}
         <button className="icon-btn" aria-label={t('close')} onClick={closePanel}>
           <X size={15} />
         </button>

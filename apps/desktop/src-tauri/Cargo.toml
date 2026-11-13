@@ -1,6 +1,6 @@
 [package]
 name = "eternal-helper"
-version = "0.8.1"
+version = "0.8.2"
 description = "Eternal Helper — a dynamic island for Windows and macOS"
 authors = ["Eternal Inc."]
 edition = "2021"
