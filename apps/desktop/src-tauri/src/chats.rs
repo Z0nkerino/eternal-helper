@@ -96,6 +96,11 @@ pub fn show(app: &AppHandle, id: &str, rect: (f64, f64, f64, f64), prompt: Optio
         .always_on_top(true)
         .inner_size(size.width, size.height)
         .visible(false)
+        // Appearing must not take the focus (that used to close the island before the page loaded).
+        .focused(false)
+        .background_color(tauri::webview::Color(18, 18, 22, 255))
+        // Sign-in pop-ups ("Continue with Google / Apple / Microsoft") must be allowed, or logging in fails.
+        .on_new_window(|_, _| tauri::webview::NewWindowResponse::Allow)
         .parent(&island)
         .map_err(|e| e.to_string())?;
     if let Some(ua) = crate::music::user_agent() {

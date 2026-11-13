@@ -9,7 +9,8 @@ import { saveSettings, toast, useApp } from '../lib/store';
 import { weatherScene } from '../lib/weather';
 import { Emoji, Rich } from '../lib/emoji';
 import { Segment, Switch } from '../settings/parts';
-import { CloudyFace, type Expr } from './CloudyFace';
+import { type Expr } from './CloudyFace';
+import { Cloudy3D, type Trick } from './Cloudy3D';
 import { FOOD_COOLDOWN, FOODS, level, loadPet, need, type Pet } from './pet';
 import type { CloudyState } from './CloudyStage';
 
@@ -31,6 +32,9 @@ function Bar({ emoji, label, value, color }: { emoji: string; label: string; val
 
 /** His room: wall and window that follow the time of day and the weather, a rug, a bed, a lamp, a plant. */
 function Room({ state, expr }: { state: CloudyState; expr: Expr }) {
+  // Click him in his room and he does a trick.
+  const [trick, setTrick] = useState<{ kind: Trick; n: number } | null>(null);
+  const tricks: Trick[] = ['spin', 'flip', 'roll', 'hop', 'twirl'];
   const weather = useApp((s) => s.weather);
   const playing = useApp((s) => !!s.media?.playing);
   const h = new Date().getHours();
@@ -60,8 +64,8 @@ function Room({ state, expr }: { state: CloudyState; expr: Expr }) {
       <span className="room-plant"><i /><i /><i /></span>
       <span className={`room-lamp ${time === 'night' || time === 'evening' ? 'on' : ''}`} />
       <span className="room-bowl"><i style={{ height: `${Math.max(8, full)}%` }} /></span>
-      <motion.div className={`room-cloudy cloudy-body anim-${state.sleeping ? 'sleep' : expr === 'eat' ? 'chomp' : expr === 'joy' || expr === 'love' ? 'joy' : 'idle'} ${playing ? 'beat' : ''}`} animate={state.sleeping ? { x: 112, y: 46, scale: 0.8 } : { x: 0, y: [0, -8, 0], scale: 1 }} transition={state.sleeping ? { type: 'spring', stiffness: 80, damping: 16 } : { y: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } }}>
-        <CloudyFace expr={state.sleeping ? 'sleep' : expr} look={{ x: 0, y: 0 }} size={120} headphones={playing && !state.sleeping} />
+      <motion.div onClick={() => setTrick((x) => ({ kind: tricks[(x?.n ?? 0) % tricks.length], n: (x?.n ?? 0) + 1 }))} title="✨" className={`room-cloudy cloudy-body anim-${state.sleeping ? 'sleep' : expr === 'eat' ? 'chomp' : expr === 'joy' || expr === 'love' ? 'joy' : 'idle'} ${playing ? 'beat' : ''}`} animate={state.sleeping ? { x: 112, y: 46, scale: 0.8 } : { x: 0, y: [0, -8, 0], scale: 1 }} transition={state.sleeping ? { type: 'spring', stiffness: 80, damping: 16 } : { y: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } }}>
+        <Cloudy3D expr={state.sleeping ? 'sleep' : expr} look={{ x: 0, y: 0 }} size={120} headphones={playing && !state.sleeping} playful={!state.sleeping} trick={trick} />
       </motion.div>
       {state.sleeping && <span className="room-zzz">z<i>z</i><b>z</b></span>}
     </div>

@@ -20,7 +20,6 @@ import { NotchStrip } from './NotchStrip';
 import { SafeAreaOverlay } from './SafeAreaOverlay';
 import { Rich } from '../lib/emoji';
 import { DropSplit, useFileDrop } from './DropSplit';
-import { LiquidBurst } from './LiquidBurst';
 
 const PANEL_W = 660;
 /** Each tab gets the height it needs; the island springs between them. */
@@ -97,9 +96,9 @@ const EASE = [0.25, 0.1, 0.25, 1] as const;
 const OPEN_STYLES = {
   // Like water filling a glass: the content rises out of a soft blur with a slight 3D tilt.
   liquid: {
-    initial: { opacity: 0, y: -14, rotateX: -16, scale: 0.97, filter: 'blur(8px)' },
-    animate: { opacity: 1, y: 0, rotateX: 0, scale: 1, filter: 'blur(0px)', transition: { type: 'spring', stiffness: 230, damping: 24, delay: 0.05 } },
-    exit: { opacity: 0, y: -8, rotateX: 10, scale: 0.97, filter: 'blur(6px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } },
+    initial: { opacity: 0, y: -10, scale: 0.97 },
+    animate: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 260, damping: 26, delay: 0.06 } },
+    exit: { opacity: 0, y: -6, scale: 0.98, transition: { duration: 0.14, ease: [0.4, 0, 1, 1] } },
   },
   // Swings in like a card in 3D.
   depth: {
@@ -157,7 +156,7 @@ function Panel({ p }: { p: PanelLayout }) {
         {p.tabs === 'side' && <Tabs position="side" />}
         <div className="panel-body" role="tabpanel">
           <AnimatePresence mode="popLayout" initial={false} custom={dir}>
-            <motion.div key={tab} className="panel-anim" custom={dir} initial={{ opacity: 0, x: 18 * dir, rotateY: 6 * dir, filter: 'blur(3px)' }} animate={{ opacity: 1, x: 0, rotateY: 0, filter: 'blur(0px)', transition: { type: 'spring', stiffness: 300, damping: 30 } }} exit={{ opacity: 0, x: -10 * dir, filter: 'blur(3px)', transition: { duration: 0.12, ease: 'easeIn' } }}>
+            <motion.div key={tab} className="panel-anim" custom={dir} initial={{ opacity: 0, x: 22 * dir, scale: 0.985 }} animate={{ opacity: 1, x: 0, scale: 1, transition: { type: 'spring', stiffness: 320, damping: 32 } }} exit={{ opacity: 0, x: -12 * dir, transition: { duration: 0.12, ease: 'easeIn' } }}>
               <Boundary name={tab}>
                 <Active />
               </Boundary>
@@ -215,7 +214,7 @@ function targetFor(a: string | undefined): Parameters<typeof openPanel>[0] {
 }
 
 /** Opening: a touch of overshoot, like liquid settling; closing stays firm. */
-const LIQUID_SPRING = { type: 'spring', stiffness: 230, damping: 21, mass: 0.95 } as const;
+const LIQUID_SPRING = { type: 'spring', stiffness: 250, damping: 24, mass: 0.9 } as const;
 
 const OPEN_DELAY = 250;
 const CLOSE_DELAY = 420;
@@ -248,12 +247,15 @@ function useHoverOpen(islandRef: React.RefObject<HTMLDivElement>, activity: stri
         if (useApp.getState().moving || useApp.getState().pressing) return;
         // Back on the same tab if it was closed a moment ago; otherwise Home (or the live activity).
         const recent = Date.now() - useApp.getState().closedAt < 20_000;
-        openPanel(targetFor(activityRef.current) ?? (recent ? undefined : 'home'), { hover: true });
+        // Hovering opens Home (or the tab left a moment ago); clicking the pill opens the live activity.
+        openPanel(recent ? undefined : 'home', { hover: true });
       }, OPEN_DELAY);
     };
     const leave = (fromRust = false) => {
-      // Moving onto a chat's web view leaves the page but not the island: only Rust's hover counts then.
-      if (!fromRust && useApp.getState().chatOpen) return;
+      // Moving onto a chat's window leaves the page but not the island: on the Chats tab only Rust's
+      // hover (the cursor really leaving the island's area) counts.
+      const st = useApp.getState();
+      if (!fromRust && (st.chatOpen || (st.view === 'panel' && st.tab === 'ai'))) return;
       if (!inside && !fromRust) return;
       inside = false;
       clearTimeout(openT);
@@ -434,6 +436,9 @@ function useMovable(islandRef: React.RefObject<HTMLDivElement>) {
   return moved;
 }
 
+/** Glass surfaces inside the island: each gets a soft light that follows the cursor across it. */
+export const GLASS = '.tcard, .chat-card, .player-card, .cc-toggle, .lib-tool, .widget, .world-clock, .shelf-item, .notify-item, .tr-big, .set-row, .set-cat, .station, .m3-skip, .chip-btn, .seg-tab';
+
 /** A soft light that follows the cursor across the island, set through CSS variables (no re-render). */
 function useSheen(ref: React.RefObject<HTMLDivElement>) {
   useEffect(() => {
@@ -446,6 +451,12 @@ function useSheen(ref: React.RefObject<HTMLDivElement>) {
         const r = el.getBoundingClientRect();
         el.style.setProperty('--mx', `${e.clientX - r.left}px`);
         el.style.setProperty('--my', `${e.clientY - r.top}px`);
+        const g = (e.target as HTMLElement | null)?.closest?.(GLASS) as HTMLElement | null;
+        if (g) {
+          const b = g.getBoundingClientRect();
+          g.style.setProperty('--gx', `${e.clientX - b.left}px`);
+          g.style.setProperty('--gy', `${e.clientY - b.top}px`);
+        }
       });
     };
     el.addEventListener('pointermove', move);
@@ -543,7 +554,6 @@ export function Island() {
   return (
     <div className={`stage ${bottom ? 'bottom' : ''}`} style={bottom ? { paddingBottom: 6 } : { paddingTop: top }}>
       <div className={`island-row ${chatOpen && panel ? 'chat-open' : ''} ${moving ? 'moving' : ''} shape-${shape} ${attached ? 'attached' : ''} ${panel ? 'is-open' : ''}`}>
-        {liquidOn && panel && <LiquidBurst key={opens.current} width={size.w} />}
 
         {/* A soft glow behind the island: breathes in the cover's colour while music plays. */}
         <motion.span className={`island-glow ${playing ? 'music' : ''} ${activities.length ? 'on' : ''} ${panel ? 'open' : ''}`} initial={false} animate={{ width: size.w, height: size.h }} transition={springs.island} aria-hidden />
@@ -569,6 +579,8 @@ export function Island() {
         >
           <span className="sheen" aria-hidden />
           <span className="rim" aria-hidden />
+          {/* Opening: liquid glass fills the island from the top, with a light ripple running through it. */}
+          {liquidOn && panel && <span key={opens.current} className="liquid-fill" aria-hidden />}
           {/* The bottom edge lights up and swells with the beat while music plays. */}
           <span className="beat-edge" aria-hidden />
           <AnimatePresence initial={false}>

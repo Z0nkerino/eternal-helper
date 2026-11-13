@@ -141,6 +141,8 @@ pub fn open(app: &AppHandle, id: &str, show: bool) -> Result<(), String> {
         .min_inner_size(420.0, 520.0)
         .center()
         .visible(show)
+        // Sign-in pop-ups (Google, Apple, VK ID…) must open, or logging in to the player fails.
+        .on_new_window(|_, _| tauri::webview::NewWindowResponse::Allow)
         .initialization_script(BRIDGE.replace("__SERVICE__", svc.id));
     if let Some(ua) = user_agent() {
         b = b.user_agent(ua);

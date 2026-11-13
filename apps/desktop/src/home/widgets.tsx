@@ -17,7 +17,7 @@ import { describeWeather } from '../lib/weather';
 import { mediaControl } from '../lib/music';
 import { factOfDay, formatRate, greeting, offsetFromLocal, rate, symbol, timeIn } from '../lib/today';
 import { fmtClock, useNow, WeatherIcon } from '../island/bits';
-import { CloudyFace } from '../cloudy/CloudyFace';
+import { Cloudy3D } from '../cloudy/Cloudy3D';
 
 export type WidgetSize = 's' | 'm' | 'w' | 't';
 export interface WidgetDef {
@@ -256,11 +256,10 @@ function CurrencyW() {
 function CloudyW() {
   const tr = useTr();
   const [poke, setPoke] = useState(0);
+  const tricks = ['spin', 'flip', 'roll', 'hop', 'twirl'] as const;
   return (
     <button className="w-cloudy" onClick={() => (setPoke((p) => p + 1), void emitEvent('cloudy://action', { kind: 'trick' }))} title={tr('Say hi to Cloudy', 'Помаши Cloudy')}>
-      <motion.span key={poke} initial={{ scale: 0.8, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 400, damping: 12 }}>
-        <CloudyFace expr={poke ? 'tongue' : 'happy'} look={{ x: 0, y: 0 }} size={70} />
-      </motion.span>
+      <Cloudy3D expr={poke % 2 ? 'tongue' : 'happy'} look={{ x: 0, y: 0 }} size={78} trick={poke ? { kind: tricks[poke % tricks.length], n: poke } : null} />
       <span className="tiny faint">Cloudy</span>
     </button>
   );

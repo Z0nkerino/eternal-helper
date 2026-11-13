@@ -44,15 +44,23 @@ export function HoloFace() {
     };
     const onMove = (e: PointerEvent) => fromPoint(e.clientX, e.clientY);
     addEventListener('pointermove', onMove);
+    // The window's position and scale rarely change: read them once a second, the cursor more often.
+    let win: { x: number; y: number; k: number } | null = null;
+    let winAt = 0;
     const pollCursor = async () => {
       if (!alive || !inTauri) return;
       try {
-        const [c, p, k] = await Promise.all([cursorPosition(), getCurrentWindow().outerPosition(), getCurrentWindow().scaleFactor()]);
-        fromPoint((c.x - p.x) / k, (c.y - p.y) / k);
+        if (!win || performance.now() - winAt > 1000) {
+          const [p, k] = await Promise.all([getCurrentWindow().outerPosition(), getCurrentWindow().scaleFactor()]);
+          win = { x: p.x, y: p.y, k };
+          winAt = performance.now();
+        }
+        const c = await cursorPosition();
+        fromPoint((c.x - win.x) / win.k, (c.y - win.y) / win.k);
       } catch {
         /* window gone */
       }
-      poll = window.setTimeout(pollCursor, 60);
+      poll = window.setTimeout(pollCursor, document.hidden ? 1000 : 80);
     };
     void pollCursor();
 

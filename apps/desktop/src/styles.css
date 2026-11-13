@@ -1887,3 +1887,120 @@ html[data-level='calm'] .cover3d.playing .vinyl2 { animation-duration: 9s; }
 .m3-side.right { min-width: 0; }
 .music2 .mvol { width: 100%; max-width: 180px; min-width: 0; }
 .music2 .mvol input { min-width: 40px; }
+
+/* ==================== 0.9.0 — liquid glass ==================== */
+:root {
+  --glass: linear-gradient(160deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.025) 60%, rgba(255, 255, 255, 0.04));
+  --glass-hi: linear-gradient(160deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04) 60%, rgba(255, 255, 255, 0.06));
+  --glass-edge: rgba(255, 255, 255, 0.12);
+  --glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.25), 0 8px 22px -14px rgba(0, 0, 0, 0.8);
+  --squish: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* One glass material for every card and button in the island. */
+.tcard, .chat-card, .player-card, .cc-toggle, .lib-tool, .widget, .world-clock, .shelf-item, .notify-item, .tr-big, .tr-card2, .cal-right, .set-group, .set-cat {
+  position: relative; background: var(--glass); border: 0.5px solid var(--glass-edge); box-shadow: var(--glass-shadow); isolation: isolate;
+  transition: background 0.35s ease, transform 0.45s var(--squish), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+/* Liquid light: a soft highlight that follows the cursor across the glass. */
+.tcard::after, .chat-card::after, .player-card::after, .cc-toggle::after, .lib-tool::after, .widget::after, .world-clock::after, .shelf-item::after, .notify-item::after, .tr-big::after, .set-cat::after, .set-row::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1; opacity: 0; transition: opacity 0.35s ease;
+  background: radial-gradient(140px circle at var(--gx, 50%) var(--gy, 0%), rgba(255, 255, 255, 0.12), transparent 70%);
+}
+.tcard:hover::after, .chat-card:hover::after, .player-card:hover::after, .cc-toggle:hover::after, .lib-tool:hover::after, .widget:hover::after, .world-clock:hover::after, .shelf-item:hover::after, .notify-item:hover::after, .tr-big:hover::after, .set-cat:hover::after, .set-row:hover::after { opacity: 1; }
+.chat-card:hover, .player-card:hover, .lib-tool:hover, .tcard-btn:hover, .set-cat:hover, .tr-big:hover { background: var(--glass-hi); border-color: rgba(255, 255, 255, 0.18); }
+/* Pressing squishes like a drop of liquid and springs back. */
+.chat-card:active, .player-card:active, .lib-tool:active, .cc-toggle:active, .tcard-btn:active, .set-cat:active, .tr-big:active, .m3-skip:active, .chip-btn:active, .shelf-item:active { transform: scale(0.96, 0.94); transition-duration: 0.12s; }
+.chip-btn, .m3-skip, .icon-btn { transition: transform 0.4s var(--squish), background 0.25s; }
+.chip-btn { background: var(--glass); border: 0.5px solid var(--glass-edge); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+.icon-btn:active { transform: scale(0.88); }
+/* The tab bar and its pill are glass too; the pill stretches as it slides (spring in Tabs.tsx). */
+.seg { background: var(--glass); border-color: var(--glass-edge); box-shadow: var(--glass-shadow); }
+.seg-pill { background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.2), 0 6px 16px -6px rgba(0, 0, 0, 0.7); }
+
+/* Opening: liquid glass fills the island from the top like water, a bright meniscus leading the way. */
+.liquid-fill { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3; overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 0%, color-mix(in srgb, var(--cover, var(--accent)) 26%, transparent), transparent 70%);
+  -webkit-mask-image: radial-gradient(circle at 50% 0%, #000 0, #000 var(--r, 0%), transparent calc(var(--r, 0%) + 12%)); mask-image: radial-gradient(circle at 50% 0%, #000 0, #000 var(--r, 0%), transparent calc(var(--r, 0%) + 12%));
+  animation: liquid-fill 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.liquid-fill::after { content: ''; position: absolute; left: 50%; top: 0; width: 40px; height: 40px; translate: -50% -50%; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.45); box-shadow: 0 0 24px rgba(255, 255, 255, 0.25), inset 0 0 16px rgba(255, 255, 255, 0.15); animation: liquid-ring 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@property --r { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@keyframes liquid-fill { 0% { --r: 0%; opacity: 1; } 70% { opacity: 0.8; } 100% { --r: 160%; opacity: 0; } }
+@keyframes liquid-ring { from { width: 40px; height: 40px; opacity: 1; } to { width: 1500px; height: 1500px; opacity: 0; } }
+html[data-motion='reduced'] .liquid-fill { display: none; }
+@media (prefers-reduced-motion: reduce) { .liquid-fill { display: none; } }
+
+/* ---------- Settings 0.9.0 ---------- */
+.set-island { position: relative; height: 100%; min-height: 0; }
+.set-scroll { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; padding: 2px 4px 8px 2px; }
+.set-top { display: flex; align-items: center; gap: 8px; }
+.set-profile { flex: 1; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; background: var(--glass); border: 0.5px solid var(--glass-edge); box-shadow: var(--glass-shadow); min-width: 0; }
+.set-profile.compact { padding: 8px 10px; }
+.set-avatar { width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 17px; font-weight: 700; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 6px 16px -6px var(--accent), inset 0 1px 0 rgba(255, 255, 255, 0.35); }
+.set-profile-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.set-name { background: none; border: 0; outline: none; font-size: 15px; font-weight: 700; padding: 0; min-width: 0; }
+.set-name::placeholder { color: var(--faint); font-weight: 600; }
+.set-search { margin: 0 !important; background: var(--glass) !important; border-color: var(--glass-edge) !important; border-radius: 12px !important; padding: 8px 12px !important; }
+.set-cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.set-cat { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 16px; text-align: left; min-width: 0; }
+.set-cat-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.set-cat-title { font-weight: 600; font-size: 13px; }
+.set-tile { flex: none; display: grid; place-items: center; border-radius: 9px; color: #fff; background: linear-gradient(160deg, color-mix(in srgb, var(--c) 100%, #fff 18%), color-mix(in srgb, var(--c) 80%, #000)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 10px -4px color-mix(in srgb, var(--c) 70%, transparent); }
+.set-page { display: flex; flex-direction: column; gap: 10px; }
+.set-page-head { display: flex; align-items: center; gap: 10px; }
+.set-page-title { font-size: 16px; font-weight: 700; }
+.set-group { border-radius: 16px; padding: 4px 12px; display: flex; flex-direction: column; }
+.set-group > .setting, .set-group > .switch, .set-group > label, .set-group > div:not(.order-list) { border-bottom: 0.5px solid rgba(255, 255, 255, 0.06); }
+.set-group > :last-child { border-bottom: 0 !important; }
+.set-found { display: flex; flex-direction: column; gap: 6px; }
+.set-found-head { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+/* Window: sidebar + page */
+.settings-window.v2 { display: block; height: 100%; }
+.set-window { display: flex; height: 100%; }
+.set-side { width: 250px; flex: none; display: flex; flex-direction: column; gap: 10px; padding: 44px 12px 12px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)); border-right: 0.5px solid var(--line); }
+.set-nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+.set-nav-item { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 11px; text-align: left; color: var(--muted); transition: color 0.2s, opacity 0.2s; }
+.set-nav-item > * { position: relative; z-index: 1; }
+.set-nav-item:hover, .set-nav-item.on { color: var(--text); }
+.set-nav-item.dim { opacity: 0.35; }
+.set-nav-pill { position: absolute !important; inset: 0; z-index: 0 !important; border-radius: inherit; background: var(--glass-hi); border: 0.5px solid var(--glass-edge); box-shadow: var(--glass-shadow); }
+.set-main { flex: 1; min-width: 0; padding: 44px 28px 28px; }
+.set-main .set-page-title { font-size: 22px; }
+.set-main .set-group { padding: 6px 16px; }
+.set-group .setting, .set-group .setting-help { background: transparent; padding-left: 0; padding-right: 0; }
+.set-group .setting { padding-top: 10px; padding-bottom: 10px; }
+.settings-window.v2 { display: block !important; grid-template-columns: none !important; background: radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%), #0e0e12; }
+.cloudy-3d { position: relative; flex: none; }
+.cloudy-3d canvas { position: absolute; left: -25%; top: -25%; pointer-events: none; display: block; }
+.cloudy-3d.dissolved canvas { transition: opacity 0.4s; }
+
+/* The 3D Cloudy takes the same body moves as the flat one (tricks like spins are done in 3D). */
+.anim-idle .cloudy-3d { animation: c-float 4.2s ease-in-out infinite; }
+.anim-lean .cloudy-3d { animation: c-float 3s ease-in-out infinite; }
+.anim-joy .cloudy-3d { animation: c-joy 0.5s cubic-bezier(.3,1.6,.5,1) infinite; }
+.anim-hop .cloudy-3d { animation: c-joy 0.55s cubic-bezier(.3,1.6,.5,1) 2; }
+.anim-squish .cloudy-3d { animation: c-squish 0.55s cubic-bezier(.3,1.7,.4,1); transform-origin: 50% 100%; }
+.anim-dangle .cloudy-3d { animation: c-dangle 0.9s ease-in-out infinite; transform-origin: 50% 0%; }
+.anim-droop .cloudy-3d { animation: c-droop 3.2s ease-in-out infinite; transform-origin: 50% 100%; }
+.anim-shake .cloudy-3d, .anim-shiver .cloudy-3d { animation: c-shake 0.1s linear infinite; }
+.anim-chomp .cloudy-3d { animation: c-chomp 0.26s ease-in-out infinite alternate; transform-origin: 50% 90%; }
+.anim-fly .cloudy-3d { animation: c-fly 0.4s ease-in-out infinite alternate; }
+.anim-sleep .cloudy-3d { animation: c-sleep 4.5s ease-in-out infinite; transform-origin: 50% 100%; }
+.anim-wiggle .cloudy-3d { animation: c-wiggle 0.45s ease-in-out 2; transform-origin: 50% 100%; }
+.anim-stretch .cloudy-3d { animation: c-stretch 1.6s ease-in-out; transform-origin: 50% 100%; }
+.anim-nope .cloudy-3d { animation: c-nope 0.35s ease-in-out 3; }
+.anim-inflate .cloudy-3d { animation: c-inflate 1.6s ease-in-out; }
+.anim-jelly .cloudy-3d { animation: c-jelly 1.1s ease-in-out; transform-origin: 50% 100%; }
+.anim-sneeze .cloudy-3d { animation: c-sneeze 1.2s ease-in-out; transform-origin: 50% 100%; }
+.anim-wave .cloudy-3d { animation: c-wave 0.4s ease-in-out 4; transform-origin: 50% 100%; }
+.anim-nuzzle .cloudy-3d { animation: c-nuzzle 0.6s ease-in-out 3; transform-origin: 50% 100%; }
+.anim-morph .cloudy-3d { animation: c-morph 0.9s ease-in-out; }
+.anim-yoga .cloudy-3d { animation: c-yoga 2.4s ease-in-out; transform-origin: 50% 100%; }
+.anim-peek-l .cloudy-3d { animation: c-peek-l 3.6s ease-in-out; }
+.anim-peek-r .cloudy-3d { animation: c-peek-r 3.6s ease-in-out; }
+.anim-tilt .cloudy-3d { animation: c-tilt 1.8s cubic-bezier(0.3, 1.4, 0.5, 1); transform-origin: 50% 90%; }
+.anim-shakeoff .cloudy-3d { animation: c-shakeoff 1.2s ease-in-out; transform-origin: 50% 80%; }
+.anim-widen .cloudy-3d { animation: c-widen 1.4s cubic-bezier(0.3, 1.4, 0.5, 1); transform-origin: 50% 100%; }
+.anim-lookup .cloudy-3d { animation: c-lookup 1.4s ease-in-out; transform-origin: 50% 100%; }
+html[data-level='calm'] .anim-idle .cloudy-3d { animation-duration: 6s; }
+html[data-level='balanced'] .anim-idle .cloudy-3d { animation-duration: 5s; }
+.set-side .set-profile { flex: none; }

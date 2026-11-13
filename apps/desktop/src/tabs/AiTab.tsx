@@ -64,14 +64,18 @@ function useChatView(service: string | null, ref: React.RefObject<HTMLDivElement
       if (!alive) return;
       const q = prompt.current;
       prompt.current = null;
+      // Marked open before the window appears: the cursor lands on it at once, and the island must not
+      // read that as "the cursor left" and close itself (and the chat) while the site loads.
+      useApp.setState({ chatOpen: true });
       try {
         const prefilled = await call('chat_show', { service, ...rect(), prompt: q });
-        useApp.setState({ chatOpen: true });
+        if (!alive) return void call('chat_hide');
         if (q && !prefilled) {
           await copyText(q);
           toast('📋 ' + trNow('Your question is copied — paste it with Ctrl+V', 'Вопрос скопирован — вставь его Ctrl+V'), { force: true, ms: 5000 });
         }
       } catch (e) {
+        useApp.setState({ chatOpen: false });
         toast(String(e), { tone: 'error' });
       }
     }, 360);
@@ -93,6 +97,8 @@ export function AiTab() {
   const [active, setActive] = useState<string | null>(() => read(LAST));
   const [q, setQ] = useState('');
   const req = useApp((s) => s.chatRequest);
+  // The AI asked from the box (Settings → Chats & clipboard).
+  const defAi = useApp((s) => (s.settings as unknown as { ai?: { service?: string } } | null)?.ai?.service ?? 'chatgpt');
   const unread = useUnread();
   const screen = useRef<HTMLDivElement>(null);
   const prompt = useRef<string | null>(null);
@@ -169,7 +175,7 @@ export function AiTab() {
             </motion.div>
           ) : (
             <motion.div key="home" className="chat-home scroll" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
-              <form className="ai-ask" onSubmit={(e) => (e.preventDefault(), ai[0] && ask(services.find((s) => s.id === read('eh.chat.ai')) ?? ai[0]))}>
+              <form className="ai-ask" onSubmit={(e) => (e.preventDefault(), ai[0] && ask(services.find((s) => s.id === defAi) ?? ai[0]))}>
                 <Sparkles size={16} className="faint" />
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Ask an AI anything…', 'Спроси ИИ о чём угодно…')} aria-label={tr('Question', 'Вопрос')} />
                 <button className="send" type="submit" disabled={!q.trim()} aria-label={tr('Ask', 'Спросить')}>
@@ -179,7 +185,7 @@ export function AiTab() {
               {q.trim() && (
                 <div className="chat-ask-with">
                   {ai.map((s) => (
-                    <button key={s.id} className="chip-btn" onClick={() => (store('eh.chat.ai', s.id), ask(s))}>
+                    <button key={s.id} className="chip-btn" onClick={() => ask(s)}>
                       <AppLogo name={s.id} size={14} /> {s.name}
                     </button>
                   ))}

@@ -13,7 +13,8 @@ import { Emoji, Rich } from '../lib/emoji';
 import { EyeOff, House, Moon, MousePointer2, Shapes, Sun as SunIcon, Utensils, Volleyball, type LucideIcon } from 'lucide-react';
 import { clampToArea, defaultSpot, heightOf, nextTripIn, planTrip, step, throwVelocity, type Area, type Body } from './brain';
 import { cheer, decay, feed, FOODS, loadPet, need, savePet, type FoodId, type Pet } from './pet';
-import { CloudyFace, type Expr, type Tint } from './CloudyFace';
+import { type Expr, type Tint } from './CloudyFace';
+import { Cloudy3D, type Trick } from './Cloudy3D';
 import { SHAPE_NAMES, SHOW_SHAPES, type ShapeId } from './shapes';
 import { startBeat } from '../lib/beat';
 import { chirp } from './sounds';
@@ -179,7 +180,14 @@ export function CloudyStage() {
     setBubble(text);
     setTimeout(() => setBubble((b) => (b === text ? null : b)), ms);
   };
-  const react = (expr: Expr | undefined, anim: Anim | undefined, ms = 1600) => setFlash({ expr, anim, until: Date.now() + ms });
+  // His 3D body plays a matching trick for the big moves.
+  const [trick, setTrick] = useState<{ kind: Trick; n: number } | null>(null);
+  const TRICK_FOR: Partial<Record<Anim, Trick>> = { spin: 'spin', flip: 'flip', rollover: 'roll', boing: 'hop', hop: 'hop', jelly: 'wobble', dance: 'twirl', joy: 'hop', peek: 'peek' } as Partial<Record<Anim, Trick>>;
+  const react = (expr: Expr | undefined, anim: Anim | undefined, ms = 1600) => {
+    setFlash({ expr, anim, until: Date.now() + ms });
+    const t = anim && TRICK_FOR[anim];
+    if (t) setTrick((x) => ({ kind: t, n: (x?.n ?? 0) + 1 }));
+  };
   /** Forms a shape out of his puffs for a while, then turns back into himself. */
   const formShape = (id: ShapeId, ms = 3800, talk = true) => {
     clearTimeout(shapeTimer.current);
@@ -955,7 +963,7 @@ export function CloudyStage() {
         {fx === 'rainbow' && <span className="cl-rainbow" aria-hidden />}
         <div ref={bodyRef} className={`cloudy-body anim-${anim} ${signal?.playing ? 'beat' : ''}`} style={{ ['--tilt' as string]: `${tilt}deg`, ['--dir' as string]: body.current.facing }} onPointerDown={onPointerDown}>
           <div className="cloudy-reach" style={{ ['--reach' as string]: reach }}>
-            <CloudyFace expr={expr} look={dragging ? { x: 0, y: 0.8 } : look} size={cfg.size} tint={tint} shape={dragging ? 'cloud' : shape} dissolved={dissolved} headphones={!!media?.playing} />
+            <Cloudy3D expr={expr} look={dragging ? { x: 0, y: 0.8 } : look} size={cfg.size} tint={tint} shape={dragging ? 'cloud' : shape} dissolved={dissolved} headphones={!!media?.playing} trick={trick} playful={!sleeping && !dragging} />
           </div>
         </div>
         {(fx === 'rain' || fx === 'storm' || fx === 'snow') && (

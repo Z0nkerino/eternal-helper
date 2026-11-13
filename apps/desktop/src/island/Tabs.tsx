@@ -77,7 +77,7 @@ export function Tabs({ position }: { position: TabsPosition }) {
               onMouseEnter={() => setHover(m.id)}
             >
               {hover === m.id && !on && <motion.span layoutId="seg-hover" className="seg-hover" transition={springs.snappy} />}
-              {on && <motion.span layoutId="seg-pill" className="seg-pill" transition={springs.snappy} />}
+              {on && <motion.span layoutId="seg-pill" className="seg-pill" transition={{ type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }} />}
               <Icon size={15} aria-hidden />
               {!side && !(compact && !on) && <span className="seg-label">{label}</span>}
               {m.id === 'settings' && update && <span className="seg-dot" aria-label="update" />}

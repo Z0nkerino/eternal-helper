@@ -1,7 +1,7 @@
 {
   "name": "eternal-helper",
   "private": true,
-  "version": "0.8.3",
+  "version": "0.9.0",
   "description": "Eternal Helper by Eternal Inc. — a dynamic island for Windows and macOS.",
   "packageManager": "pnpm@9.15.4",
   "scripts": {

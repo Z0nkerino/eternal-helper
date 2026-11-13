@@ -1,7 +1,7 @@
 // All settings, in sections. The same sections appear stacked in the island's Settings tab and with a
 // sidebar in the separate Settings window. Every change is saved at once and the island updates live.
 import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Cloud, CloudSun, Info, MessagesSquare, Music2, Palette, Plus, SlidersHorizontal, Sparkles, X, type LucideIcon } from 'lucide-react';
 import { call, type CarouselItem, type MusicService, type Settings } from '../lib/ipc';
 import { useT, useTr } from '../lib/i18n';
 import { saveSettings, useApp } from '../lib/store';
@@ -11,7 +11,6 @@ import { checkForUpdates, installUpdate } from '../lib/updates';
 import { Emoji } from '../lib/emoji';
 import { RELEASE } from '../lib/release';
 import { HotkeyField, Segment, Switch, WeatherPlace } from './parts';
-import { AccountSection } from './Account';
 import { AiClipboardSection } from './AiClipboard';
 
 type S = Settings;
@@ -41,7 +40,7 @@ function General({ s }: { s: S }) {
     <>
       <Segment label={t('set.language')} value={s.language} options={[['auto', 'Auto'], ['ru', 'Русский'], ['en', 'English']]} onChange={(language) => void saveSettings({ language })} />
       <Segment label={t('set.monitor')} value={s.monitor} options={[['primary', t('set.monitor.primary')], ['cursor', t('set.monitor.cursor')]]} onChange={(monitor) => void saveSettings({ monitor })} />
-      <HotkeyField label={t.lang === 'ru' ? 'Остров и Афина' : 'Island & Afina'} />
+      <HotkeyField label={t.lang === 'ru' ? 'Открыть остров' : 'Open the island'} />
       <PerfSettings s={s} />
       <HotkeyField field="shotHotkey" label={t.lang === 'ru' ? 'Скриншот' : 'Screenshot'} />
       <Switch label={t('set.autostart')} on={s.autostart} onChange={(autostart) => void saveSettings({ autostart })} />
@@ -63,26 +62,13 @@ function Range({ label, value, set, range, step, fmt }: { label: string; value: 
   );
 }
 
-function Personalise({ s }: { s: S }) {
+/** Look: the island's shape, colours, motion and sizes. */
+function Look({ s }: { s: S }) {
   const tr = useTr();
   const pct = (v: number) => `${Math.round(v * 100)}%`;
+  const themeNames: Record<S['theme'], [string, string]> = { classic: ['Classic', 'Классика'], glass: ['Liquid Glass', 'Liquid Glass'], neon: ['Neon', 'Неон'], minimal: ['Minimal', 'Минимал'] };
   return (
     <>
-      <div className="setting">
-        <span>{tr('What should we call you?', 'Как к тебе обращаться?')}</span>
-        <input className="field" maxLength={LIMITS.nameLength} value={s.name} placeholder={tr('Your name (optional)', 'Имя (необязательно)')} onChange={(e) => void saveSettings({ name: e.target.value.slice(0, LIMITS.nameLength) })} aria-label={tr('Your name', 'Имя')} />
-      </div>
-      <Range label={tr('Island size', 'Размер острова')} value={s.uiScale} set={(uiScale) => void saveSettings({ uiScale })} range={LIMITS.uiScale} step={0.05} fmt={pct} />
-      <Range label={tr('Text size', 'Размер текста')} value={s.fontScale} set={(fontScale) => void saveSettings({ fontScale })} range={LIMITS.fontScale} step={0.05} fmt={pct} />
-      <Range label={tr('Island opacity', 'Непрозрачность острова')} value={s.islandOpacity} set={(islandOpacity) => void saveSettings({ islandOpacity })} range={LIMITS.islandOpacity} step={0.02} fmt={pct} />
-      <Segment label={tr('Clock', 'Часы')} value={s.clock24 ? '24' : '12'} options={[['24', '24 h'], ['12', '12 h AM/PM']]} onChange={(v) => void saveSettings({ clock24: v === '24' })} />
-      <Switch label={tr('Show seconds', 'Показывать секунды')} on={s.clockSeconds} onChange={(clockSeconds) => void saveSettings({ clockSeconds })} />
-      <Segment
-        label={tr('Animations', 'Анимации')}
-        value={s.motion === 'reduced' ? 'off' : s.motionLevel}
-        options={[['calm', tr('Calm', 'Спокойно')], ['balanced', tr('Balanced', 'Сбалансированно')], ['lively', tr('Lively', 'Живо')], ['off', tr('Off', 'Выкл')]]}
-        onChange={(v) => void saveSettings(v === 'off' ? { motion: 'reduced' } : { motion: 'full', motionLevel: v as Settings['motionLevel'] })}
-      />
       <div className="setting col">
         <span>{tr('Island shape', 'Форма острова')}</span>
         <div className="shape-pick">
@@ -98,52 +84,8 @@ function Personalise({ s }: { s: S }) {
           })}
         </div>
       </div>
-      <Segment
-        label={tr('Opening animation', 'Анимация открытия')}
-        value={(s as unknown as { openStyle?: string }).openStyle ?? 'liquid'}
-        options={[['liquid', tr('Liquid', 'Жидкость')], ['depth', tr('3D', '3D')], ['morph', tr('Morph', 'Плавно')], ['unfold', tr('Unfold', 'Разворот')], ['drop', tr('Drop', 'Сверху')], ['zoom', tr('Zoom', 'Масштаб')]]}
-        onChange={(openStyle) => void saveSettings({ openStyle } as unknown as Partial<Settings>)}
-      />
-      <Switch label={tr('Liquid glass (follows the cursor, squishes, wobbles)', 'Жидкое стекло (следует за курсором, пружинит, колышется)')} on={s.liquid.enabled} onChange={(enabled) => void saveSettings({ liquid: { ...s.liquid, enabled } })} />
-      <Switch label={tr('Move with the beat of the music', 'Двигаться в такт музыке')} on={s.liquid.beat} onChange={(beat) => void saveSettings({ liquid: { ...s.liquid, beat } })} />
-      <Switch label={tr('Open the island when the cursor rests on it', 'Открывать остров при наведении курсора')} on={s.hoverOpen} onChange={(hoverOpen) => void saveSettings({ hoverOpen })} />
-      <div className="setting">
-        <span>
-          {tr('Island position', 'Положение острова')}
-          <span className="tiny faint setting-sub">{tr('Drag the island (or its tab bar) to move it anywhere.', 'Перетащи остров (или его панель вкладок), чтобы переместить.')}</span>
-        </span>
-        <button className="btn" disabled={!(s as unknown as { islandPos?: unknown }).islandPos} onClick={() => void saveSettings({ islandPos: null } as unknown as Partial<Settings>)}>{tr('Back to the top', 'Вернуть наверх')}</button>
-      </div>
-      <div className="setting">
-        <span className="faint small">{tr('Back to how it came', 'Вернуть как было')}</span>
-        <button className="btn" onClick={() => void saveSettings({ name: '', uiScale: 1, fontScale: 1, islandOpacity: 1, motion: 'full', clockSeconds: false, hiddenTabs: [], hoverOpen: true })}>{tr('Reset', 'Сбросить')}</button>
-      </div>
-    </>
-  );
-}
-
-const ITEM_NAMES: Record<CarouselItem, [string, string, string]> = {
-  time: ['🕐', 'Time + weather', 'Время + погода'],
-  event: ['📅', 'Next event', 'Ближайшее событие'],
-  battery: ['🔋', 'Battery', 'Батарея'],
-  currency: ['💱', 'Currency', 'Курс валют'],
-  track: ['🎵', 'Current track', 'Текущий трек'],
-};
-
-function Appearance({ s }: { s: S }) {
-  const t = useT();
-  const tr = useTr();
-  const themeNames: Record<S['theme'], [string, string]> = { classic: ['Classic', 'Классика'], glass: ['Liquid Glass', 'Liquid Glass'], neon: ['Neon', 'Неон'], minimal: ['Minimal', 'Минимал'] };
-  const items = s.carousel.items;
-  const move = (i: number, d: number) => {
-    const next = [...items];
-    [next[i], next[i + d]] = [next[i + d], next[i]];
-    patch('carousel', s.carousel, { items: next });
-  };
-  return (
-    <>
-      <div className="setting">
-        <span>{tr('Island theme', 'Тема острова')}</span>
+      <div className="setting col">
+        <span>{tr('Theme', 'Тема')}</span>
         <div className="theme-picks" role="radiogroup">
           {THEMES.map((th) => (
             <button key={th} role="radio" aria-checked={s.theme === th} className={`theme-pick theme-${th} ${s.theme === th ? 'on' : ''}`} onClick={() => void saveSettings({ theme: th })}>
@@ -164,17 +106,68 @@ function Appearance({ s }: { s: S }) {
           </label>
         </div>
       </div>
+      <Segment
+        label={tr('Opening', 'Открытие')}
+        value={(s as unknown as { openStyle?: string }).openStyle ?? 'liquid'}
+        options={[['liquid', tr('Liquid', 'Жидкость')], ['morph', tr('Morph', 'Плавно')], ['drop', tr('Drop', 'Сверху')], ['zoom', tr('Zoom', 'Масштаб')], ['depth', '3D']]}
+        onChange={(openStyle) => void saveSettings({ openStyle } as unknown as Partial<Settings>)}
+      />
+      <Segment
+        label={tr('Animations', 'Анимации')}
+        value={s.motion === 'reduced' ? 'off' : s.motionLevel}
+        options={[['calm', tr('Calm', 'Спокойно')], ['balanced', tr('Balanced', 'Баланс')], ['lively', tr('Lively', 'Живо')], ['off', tr('Off', 'Выкл')]]}
+        onChange={(v) => void saveSettings(v === 'off' ? { motion: 'reduced' } : { motion: 'full', motionLevel: v as Settings['motionLevel'] })}
+      />
+      <Switch label={tr('Liquid glass — follows the cursor, squishes and wobbles', 'Жидкое стекло — тянется к курсору, пружинит')} on={s.liquid.enabled} onChange={(enabled) => void saveSettings({ liquid: { ...s.liquid, enabled } })} />
+      <Switch label={tr('Pulse with the beat of the music', 'Пульсировать в такт музыке')} on={s.liquid.beat} onChange={(beat) => void saveSettings({ liquid: { ...s.liquid, beat } })} />
+      <Range label={tr('Island size', 'Размер острова')} value={s.uiScale} set={(uiScale) => void saveSettings({ uiScale })} range={LIMITS.uiScale} step={0.05} fmt={pct} />
+      <Range label={tr('Text size', 'Размер текста')} value={s.fontScale} set={(fontScale) => void saveSettings({ fontScale })} range={LIMITS.fontScale} step={0.05} fmt={pct} />
+      <Range label={tr('Opacity', 'Непрозрачность')} value={s.islandOpacity} set={(islandOpacity) => void saveSettings({ islandOpacity })} range={LIMITS.islandOpacity} step={0.02} fmt={pct} />
+      <Range label={tr('Corner roundness', 'Скругление углов')} value={s.radius} set={(radius) => void saveSettings({ radius })} range={[0.5, 1.4]} step={0.05} fmt={pct} />
       <div className="setting">
-        <span>{tr('Corner roundness', 'Скругление углов')}</span>
-        <input type="range" min={0.5} max={1.4} step={0.05} value={s.radius} onChange={(e) => void saveSettings({ radius: parseFloat(e.target.value) })} aria-label={tr('Corner roundness', 'Скругление углов')} />
+        <span className="faint small">{tr('Back to how it came', 'Вернуть как было')}</span>
+        <button className="btn" onClick={() => void saveSettings({ uiScale: 1, fontScale: 1, islandOpacity: 1, radius: 1, motion: 'full', motionLevel: 'balanced', islandShape: 'island', openStyle: 'liquid' } as unknown as Partial<Settings>)}>{tr('Reset look', 'Сбросить вид')}</button>
       </div>
+    </>
+  );
+}
+
+const ITEM_NAMES: Record<CarouselItem, [string, string, string]> = {
+  time: ['🕐', 'Time + weather', 'Время + погода'],
+  event: ['📅', 'Next event', 'Ближайшее событие'],
+  battery: ['🔋', 'Battery', 'Батарея'],
+  currency: ['💱', 'Currency', 'Курс валют'],
+  track: ['🎵', 'Current track', 'Текущий трек'],
+};
+
+/** Island: how it opens, where it sits, the clock and the widgets in the closed pill. */
+function IslandSec({ s }: { s: S }) {
+  const t = useT();
+  const tr = useTr();
+  const items = s.carousel.items;
+  const move = (i: number, d: number) => {
+    const next = [...items];
+    [next[i], next[i + d]] = [next[i + d], next[i]];
+    patch('carousel', s.carousel, { items: next });
+  };
+  return (
+    <>
+      <Switch label={tr('Open when the cursor rests on it', 'Открывать при наведении курсора')} on={s.hoverOpen} onChange={(hoverOpen) => void saveSettings({ hoverOpen })} />
+      <div className="setting">
+        <span>
+          {tr('Position', 'Положение')}
+          <span className="tiny faint setting-sub">{tr('Drag the island (or its tab bar) anywhere.', 'Перетащи остров (или его вкладки) куда угодно.')}</span>
+        </span>
+        <button className="btn" disabled={!(s as unknown as { islandPos?: unknown }).islandPos} onClick={() => void saveSettings({ islandPos: null } as unknown as Partial<Settings>)}>{tr('Back to the top', 'Вернуть наверх')}</button>
+      </div>
+      <Segment label={tr('Clock', 'Часы')} value={s.clock24 ? '24' : '12'} options={[['24', '24 h'], ['12', '12 h']]} onChange={(v) => void saveSettings({ clock24: v === '24' })} />
+      <Switch label={tr('Show seconds', 'Показывать секунды')} on={s.clockSeconds} onChange={(clockSeconds) => void saveSettings({ clockSeconds })} />
       <Segment
         label={t('set.tabs')}
         value={s.tabsPosition}
         options={[['auto', t('set.tabs.auto')], ['top', t('set.tabs.top')], ['bottom', t('set.tabs.bottom')], ['side', t('set.tabs.side')]]}
         onChange={(tabsPosition) => void saveSettings({ tabsPosition })}
       />
-      <p className="faint small setting-help">{t('set.tabsHelp')}</p>
       <Switch label={tr('Rotating widgets in the pill', 'Карусель виджетов в пилюле')} on={s.carousel.enabled} onChange={(enabled) => patch('carousel', s.carousel, { enabled })} />
       {s.carousel.enabled && (
         <>
@@ -417,11 +410,6 @@ function Updates({ s }: { s: S }) {
   );
 }
 
-function Developer({ s }: { s: S }) {
-  const t = useT();
-  return <Switch label={t('set.safeAreas')} on={s.debugSafeAreas} onChange={(debugSafeAreas) => void saveSettings({ debugSafeAreas })} />;
-}
-
 function About() {
   const t = useT();
   const tr = useTr();
@@ -439,7 +427,9 @@ function About() {
 
 export interface Section {
   id: string;
-  emoji: string;
+  icon: LucideIcon;
+  /** Colour of the icon tile. */
+  color: string;
   title: [string, string];
   /** One line under the title saying what's inside. */
   desc: [string, string];
@@ -449,17 +439,14 @@ export interface Section {
 }
 
 export const SECTIONS: Section[] = [
-  { id: 'account', emoji: '👤', title: ['Account', 'Аккаунт'], desc: ['Your profile and connected services', 'Профиль и подключённые сервисы'], keywords: 'account profile sign in login name email city avatar аккаунт профиль войти имя почта город', Body: AccountSection },
-  { id: 'personal', emoji: '✨', title: ['Personalise', 'Под себя'], desc: ['Island shape, animations, sizes and clock', 'Форма острова, анимации, размеры и часы'], keywords: 'name size scale text font opacity clock 24 seconds animation motion tabs shape notch capsule mini frost liquid glass beat 3d имя размер текст шрифт прозрачность часы секунды анимация вкладки форма вырез капсула жидкое стекло ритм', Body: Personalise },
-  { id: 'appearance', emoji: '🎨', title: ['Appearance', 'Внешний вид'], desc: ['Theme, colour, corners and the widgets in the pill', 'Тема, цвет, углы и виджеты в пилюле'], keywords: 'theme glass neon minimal accent colour color corner radius carousel widgets тема стекло неон цвет акцент углы карусель виджеты', Body: Appearance },
-  { id: 'general', emoji: '⚙️', title: ['General', 'Общие'], desc: ['Language, monitor, shortcuts and start-up', 'Язык, монитор, горячие клавиши и запуск'], keywords: 'language monitor shortcut hotkey screenshot autostart login dnd fullscreen язык монитор клавиши скриншот автозапуск не беспокоить', Body: General },
-  { id: 'ai', emoji: '💬', title: ['Chats & clipboard', 'Чаты и буфер обмена'], desc: ['AI and messenger accounts, copy history', 'ИИ и мессенджеры, история копирования'], keywords: 'telegram whatsapp discord messenger мессенджер ai chatgpt claude gemini perplexity copilot deepseek account clipboard copy paste history ии аккаунт буфер копировать история', Body: AiClipboardSection },
-  { id: 'music', emoji: '🎧', title: ['Music accounts', 'Музыка'], desc: ['Spotify, Yandex Music, YouTube Music, SoundCloud', 'Spotify, Яндекс Музыка, YouTube Music, SoundCloud'], keywords: 'spotify yandex soundcloud music player музыка плеер яндекс', Body: Music },
-  { id: 'today', emoji: '🌤️', title: ['Weather & Today', 'Погода и «Сегодня»'], desc: ['City, currency pairs and world clocks', 'Город, валюты и мировые часы'], keywords: 'weather city currency rates clocks time zone погода город валюта курс часы пояс', Body: WeatherToday },
-  { id: 'cloudy', emoji: '☁️', title: ['Cloudy', 'Cloudy'], desc: ['Your desktop cloud: size, speed and chatter', 'Облачко на рабочем столе: размер, скорость, реплики'], keywords: 'cloudy pet cloud feed облачко питомец кормить', Body: Cloudy },
-  { id: 'updates', emoji: '🔄', title: ['Updates', 'Обновления'], desc: ['Check for and install new versions', 'Проверка и установка новых версий'], keywords: 'update version release обновление версия', Body: Updates },
-  { id: 'developer', emoji: '🛠️', title: ['For developers', 'Для разработчиков'], desc: ['Debug overlays', 'Отладка'], keywords: 'debug safe area notch отладка вырез', Body: Developer },
-  { id: 'about', emoji: '💙', title: ['About', 'О программе'], desc: ['Version and credits', 'Версия и авторы'], keywords: 'about version eternal inc о программе версия', Body: () => <About /> },
+  { id: 'look', icon: Palette, color: '#ff6b8b', title: ['Look', 'Внешний вид'], desc: ['Shape, colours, animations and sizes', 'Форма, цвета, анимации и размеры'], keywords: 'theme glass neon minimal accent colour color corner radius shape notch capsule mini frost liquid beat animation motion opening size scale text font opacity тема стекло неон цвет акцент углы форма вырез капсула жидкое ритм анимация открытие размер текст прозрачность', Body: Look },
+  { id: 'island', icon: Sparkles, color: '#5b8cff', title: ['Island', 'Остров'], desc: ['Opening on hover, tabs, position, clock, pill widgets', 'Наведение, вкладки, положение, часы, виджеты пилюли'], keywords: 'hover open tabs position top bottom side clock 24 seconds carousel pill widgets наведение вкладки положение часы секунды карусель пилюля', Body: IslandSec },
+  { id: 'general', icon: SlidersHorizontal, color: '#8e8e93', title: ['General', 'Общие'], desc: ['Language, screen, shortcuts, start-up, games', 'Язык, экран, клавиши, автозапуск, игры'], keywords: 'language monitor shortcut hotkey screenshot autostart login dnd fullscreen overlay fps game notice язык монитор клавиши скриншот автозапуск не беспокоить оверлей игры новости', Body: General },
+  { id: 'today', icon: CloudSun, color: '#ffb547', title: ['Weather & time', 'Погода и время'], desc: ['City, currencies and world clocks', 'Город, валюты и мировые часы'], keywords: 'weather city currency rates clocks time zone погода город валюта курс часы пояс', Body: WeatherToday },
+  { id: 'music', icon: Music2, color: '#3ddc97', title: ['Music', 'Музыка'], desc: ['Spotify, Yandex Music, YouTube Music, SoundCloud', 'Spotify, Яндекс Музыка, YouTube Music, SoundCloud'], keywords: 'spotify yandex soundcloud youtube music player музыка плеер яндекс', Body: Music },
+  { id: 'ai', icon: MessagesSquare, color: '#b67cff', title: ['Chats & clipboard', 'Чаты и буфер'], desc: ['Default AI and copy history', 'ИИ по умолчанию и история копирования'], keywords: 'telegram whatsapp discord messenger мессенджер ai chatgpt claude gemini perplexity copilot deepseek clipboard copy paste history ии буфер копировать история', Body: AiClipboardSection },
+  { id: 'cloudy', icon: Cloud, color: '#7fd4ff', title: ['Cloudy', 'Cloudy'], desc: ['Your desktop cloud: size, speed and chatter', 'Облачко на рабочем столе: размер, скорость, реплики'], keywords: 'cloudy pet cloud feed облачко питомец кормить', Body: Cloudy },
+  { id: 'about', icon: Info, color: '#2f6bff', title: ['About & updates', 'О программе'], desc: ['Version, updates and credits', 'Версия, обновления и авторы'], keywords: 'update version release about eternal inc обновление версия о программе', Body: ({ s }) => (<><Updates s={s} /><About /></>) },
 ];
 
 /** Sections matching a search (title, description or keywords, either language). */

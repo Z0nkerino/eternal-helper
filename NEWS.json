@@ -1,23 +1,23 @@
 {
-  "updated": "2026-11-13",
+  "updated": "2026-11-14",
   "items": [
+    {
+      "date": "2026-11-14",
+      "tag": "update",
+      "title": "Beta 0.9.0 — liquid glass & 3D Cloudy",
+      "body": "Liquid glass everywhere, a smoother liquid opening, brand-new Settings, Cloudy as a real 3D cloud that spins, flips and rolls, and chats and messengers that finally load and let you sign in."
+    },
+    {
+      "date": "2026-11-14",
+      "tag": "tip",
+      "title": "Click Cloudy in his room",
+      "body": "Open Cloudy's room and click him: he spins, flips, rolls and hops. On the desktop he does tricks by himself now and then."
+    },
     {
       "date": "2026-11-13",
       "tag": "update",
       "title": "Beta 0.8.3 — music player fits",
       "body": "The Music tab is compact and easier to use: a full-width seek bar, big centred controls, the music volume beside them and more room for lyrics. It always fits, even on small or scaled screens."
-    },
-    {
-      "date": "2026-11-13",
-      "tag": "update",
-      "title": "Beta 0.8.2 — tabs fixed",
-      "body": "The tab bar always fits, every screen opens in a window, panels are never cut off, and chats close when you click elsewhere instead of staying stuck."
-    },
-    {
-      "date": "2026-11-13",
-      "tag": "update",
-      "title": "Beta 0.8.1 — fixes",
-      "body": "The island no longer closes while your cursor is on it, and its placement (and the chats over the panel) are right again. After opening a chat the island used to lose track of the cursor and its position."
     }
   ]
 }

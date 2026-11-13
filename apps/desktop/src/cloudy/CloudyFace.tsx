@@ -22,8 +22,8 @@ const EH = 14.6;
 const ER = 4.1;
 
 /** How an eye looks: an open oval (scaled by `open`), a happy ^ arc, or closed (a soft ∪ line). */
-type Eye = 'open' | 'happy' | 'closed' | 'dizzy';
-interface Look {
+export type Eye = 'open' | 'happy' | 'closed' | 'dizzy';
+export interface Look {
   eyes: [Eye, Eye];
   open: number;
   /** Eye size multiplier. */
@@ -36,7 +36,7 @@ interface Look {
   up?: boolean;
 }
 
-const LOOKS: Record<Expr, Look> = {
+export const LOOKS: Record<Expr, Look> = {
   happy: { eyes: ['open', 'open'], open: 1, mouth: [1, 0.8] },
   joy: { eyes: ['happy', 'happy'], open: 1, mouth: [1.45, 1.35], cheeks: true },
   curious: { eyes: ['open', 'open'], open: 1, big: 1.15, mouth: [0.65, 0.75] },

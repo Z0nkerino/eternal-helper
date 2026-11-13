@@ -23,6 +23,17 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.9.0 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **Chats and messengers load** | Two bugs stopped AI and messenger sites from working: the island closed itself (and the chat) the moment the chat window appeared, and sign-in pop-ups ("Continue with Google / Apple / Microsoft") were silently blocked. Both are fixed, for chats and for music players. |
+| **Liquid glass everywhere** | Every card, button and the tab bar share one liquid-glass material with a light that follows the cursor and a soft squish when pressed; the tab pill stretches like a drop as it slides. |
+| **Smoother opening** | The island morphs open with a liquid spring and fills with glass from the top like water. The heavy blur/3D/SVG effects that could flicker are gone. Hovering opens Home (or the last tab); clicking a live activity opens it. |
+| **New Settings** | A profile card, search, colourful category cards and pages that slide in: Look, Island, General, Weather & time, Music, Chats & clipboard, Cloudy, About & updates. The window has a sidebar. Leftovers removed (old assistant options, developer panel, local account form). |
+| **3D Cloudy** | Cloudy is now a real 3D cloud (glossy puffs, 3D face, headphones) that breathes, turns toward you and does tricks — spin, flip, roll, hop, peek, twirl — by himself or when clicked in his room or widget. He still morphs into his shapes and scatters when clicked on the desktop. |
+| **Lighter** | Cloudy renders at 30 fps; the face widget reads the cursor less often. |
+
 ## Beta 0.8.3 — “Sunrise” 🌅
 
 | What | Details |
@@ -215,7 +226,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name and build number are both *0.8.3* (“Sunrise”) so that in-app updates from earlier builds still see it as newer.
+- **Version naming:** the public name and build number are both *0.9.0* (“Sunrise”) so that in-app updates from earlier builds still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -241,6 +252,14 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.9.0 — «Sunrise» 🌅
+
+- **Чаты и мессенджеры загружаются:** остров больше не закрывается при открытии чата, окна входа («Войти через Google/Apple/Microsoft») больше не блокируются — и в чатах, и в музыкальных плеерах.
+- **Жидкое стекло везде:** карточки, кнопки и вкладки из одного стеклянного материала, свет за курсором, мягкое нажатие.
+- **Плавное открытие:** жидкая пружина и заполнение стеклом сверху; убраны эффекты, которые могли мерцать. Наведение открывает Главную.
+- **Новые настройки:** профиль, поиск, цветные категории, страницы со сдвигом; лишнее удалено.
+- **3D-Cloudy:** настоящее объёмное облачко — крутится, делает сальто, катается, подпрыгивает; в комнате и виджете — по клику.
 
 ## Beta 0.8.3 — «Sunrise» 🌅
 
