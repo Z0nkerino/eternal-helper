@@ -10,9 +10,9 @@ export interface NewsItem {
 const URL = 'https://raw.githubusercontent.com/Z0nkerino/eternal-helper/main/NEWS.json';
 
 export const BUNDLED: NewsItem[] = [
+  {date: "2026-11-13", tag: "update", title: "Beta 0.8.1 — fixes", body: "The island no longer closes while your cursor is on it, and its placement (and the chats over the panel) are right again. After opening a chat the island used to lose track of the cursor and its position."},
   {date: "2026-11-13", tag: "update", title: "Beta 0.6.0 — liquid, chats, music", body: "The island opens like liquid glass and comes in five shapes. Chats (ChatGPT, Claude, Telegram, WhatsApp, Discord…) open right inside it. A new Music tab with its own volume, a Time tab, Calendar, a Notes board, a file shelf and notifications from your PC."},
   {date: "2026-11-13", tag: "tip", title: "Drop files on the island", body: "Drag files onto the island: drop on the left to keep them on the shelf, on the right to copy them to the Desktop."},
-  {date: "2026-11-13", tag: "news", title: "Meet the new Cloudy", body: "Cloudy is now a soft 3D cloud, puts on headphones when music plays, talks about what's on your screen and has his own room. Put him on your desktop from his room."},
 ];
 
 const valid = (x: unknown): x is NewsItem => {

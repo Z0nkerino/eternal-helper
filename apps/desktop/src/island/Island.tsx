@@ -487,7 +487,14 @@ export function Island() {
     addEventListener('blur', onBlur);
     // With a chat open, the island closes when another app takes the focus.
     let offFocus: (() => void) | undefined;
-    if (inTauri) void getCurrentWindow().onFocusChanged(({ payload }) => !payload && useApp.getState().chatOpen && closePanel()).then((f) => (offFocus = f));
+    // (Focus moving into the chat's own window doesn't count: it sits over the panel, part of the island.)
+    if (inTauri)
+      void getCurrentWindow()
+        .onFocusChanged(({ payload }) => {
+          if (payload || !useApp.getState().chatOpen) return;
+          setTimeout(() => void call('chat_focused').then((inChat) => !inChat && useApp.getState().chatOpen && closePanel()), 150);
+        })
+        .then((f) => (offFocus = f));
     return () => {
       removeEventListener('keydown', onKey);
       removeEventListener('blur', onBlur);

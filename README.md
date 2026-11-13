@@ -23,6 +23,13 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.8.1 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **No more closing under the cursor** | Once a chat had been opened, the island's window had two web views inside, and the app no longer recognised it as the island: it stopped tracking the cursor (so it closed while you were on it) and couldn't place itself. Chats now open in their own frameless windows laid exactly over the panel, so the island stays a normal window. |
+| **Placement fixed** | The island is placed (and moved between screens) correctly again, and chats line up with the panel at any display scaling. |
+
 ## Beta 0.6.0 — “Sunrise” 🌅
 
 | What | Details |
@@ -192,7 +199,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name is *Beta 0.6.0 “Sunrise”*; the build number is 0.8.0 so that in-app updates from earlier builds still see it as newer.
+- **Version naming:** the public name and build number are both *0.8.1* (“Sunrise”) so that in-app updates from earlier builds still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -218,6 +225,11 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.8.1 — «Sunrise» 🌅
+
+- **Остров больше не закрывается под курсором** и снова правильно располагается на экране (после открытия чата он терял курсор и своё место).
+- **Чаты** теперь открываются в отдельном окне точно поверх панели и ровно совпадают с ней при любом масштабе экрана.
 
 ## Beta 0.6.0 — «Sunrise» 🌅
 

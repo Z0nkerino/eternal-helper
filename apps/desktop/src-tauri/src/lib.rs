@@ -1063,6 +1063,11 @@ fn chat_hide(app: AppHandle) {
 }
 
 #[tauri::command]
+fn chat_focused(app: AppHandle) -> bool {
+    chats::focused(&app)
+}
+
+#[tauri::command]
 fn chat_reload(app: AppHandle, service: String) {
     chats::reload(&app, &service);
 }
@@ -1516,6 +1521,7 @@ pub fn run() {
             chat_place,
             chat_hide,
             chat_reload,
+            chat_focused,
             music_volume_get,
             music_volume_set,
             foreground_app,

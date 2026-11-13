@@ -119,6 +119,7 @@
     "allow-shelf-remove",
     "allow-shelf-open",
     "allow-shelf-export",
-    "allow-files-to-desktop"
+    "allow-files-to-desktop",
+    "allow-chat-focused"
   ]
 }

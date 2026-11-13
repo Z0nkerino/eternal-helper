@@ -238,6 +238,7 @@ interface Commands {
   chat_place: [{ service: string; x: number; y: number; w: number; h: number }, void];
   chat_hide: [void, void];
   chat_reload: [{ service: string }, void];
+  chat_focused: [void, boolean];
   music_volume_get: [{ appName: string }, number | null];
   music_volume_set: [{ appName: string; level: number }, void];
   foreground_app: [void, { app: string; title: string } | null];

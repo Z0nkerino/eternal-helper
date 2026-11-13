@@ -78,6 +78,7 @@ fn main() {
         "chat_place",
         "chat_hide",
         "chat_reload",
+        "chat_focused",
         "music_volume_get",
         "music_volume_set",
         "foreground_app",

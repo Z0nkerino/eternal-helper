@@ -1,7 +1,9 @@
 //! Chats inside the island: AI services (ChatGPT, Claude, …) and messengers (Telegram, WhatsApp, Discord)
-//! load as web views placed over the open panel, so they look and work like part of the island instead of
-//! separate windows. The user signs in on the service's own page; these views get no IPC access at all.
-use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewBuilder, WebviewUrl};
+//! load in frameless windows owned by the island and laid exactly over the open panel, so they look and
+//! work like part of it. (They used to be extra web views inside the island's own window, but a window
+//! with two web views is no longer found as the island, which broke hovering and placement.)
+//! The user signs in on the service's own page; these windows get no IPC access at all.
+use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindowBuilder};
 
 pub struct Service {
     pub id: &'static str,
@@ -47,6 +49,18 @@ fn label(id: &str) -> String {
     format!("chat-{id}")
 }
 
+/// Where a rect in the island's page (logical pixels) is on the screen (physical pixels).
+fn screen_pos(app: &AppHandle, x: f64, y: f64) -> Option<PhysicalPosition<i32>> {
+    let isl = app.get_webview_window("island")?;
+    let p = isl.inner_position().ok()?;
+    let k = isl.scale_factor().ok()?;
+    Some(PhysicalPosition::new(p.x + (x * k).round() as i32, p.y + (y * k).round() as i32))
+}
+
+fn chats(app: &AppHandle) -> impl Iterator<Item = (String, tauri::WebviewWindow)> {
+    app.webview_windows().into_iter().filter(|(l, _)| l.starts_with("chat-"))
+}
+
 /// Shows the service over the panel at (x, y, w, h) in the island's logical pixels. Returns true when
 /// the prompt went in the URL.
 pub fn show(app: &AppHandle, id: &str, rect: (f64, f64, f64, f64), prompt: Option<&str>) -> Result<bool, String> {
@@ -54,54 +68,71 @@ pub fn show(app: &AppHandle, id: &str, rect: (f64, f64, f64, f64), prompt: Optio
     let url = url_for(s, prompt);
     let prefilled = url != s.home;
     let (x, y, w, h) = rect;
-    let (pos, size) = (LogicalPosition::new(x, y), LogicalSize::new(w.max(40.0), h.max(40.0)));
+    let size = LogicalSize::new(w.max(40.0), h.max(40.0));
+    let pos = screen_pos(app, x, y).ok_or("no island")?;
     // Only one chat shows at a time.
-    for (l, v) in app.webviews() {
-        if l.starts_with("chat-") && l != label(id) {
-            let _ = v.hide();
+    for (l, win) in chats(app) {
+        if l != label(id) {
+            let _ = win.hide();
         }
     }
-    if let Some(v) = app.get_webview(&label(id)) {
+    if let Some(win) = app.get_webview_window(&label(id)) {
         if prefilled {
-            let _ = v.navigate(url.parse::<tauri::Url>().map_err(|e| e.to_string())?);
+            let _ = win.navigate(url.parse::<tauri::Url>().map_err(|e| e.to_string())?);
         }
-        let _ = v.set_position(pos);
-        let _ = v.set_size(size);
-        let _ = v.show();
-        let _ = v.set_focus();
+        let _ = win.set_size(size);
+        let _ = win.set_position(pos);
+        let _ = win.show();
+        let _ = win.set_focus();
         return Ok(prefilled);
     }
-    let window = app.get_window("island").ok_or("no island")?;
-    let mut b = WebviewBuilder::new(label(id), WebviewUrl::External(url.parse::<tauri::Url>().map_err(|e| e.to_string())?)).additional_browser_args(&crate::webview_args());
+    let island = app.get_webview_window("island").ok_or("no island")?;
+    let mut b = WebviewWindowBuilder::new(app, label(id), WebviewUrl::External(url.parse::<tauri::Url>().map_err(|e| e.to_string())?))
+        .title(format!("{} — Eternal Helper", s.name))
+        .additional_browser_args(&crate::webview_args())
+        .decorations(false)
+        .resizable(false)
+        .skip_taskbar(true)
+        .shadow(false)
+        .always_on_top(true)
+        .inner_size(size.width, size.height)
+        .visible(false)
+        .parent(&island)
+        .map_err(|e| e.to_string())?;
     if let Some(ua) = crate::music::user_agent() {
         b = b.user_agent(ua);
     }
-    let v = window.add_child(b, pos, size).map_err(|e| e.to_string())?;
-    let _ = v.set_focus();
+    let win = b.build().map_err(|e| e.to_string())?;
+    let _ = win.set_position(pos);
+    let _ = win.show();
+    let _ = win.set_focus();
     Ok(prefilled)
 }
 
 /// Follows the panel as it resizes.
 pub fn place(app: &AppHandle, id: &str, rect: (f64, f64, f64, f64)) {
-    if let Some(v) = app.get_webview(&label(id)) {
-        let _ = v.set_position(LogicalPosition::new(rect.0, rect.1));
-        let _ = v.set_size(LogicalSize::new(rect.2.max(40.0), rect.3.max(40.0)));
+    if let (Some(win), Some(pos)) = (app.get_webview_window(&label(id)), screen_pos(app, rect.0, rect.1)) {
+        let _ = win.set_size(LogicalSize::new(rect.2.max(40.0), rect.3.max(40.0)));
+        let _ = win.set_position(pos);
     }
 }
 
 pub fn hide_all(app: &AppHandle) {
-    for (l, v) in app.webviews() {
-        if l.starts_with("chat-") {
-            let _ = v.hide();
-        }
+    for (_, win) in chats(app) {
+        let _ = win.hide();
     }
 }
 
-/// Signs out of nothing; just reloads the service's home page.
+/// Is a chat window the one with the keyboard? (Then the island shouldn't close on losing focus.)
+pub fn focused(app: &AppHandle) -> bool {
+    chats(app).any(|(_, w)| w.is_focused().unwrap_or(false))
+}
+
+/// Reloads the service's home page.
 pub fn reload(app: &AppHandle, id: &str) {
-    if let (Some(v), Some(s)) = (app.get_webview(&label(id)), find(id)) {
+    if let (Some(win), Some(s)) = (app.get_webview_window(&label(id)), find(id)) {
         if let Ok(u) = s.home.parse() {
-            let _ = v.navigate(u);
+            let _ = win.navigate(u);
         }
     }
 }
