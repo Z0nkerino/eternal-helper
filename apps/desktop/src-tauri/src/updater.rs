@@ -60,14 +60,33 @@ pub fn is_newer(latest: &str, current: &str) -> bool {
 
 fn client() -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(600))
+        .connect_timeout(Duration::from_secs(20))
+        // A slow network is fine; a stalled one is retried (see `download`).
+        .timeout(Duration::from_secs(900))
         .user_agent(concat!("EternalHelper/", env!("CARGO_PKG_VERSION")))
         .build()
         .expect("http client")
 }
 
+/// Short, readable reason for a network error (reqwest's own messages are long).
+fn reason(e: &reqwest::Error) -> String {
+    if e.is_timeout() {
+        "the connection timed out".into()
+    } else if e.is_connect() {
+        "couldn't connect to GitHub".into()
+    } else {
+        let mut msg = e.to_string();
+        let mut src = std::error::Error::source(e);
+        while let Some(s) = src {
+            msg = s.to_string();
+            src = s.source();
+        }
+        msg
+    }
+}
+
 pub fn check(current: &str) -> Result<UpdateInfo, String> {
-    let res = client().get(FEED).timeout(Duration::from_secs(20)).send().map_err(|e| e.to_string())?;
+    let res = client().get(FEED).timeout(Duration::from_secs(25)).send().map_err(|e| format!("Couldn't check for updates: {}", reason(&e)))?;
     if !res.status().is_success() {
         return Err(format!("update feed answered {}", res.status()));
     }
@@ -81,36 +100,79 @@ pub fn check(current: &str) -> Result<UpdateInfo, String> {
     })
 }
 
-/// Downloads the installer, emitting `update://progress` (0..1), and verifies its SHA-256.
+/// Downloads the installer, emitting `update://progress` (0..1), and verifies its SHA-256. A dropped or
+/// stalled connection is retried (up to 5 times), continuing where it stopped when the server allows it.
 #[cfg_attr(not(any(windows, target_os = "macos")), allow(dead_code))]
 fn download(app: &AppHandle, asset: &Asset, file: &PathBuf) -> Result<(), String> {
-    let mut res = client().get(&asset.url).send().map_err(|e| e.to_string())?;
-    if !res.status().is_success() {
-        return Err(format!("download answered {}", res.status()));
-    }
-    let total = res.content_length().unwrap_or(asset.size).max(1);
-    let mut hasher = Sha256::new();
-    let mut out = std::fs::File::create(file).map_err(|e| e.to_string())?;
+    let client = client();
+    let mut out = std::fs::File::create(file).map_err(|e| format!("Couldn't save the update: {e}"))?;
+    let mut done = 0u64;
+    let mut total = asset.size.max(1);
+    let mut last_pct = u64::MAX;
+    let mut last_err = String::new();
     let mut buf = vec![0u8; 64 * 1024];
-    let (mut done, mut last_pct) = (0u64, 0u64);
-    loop {
-        let n = res.read(&mut buf).map_err(|e| e.to_string())?;
-        if n == 0 {
+    for attempt in 0..5 {
+        if attempt > 0 {
+            std::thread::sleep(Duration::from_secs(2 * attempt as u64));
+        }
+        let mut req = client.get(&asset.url);
+        if done > 0 {
+            req = req.header(reqwest::header::RANGE, format!("bytes={done}-"));
+        }
+        let mut res = match req.send() {
+            Ok(r) => r,
+            Err(e) => {
+                last_err = reason(&e);
+                continue;
+            }
+        };
+        let status = res.status();
+        if done > 0 && status != reqwest::StatusCode::PARTIAL_CONTENT {
+            // The server ignored the range: start over.
+            done = 0;
+            out = std::fs::File::create(file).map_err(|e| e.to_string())?;
+        }
+        if !status.is_success() {
+            last_err = format!("GitHub answered {status}");
+            continue;
+        }
+        if done == 0 {
+            total = res.content_length().unwrap_or(asset.size).max(1);
+        }
+        loop {
+            match res.read(&mut buf) {
+                Ok(0) => break,
+                Ok(n) => {
+                    std::io::Write::write_all(&mut out, &buf[..n]).map_err(|e| format!("Couldn't save the update: {e}"))?;
+                    done += n as u64;
+                    let pct = done * 100 / total;
+                    if pct != last_pct {
+                        last_pct = pct;
+                        let _ = app.emit("update://progress", (done as f64 / total as f64).min(1.0));
+                    }
+                }
+                Err(e) => {
+                    last_err = format!("the download was interrupted ({e})");
+                    break;
+                }
+            }
+        }
+        if done >= total || (asset.size == 0 && last_err.is_empty()) {
             break;
         }
-        hasher.update(&buf[..n]);
-        std::io::Write::write_all(&mut out, &buf[..n]).map_err(|e| e.to_string())?;
-        done += n as u64;
-        let pct = done * 100 / total;
-        if pct != last_pct {
-            last_pct = pct;
-            let _ = app.emit("update://progress", done as f64 / total as f64);
-        }
     }
+    drop(out);
+    if done < total {
+        let _ = std::fs::remove_file(file);
+        return Err(format!("The download didn't finish: {last_err}. Check your connection, or download the update from the website."));
+    }
+    let mut hasher = Sha256::new();
+    let mut f = std::fs::File::open(file).map_err(|e| e.to_string())?;
+    std::io::copy(&mut f, &mut hasher).map_err(|e| e.to_string())?;
     let got = format!("{:x}", hasher.finalize());
     if !got.eq_ignore_ascii_case(asset.sha256.trim()) {
         let _ = std::fs::remove_file(file);
-        return Err("The download is damaged (checksum mismatch). Try again later.".into());
+        return Err("The download is damaged (checksum mismatch). Try again.".into());
     }
     Ok(())
 }
@@ -126,10 +188,19 @@ pub fn install(app: &AppHandle, asset: &Asset, version: &str) -> Result<(), Stri
         use std::os::windows::process::CommandExt;
         let file = dir.join(format!("Eternal-Helper-{version}-setup.exe"));
         download(app, asset, &file)?;
-        // Give the app a moment to quit, install silently (per-user, no admin), then start the new version.
-        let script = format!("timeout /t 2 /nobreak >nul & \"{}\" /S & start \"\" \"{}\"", file.display(), exe.display());
-        // raw_arg: cmd.exe doesn't understand the \" escaping Rust would apply to the quoted paths.
-        std::process::Command::new("cmd").arg("/C").raw_arg(&script).creation_flags(0x0800_0000).spawn().map_err(|e| e.to_string())?;
+        // A small script waits until this app has really quit (so its files can be replaced), installs
+        // silently (per-user, no admin) and starts the new version. `ping` is the wait because
+        // `timeout` needs a console, which a background script doesn't have.
+        let pid = std::process::id();
+        let script = format!(
+            "@echo off\r\nchcp 65001 >nul\r\n:wait\r\ntasklist /FI \"PID eq {pid}\" 2>nul | find \"{pid}\" >nul && (ping -n 2 127.0.0.1 >nul & goto wait)\r\n\"{installer}\" /S\r\nstart \"\" \"{exe}\"\r\ndel \"%~f0\"\r\n",
+            installer = file.display(),
+            exe = exe.display()
+        );
+        let cmd_file = dir.join("install-update.cmd");
+        // UTF-8 (with chcp 65001 above) so paths with non-Latin letters (a user name in Cyrillic) work.
+        std::fs::write(&cmd_file, script).map_err(|e| format!("Couldn't prepare the update: {e}"))?;
+        std::process::Command::new("cmd").arg("/C").raw_arg(format!("\"{}\"", cmd_file.display())).creation_flags(0x0800_0000).spawn().map_err(|e| format!("Couldn't start the installer: {e}"))?;
         app.exit(0);
         Ok(())
     }

@@ -4,20 +4,20 @@
     {
       "date": "2026-11-13",
       "tag": "update",
-      "title": "Beta 0.3.1 — liquid glass",
-      "body": "The island now moves like liquid glass: it leans toward your cursor, squishes when you press it and pulses with the beat of your music. Cloudy got a cleaner look with big eyes and plays on his own more."
+      "title": "Beta 0.4.0 — calmer and more useful",
+      "body": "Much less motion and softer colours. New AI tab for ChatGPT, Claude, Gemini and more; a clipboard history with the time and website of everything you copy; live volume, brightness, Caps Lock and download activity in the island; and you can drag the island anywhere."
     },
     {
       "date": "2026-11-13",
       "tag": "tip",
-      "title": "Your hotkey opens Home",
-      "body": "Press Alt+Space (⌥Space on Mac) to open Home from anywhere. Press it again to close."
+      "title": "Move the island",
+      "body": "Grab the closed island — or the tab bar of the open one — and drop it anywhere. Drop it near the top centre to send it home."
     },
     {
-      "date": "2026-11-12",
+      "date": "2026-11-13",
       "tag": "news",
-      "title": "Music tab and widgets",
-      "body": "Beta 0.3.0 added a Music tab with smooth lyrics and widgets you can arrange on Home. Tap Edit on Home to try it."
+      "title": "Updates are now required",
+      "body": "When a new version is out, the island asks you to update before you continue. It takes a minute and restarts by itself."
     }
   ]
 }

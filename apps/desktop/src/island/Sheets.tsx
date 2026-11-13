@@ -100,6 +100,27 @@ function AccessSheet() {
   );
 }
 
+/** An update is out: the old version can't be used until it is installed. */
+export function UpdateRequired() {
+  const tr = useTr();
+  const u = useApp((s) => s.update)!;
+  const busy = u.progress != null;
+  return (
+    <motion.div className="update-req" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }}>
+      <span className="update-req-ic"><ArrowDownToLine size={26} /></span>
+      <div className="update-req-title">{tr('Update required', 'Нужно обновление')}</div>
+      <p className="small muted">{tr(`Eternal Helper ${u.latest} is out. This version can't be used anymore — the update takes a minute and the app restarts by itself.`, `Вышла версия Eternal Helper ${u.latest}. Эту версию больше нельзя использовать — обновление займёт минуту, приложение перезапустится само.`)}</p>
+      {busy ? (
+        <div className="update-req-bar"><i style={{ transform: `scaleX(${u.progress})` }} /><span className="tiny mono">{Math.round((u.progress ?? 0) * 100)}%</span></div>
+      ) : (
+        <button className="btn accent update-req-btn" onClick={() => void installUpdate()}><ArrowDownToLine size={15} /> {tr('Update now', 'Обновить сейчас')}</button>
+      )}
+      {u.error && !busy && <p className="tiny update-req-err">{u.error}</p>}
+      <button className="link tiny" onClick={() => void call('open_url', { url: 'https://github.com/Z0nkerino/eternal-helper/releases/latest' })}>{tr('Download it from the website instead', 'Скачать с сайта')}</button>
+    </motion.div>
+  );
+}
+
 export function Sheet() {
   const sheet = useApp((s) => s.sheet);
   if (!sheet) return null;

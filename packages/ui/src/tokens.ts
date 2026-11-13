@@ -19,7 +19,8 @@ export const radii = { pill: 22, card: 26, control: 14, chip: 999 } as const;
 
 /** Spring presets; framer-motion respects the system "reduce motion" via <MotionConfig reducedMotion="user">. */
 export const springs = {
-  island: { type: 'spring', stiffness: 400, damping: 30, mass: 0.9 },
+  // Calm, like iOS: settles quickly with only a hint of bounce.
+  island: { type: 'spring', stiffness: 320, damping: 34, mass: 1 },
   soft: { type: 'spring', stiffness: 260, damping: 28 },
   snappy: { type: 'spring', stiffness: 600, damping: 38 },
 } as const;

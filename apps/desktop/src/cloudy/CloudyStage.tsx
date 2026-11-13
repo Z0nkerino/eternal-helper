@@ -110,7 +110,24 @@ export function CloudyStage() {
   const [look, setLook] = useState({ x: 0, y: 0 });
   const [tilt, setTilt] = useState(0);
   const [bubble, setBubble] = useState<string | null>(null);
-  const [menu, setMenu] = useState(false);
+  const [menu, setMenuRaw] = useState(false);
+  // The menu ignores close requests for a moment after opening: on Windows the right button's release
+  // and other stray events arrive right after it opens and used to shut it at once.
+  const menuAt = useRef(0);
+  const setMenu = useCallback((v: boolean | ((m: boolean) => boolean)) => {
+    setMenuRaw((m) => {
+      const next = typeof v === 'function' ? v(m) : v;
+      if (next && !m) menuAt.current = performance.now();
+      if (!next && m && performance.now() - menuAt.current < 450) return m;
+      return next;
+    });
+  }, []);
+  const closeMenuNow = () => setMenuRaw(false);
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => e.key === 'Escape' && setMenuRaw(false);
+    addEventListener('keydown', k);
+    return () => removeEventListener('keydown', k);
+  }, []);
   const [dragging, setDragging] = useState(false);
   const [moving, setMoving] = useState(false);
   const [sleeping, setSleeping] = useState(false);
@@ -208,6 +225,7 @@ export function CloudyStage() {
   // The cursor, a few times a second: where it is, how fast it moves, and how long it has rested.
   const cursor = useRef({ x: -1, y: -1, t: 0, speed: 0, restSince: 0, dir: 0, flips: [] as number[] });
   const lastDizzy = useRef(0);
+  const farSince = useRef(0);
   const lastDodge = useRef(0);
   const lastNuzzle = useRef(0);
   const cursorPlay = useRef<(x: number, y: number, d: number, speed: number) => void>(() => {});
@@ -237,6 +255,11 @@ export function CloudyStage() {
         // He stretches a little toward a cursor that comes close (−1 left … 1 right).
         setReach(isNear && b.mode === 'rest' ? Math.max(-1, Math.min(1, (x - cx) / (cfg.size * 1.4))) : 0);
         cursorPlay.current(x, y, d, speed);
+        // The menu closes by itself when the mouse has wandered far away for a few seconds.
+        if (d > cfg.size * 4) {
+          if (!farSince.current) farSince.current = now;
+          else if (now - farSince.current > 3500) setMenu(false);
+        } else farSince.current = 0;
       }),
     [cfg.size],
   );
@@ -285,9 +308,10 @@ export function CloudyStage() {
       else if (extras.current) {
         const e = extras.current.getBoundingClientRect();
         if (e.width) {
-          const x = Math.min(r.x, e.left);
-          const y = Math.min(r.y, e.top);
-          r = { x, y, w: Math.max(r.x + r.w, e.right) - x, h: Math.max(r.y + r.h, e.bottom) - y };
+          // A little margin around the menu / bubble, so the edges always catch the mouse.
+          const x = Math.min(r.x, e.left - 10);
+          const y = Math.min(r.y, e.top - 10);
+          r = { x, y, w: Math.max(r.x + r.w, e.right + 10) - x, h: Math.max(r.y + r.h, e.bottom + 10) - y };
         }
       }
       if (signal?.recording || cfg.enabled === false) r = { x: 0, y: 0, w: 0, h: 0 };
@@ -407,7 +431,10 @@ export function CloudyStage() {
       if (!r || !r.width) return;
       setShift(r.right > innerWidth - 8 ? innerWidth - 8 - r.right : r.left < 8 ? 8 - r.left : 0);
     });
-    return () => cancelAnimationFrame(id);
+    // The clickable area follows the menu once it has finished moving into place.
+    const t1 = setTimeout(() => reportHit(true), 120);
+    const t2 = setTimeout(() => reportHit(true), 420);
+    return () => (cancelAnimationFrame(id), clearTimeout(t1), clearTimeout(t2));
   }, [menu, bubble]);
 
   const fly = (to: { x: number; y: number } | undefined, kind: NonNullable<typeof tripKind.current>) => {
@@ -521,10 +548,10 @@ export function CloudyStage() {
         if (petRef.current.energy < 12 || (isNight() && r < 0.2)) setSleeping(true);
       } else {
         const acts: [Expr, Anim, number][] = [
-          ['curious', 'lean', 1800], ['wink', 'wiggle', 1100], ['joy', 'hop', 900], ['proud', 'idle', 1600], ['cheeky', 'wiggle', 1200], ['happy', 'spin', 1300], ['think', 'idle', 1800],
-          ['joy', 'jelly', 1200], ['tongue', 'wiggle', 1600], ['tongue', 'jelly', 1400], ['cheeky', 'hop', 1200], ['happy', 'inflate', 1600], ['joy', 'flip', 1100], ['proud', 'yoga', 2400], ['cheeky', 'rollover', 1400], ['joy', 'wave', 1600], ['happy', 'boing', 1000], ['curious', 'tilt', 1800], ['squint', 'shakeoff', 1300], ['joy', 'widen', 1400], ['tongue', 'tilt', 1600],
+          ['curious', 'lean', 1800], ['wink', 'wiggle', 1100], ['joy', 'hop', 900], ['proud', 'idle', 1600], ['cheeky', 'wiggle', 1200], ['think', 'idle', 1800],
+          ['tongue', 'wiggle', 1600], ['joy', 'wave', 1600], ['curious', 'tilt', 1800], ['tongue', 'tilt', 1600], ['squint', 'idle', 1600],
         ];
-        if (r < 0.4) {
+        if (r < 0.3) {
           const [e, a, ms] = pick(acts);
           react(e, a, ms);
           if (a === 'spin' || a === 'flip') sound('joy');
@@ -549,7 +576,7 @@ export function CloudyStage() {
           react('sad', 'idle', 5000);
         }
       }
-    }, 7_000 + Math.random() * 6_000);
+    }, 15_000 + Math.random() * 12_000);
     return () => clearInterval(id);
   }, [n, sleeping, dragging, menu, say, signal]);
 
@@ -714,7 +741,11 @@ export function CloudyStage() {
   const clickTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button === 2) return;
+    if (e.button === 2) {
+      e.preventDefault();
+      setMenu(true);
+      return;
+    }
     const b = body.current;
     drag.current = { dx: e.clientX - b.x, dy: e.clientY - b.y, moved: false, samples: [{ x: e.clientX, y: e.clientY, t: performance.now() }] };
     (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -836,7 +867,7 @@ export function CloudyStage() {
   const tint: Tint = signal?.weather === 'rain' || signal?.weather === 'storm' || fx === 'storm' ? 'grey' : signal && !signal.isDay ? 'night' : signal?.weather === 'sun' ? 'warm' : 'white';
 
   return (
-    <div className={`cloudy-stage ${hidden ? 'hidden' : ''}`} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onContextMenu={(e) => (e.preventDefault(), setMenu(true))}>
+    <div className={`cloudy-stage ${hidden ? 'hidden' : ''}`} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onContextMenu={(e) => (e.preventDefault(), setMenu(true))} onPointerDownCapture={(e) => e.button === 2 && e.preventDefault()}>
       <AnimatePresence>
         {flying.map((f) => (
           <motion.div
@@ -860,7 +891,7 @@ export function CloudyStage() {
                   <motion.button
                     key={label}
                     aria-label={label}
-                    onClick={() => (setMenu(false), run())}
+                    onClick={() => (closeMenuNow(), run())}
                     initial={{ opacity: 0, y: 8, scale: 0.5 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ delay: 0.03 * i, type: 'spring', stiffness: 520, damping: 26 }}

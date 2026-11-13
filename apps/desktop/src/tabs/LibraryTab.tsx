@@ -2,13 +2,14 @@
 // Apps with their own screen (Weather, Planner, Recordings, Timer…) slide in from the right.
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Sun, Volume1, Volume2, VolumeX } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect } from 'react';
 import { call, emitEvent } from '../lib/ipc';
 import type { LibSub } from '../lib/store';
 import { useTr } from '../lib/i18n';
 import { openLibrary, openPanel, saveSettings, takeScreenshot, timerLeft, useApp } from '../lib/store';
 import { toggleRecording } from '../lib/recorder';
-import { readControls, setControl, systemAction, useControls } from '../lib/controls';
+import { readControls, setControl, slideControl, systemAction, useControls } from '../lib/controls';
+import { BigSlider } from '../components/BigSlider';
 import { Emoji } from '../lib/emoji';
 import { fmtClock, useNow } from '../island/bits';
 import { RadioCard } from '../radio/RadioCard';
@@ -19,7 +20,7 @@ import { WifiView } from '../library/WifiView';
 import { WeatherTab } from './WeatherTab';
 import { PlannerTab } from './PlannerTab';
 import { VideosTab } from './VideosTab';
-import { TextTab } from './TextTab';
+import { ClipboardTab } from './ClipboardTab';
 
 
 function Toggle({ emoji, label, sub, on, onClick, onMore }: { emoji: string; label: string; sub?: string; on: boolean | null; onClick: () => void; onMore?: () => void }) {
@@ -40,39 +41,6 @@ function Toggle({ emoji, label, sub, on, onClick, onMore }: { emoji: string; lab
         </button>
       )}
     </motion.div>
-  );
-}
-
-function Slider({ icon, value, onChange, label, disabled, note }: { icon: ReactNode; value: number | null; onChange: (v: number) => void; label: string; disabled?: boolean; note?: ReactNode }) {
-  const [local, setLocal] = useState<number | null>(null);
-  const t = useRef<ReturnType<typeof setTimeout>>();
-  const v = local ?? value ?? 0;
-  return (
-    <div className={`cc-slider ${disabled ? 'disabled' : ''}`}>
-      <span className="cc-slider-icon">{icon}</span>
-      {disabled ? (
-        <span className="small faint grow">{note}</span>
-      ) : (
-        <>
-          <div className="cc-range" style={{ ['--v' as string]: `${v}%` }}>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={v}
-              aria-label={label}
-              onChange={(e) => {
-                const n = parseInt(e.target.value, 10);
-                setLocal(n);
-                clearTimeout(t.current);
-                t.current = setTimeout(() => (onChange(n), setLocal(null)), 120);
-              }}
-            />
-          </div>
-          <span className="mono tiny faint cc-pct">{Math.round(v)}%</span>
-        </>
-      )}
-    </div>
   );
 }
 
@@ -98,7 +66,7 @@ const TITLES: Record<LibSub, [string, string, string]> = {
   weather: ['🌤️', 'Weather', 'Погода'],
   planner: ['🗓️', 'Planner', 'Планер'],
   videos: ['🎬', 'Recordings', 'Записи'],
-  text: ['🔤', 'Text tools', 'Текст'],
+  text: ['📋', 'Clipboard', 'Буфер обмена'],
   timer: ['⏱️', 'Timer', 'Таймер'],
   calc: ['🧮', 'Calculator', 'Калькулятор'],
   translate: ['🌐', 'Translator', 'Переводчик'],
@@ -115,7 +83,7 @@ function SubView({ sub }: { sub: LibSub }) {
     case 'videos':
       return <VideosTab />;
     case 'text':
-      return <TextTab />;
+      return <ClipboardTab />;
     case 'timer':
       return <TimerView />;
     case 'calc':
@@ -159,9 +127,9 @@ export function LibraryTab() {
     { emoji: '📻', label: tr('Radio', 'Радио'), onClick: () => openPanel('music') },
     { emoji: '🧮', label: tr('Calculator', 'Калькулятор'), onClick: () => openLibrary('calc') },
     { emoji: '🌐', label: tr('Translator', 'Переводчик'), onClick: () => openLibrary('translate') },
-    { emoji: '🔤', label: tr('Text tools', 'Текст'), onClick: () => openLibrary('text') },
+    { emoji: '📋', label: tr('Clipboard', 'Буфер'), onClick: () => openLibrary('text') },
     { emoji: '☁️', label: 'Cloudy', onClick: () => void call('open_window', { kind: 'pet' }) },
-    { emoji: '🔮', label: 'Afina', onClick: () => (openPanel('afina'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 }))) },
+    { emoji: '🤖', label: tr('AI', 'ИИ'), onClick: () => (openPanel('ai'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 }))) },
     { emoji: '🔐', label: tr('Lock', 'Блокировка'), onClick: () => void systemAction('lock') },
     { emoji: '💤', label: tr('Sleep', 'Сон'), onClick: () => void systemAction('sleep') },
   ];
@@ -198,16 +166,16 @@ export function LibraryTab() {
             </div>
 
             <div className="cc-sliders">
-              <Slider icon={<button className="icon-btn" onClick={() => c && void setControl('muted', !c.muted)} aria-label={tr('Mute', 'Без звука')}>{volIcon}</button>} label={tr('Volume', 'Громкость')} value={c?.muted ? 0 : c?.volume ?? null} onChange={(v) => void setControl('volume', v)} />
-              <Slider
+              <BigSlider icon={<button className="bs-mute" onPointerDown={(e) => e.stopPropagation()} onClick={() => c && void setControl('muted', !c.muted)} aria-label={tr('Mute', 'Без звука')}>{volIcon}</button>} label={tr('Volume', 'Громкость')} value={c?.muted ? 0 : c?.volume ?? null} onChange={(v) => slideControl('volume', v)} />
+              <BigSlider
                 icon={<Sun size={16} />}
                 label={tr('Brightness', 'Яркость')}
                 value={c?.brightness ?? null}
                 disabled={c?.brightness == null}
-                onChange={(v) => void setControl('brightness', v)}
+                onChange={(v) => slideControl('brightness', v)}
                 note={
                   <span>
-                    {tr('Brightness: use your keyboard keys', 'Яркость: используй клавиши на клавиатуре')}{' '}
+                    {tr('This screen doesn’t let apps change brightness.', 'Этот экран не даёт приложениям менять яркость.')}{' '}
                     <button className="link" onClick={() => void call('open_system_settings', { page: 'display' })}>{tr('Display settings', 'Настройки экрана')}</button>
                   </span>
                 }

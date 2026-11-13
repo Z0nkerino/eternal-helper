@@ -8,7 +8,8 @@ import { CloudyStage, type MoodSignal } from './cloudy/CloudyStage';
 import { PetWindow } from './cloudy/PetWindow';
 import { ShotEditor } from './shot/ShotEditor';
 import { call, emitEvent, inTauri, listen, type Layout, type MediaInfo, type Settings } from './lib/ipc';
-import { closePanel, openPanel, openSheet, saveSettings, tickTimer, toast, useApp, type Tab } from './lib/store';
+import { closePanel, openPanel, openSheet, saveSettings, showHud, tickTimer, toast, useApp, type Hud, type Tab } from './lib/store';
+import { useControls } from './lib/controls';
 import { refreshWeather, weatherScene } from './lib/weather';
 import { startPlannerSync } from './lib/planner';
 import { setSystemMedia, startMusicSync } from './lib/music';
@@ -74,6 +75,12 @@ function bootIsland() {
     openPanel('home');
   });
   listen<string>('island://open', (tab) => openPanel(tab as Tab));
+  // Live system events (volume, brightness, Caps Lock, downloads) show in the pill.
+  listen<Hud>('hud://event', (h) => {
+    showHud(h);
+    if (h.kind === 'volume') useControls.setState((s) => (s.c ? { c: { ...s.c, volume: h.value, muted: h.muted } } : s));
+    if (h.kind === 'brightness') useControls.setState((s) => (s.c ? { c: { ...s.c, brightness: h.value } } : s));
+  });
   // Messages from other windows (screenshot copied, errors from the Rust side…).
   listen<string>('island://toast', (text) => toast(text, { force: true }));
   listen<string>('island://shot-saved', (path) =>
@@ -168,6 +175,8 @@ if (!inTauri && import.meta.env.DEV) {
     else if (d.island === 'close') closePanel();
     else if (d.island === 'clear') useApp.setState({ toasts: [] });
     else if (d.island === 'toast') toast(d.text, { force: true, tone: 'ok' });
+    else if (d.island === 'hud') showHud(JSON.parse(d.text) as Hud);
+    else if (d.island === 'update') useApp.setState({ update: { latest: '0.6.1', available: true, progress: null, error: d.text || null } });
     else if (d.island === 'click') [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === d.text)?.click();
     else if (d.island === 'ask') {
       const input = document.querySelector<HTMLInputElement>('.composer input');

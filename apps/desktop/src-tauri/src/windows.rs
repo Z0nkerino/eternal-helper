@@ -2,7 +2,7 @@
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 /// Panel tabs that may be opened in their own window.
-pub const TABS: [&str; 8] = ["home", "library", "afina", "planner", "videos", "text", "weather", "settings"];
+pub const TABS: [&str; 9] = ["home", "music", "library", "ai", "planner", "videos", "text", "weather", "settings"];
 
 pub fn open(app: &AppHandle, kind: &str) -> Result<(), String> {
     let (label, route, title, size, min) = if kind == "pet" {
@@ -20,14 +20,18 @@ pub fn open(app: &AppHandle, kind: &str) -> Result<(), String> {
         let _ = w.set_focus();
         return Ok(());
     }
-    WebviewWindowBuilder::new(app, &label, WebviewUrl::App(format!("index.html#{route}").into()))
+    let b = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(format!("index.html#{route}").into()))
         .title(title)
         .inner_size(size.0, size.1)
         .min_inner_size(min.0, min.1)
         .center()
-        .background_color(tauri::webview::Color(14, 14, 16, 255))
-        .theme(Some(tauri::Theme::Dark))
-        .build()
-        .map(|_| ())
-        .map_err(|e| e.to_string())
+        .background_color(tauri::webview::Color(14, 14, 18, 255))
+        .theme(Some(tauri::Theme::Dark));
+    // Our own dark title bar: frameless with the system shadow and rounded corners on Windows; on macOS
+    // the native traffic lights sit over it.
+    #[cfg(target_os = "macos")]
+    let b = b.title_bar_style(tauri::TitleBarStyle::Overlay).hidden_title(true);
+    #[cfg(not(target_os = "macos"))]
+    let b = b.decorations(false).shadow(true);
+    b.build().map(|_| ()).map_err(|e| e.to_string())
 }

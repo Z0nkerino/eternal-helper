@@ -30,7 +30,9 @@ export function SettingsTab() {
           <h3>
             <Emoji e={x.emoji} size={14} /> {tr(...x.title)} <span className="h3-desc">· {tr(...x.desc)}</span>
           </h3>
-          <x.Body s={s} />
+          <div className="group">
+            <x.Body s={s} />
+          </div>
         </section>
       ))}
     </div>

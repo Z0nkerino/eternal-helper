@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-island-save-pos"
+description = "Enables the island_save_pos command without any pre-configured scope."
+commands.allow = ["island_save_pos"]
+
+[[permission]]
+identifier = "deny-island-save-pos"
+description = "Denies the island_save_pos command without any pre-configured scope."
+commands.deny = ["island_save_pos"]

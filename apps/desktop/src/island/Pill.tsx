@@ -1,5 +1,6 @@
 // What the closed island shows: the clock and weather at rest, or the most important live activity.
-import { Music, Pause, Play, Square, Timer } from 'lucide-react';
+import { ArrowBigUp, ArrowDownToLine, Download, FileCheck2, FolderOpen, Music, Pause, Play, Square, SunMedium, Timer, Volume1, Volume2, VolumeX } from 'lucide-react';
+import { call } from '../lib/ipc';
 import { colors } from '@eternal/ui';
 import { Orb } from '../afina/Orb';
 import { useT } from '../lib/i18n';
@@ -9,7 +10,7 @@ import { mediaControl } from '../lib/music';
 import { Carousel } from './Carousel';
 import { Equalizer, Ring, fmtClock, useNow } from './bits';
 
-export type ActivityId = 'rec' | 'timer' | 'afina' | 'planner' | 'media';
+export type ActivityId = 'update' | 'hud' | 'rec' | 'timer' | 'afina' | 'planner' | 'media';
 
 /** Live activities, most important first. The first takes the pill; the second becomes the side bubble. */
 export function useActivities(): ActivityId[] {
@@ -18,7 +19,11 @@ export function useActivities(): ActivityId[] {
   const thinking = useApp((s) => s.afinaThinking);
   const flash = useApp((s) => !!s.plannerFlash);
   const playing = useApp((s) => !!s.media?.playing);
+  const update = useApp((s) => !!s.update?.available);
   const out: ActivityId[] = [];
+  const hud = useApp((s) => !!s.hud);
+  if (update) out.push('update');
+  if (hud) out.push('hud');
   if (rec !== 'idle') out.push('rec');
   if (timer) out.push('timer');
   if (thinking) out.push('afina');
@@ -28,6 +33,7 @@ export function useActivities(): ActivityId[] {
 }
 
 const stop = (e: React.MouseEvent) => e.stopPropagation();
+const fmtSize = (b: number) => (b > 1e9 ? `${(b / 1e9).toFixed(1)} GB` : b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1e3))} KB`);
 
 export function Wings({ left, right, notch }: { left: React.ReactNode; right: React.ReactNode; notch: number }) {
   return (
@@ -43,6 +49,57 @@ export function PillContent({ activity, notch }: { activity: ActivityId | undefi
   const t = useT();
   const now = useNow();
   const s = useApp();
+
+  if (activity === 'update') {
+    return (
+      <Wings
+        notch={notch}
+        left={
+          <>
+            <ArrowDownToLine size={14} className="pill-update-ic" />
+            <span className="ellipsis">{s.update?.progress != null ? `${Math.round(s.update.progress * 100)}%` : t.lang === 'ru' ? 'Нужно обновление' : 'Update required'}</span>
+          </>
+        }
+        right={null}
+      />
+    );
+  }
+
+  if (activity === 'hud' && s.hud) {
+    const h = s.hud;
+    const ru = t.lang === 'ru';
+    if (h.kind === 'volume' || h.kind === 'brightness') {
+      const v = h.kind === 'volume' && h.muted ? 0 : h.value;
+      const Icon = h.kind === 'brightness' ? SunMedium : v === 0 ? VolumeX : v < 50 ? Volume1 : Volume2;
+      return (
+        <div className="pill-row hud-row">
+          <Icon size={15} className="hud-ic" />
+          <div className="hud-bar"><i style={{ transform: `scaleX(${v / 100})` }} /></div>
+          <span className="mono tiny hud-val">{v}</span>
+        </div>
+      );
+    }
+    if (h.kind === 'caps') {
+      return (
+        <Wings notch={notch} left={<><ArrowBigUp size={15} className={h.on ? 'hud-on' : 'faint'} /><span>Caps Lock</span></>} right={<span className={`hud-state ${h.on ? 'on' : ''}`}>{h.on ? (ru ? 'Вкл' : 'On') : ru ? 'Выкл' : 'Off'}</span>} />
+      );
+    }
+    return (
+      <Wings
+        notch={notch}
+        left={<>{h.done ? <FileCheck2 size={15} className="hud-on" /> : <Download size={15} className="hud-dl" />}<span className="ellipsis">{h.name}</span></>}
+        right={
+          h.done ? (
+            <button className="pill-btn ghost hud-open" onClick={(e) => (stop(e), void call('reveal_download', { path: h.path }))} aria-label={ru ? 'Показать в папке' : 'Show in folder'}>
+              <FolderOpen size={13} />
+            </button>
+          ) : (
+            <span className="mono tiny faint">{fmtSize(h.size)}</span>
+          )
+        }
+      />
+    );
+  }
 
   if (activity === 'rec') {
     const r = s.rec;

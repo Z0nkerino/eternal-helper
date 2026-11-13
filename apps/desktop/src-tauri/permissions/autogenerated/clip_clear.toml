@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-clip-clear"
+description = "Enables the clip_clear command without any pre-configured scope."
+commands.allow = ["clip_clear"]
+
+[[permission]]
+identifier = "deny-clip-clear"
+description = "Denies the clip_clear command without any pre-configured scope."
+commands.deny = ["clip_clear"]

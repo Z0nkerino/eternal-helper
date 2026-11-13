@@ -6,7 +6,7 @@ import { installUpdate } from '../lib/updates';
 import { useRef, useState } from 'react';
 import { useTr } from '../lib/i18n';
 import { saveSettings, useApp } from '../lib/store';
-import { cellsOf, colsOf, MAX_CELLS, widget, WIDGETS, DEFAULT_WIDGETS } from '../home/widgets';
+import { cellsOf, cellsOfWidget, MAX_CELLS, widget, WIDGETS, DEFAULT_WIDGETS } from '../home/widgets';
 
 export function useHomeWidgets(): string[] {
   const ids = useApp((s) => s.settings?.homeWidgets);
@@ -26,13 +26,13 @@ function Gallery({ ids, onAdd, onClose }: { ids: string[]; onAdd: (id: string) =
       {left.length === 0 && <p className="small muted">{tr('All widgets are on Home already.', 'Все виджеты уже на Главной.')}</p>}
       <div className="w-gallery-grid">
         {left.map((w, i) => {
-          const fits = colsOf(w) <= free;
+          const fits = cellsOfWidget(w) <= free;
           const Icon = w.icon;
           return (
             <motion.button key={w.id} className="w-pick" disabled={!fits} onClick={() => onAdd(w.id)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.025 }} whileHover={fits ? { y: -2 } : undefined} whileTap={fits ? { scale: 0.95 } : undefined}>
               <span className="w-pick-icon"><Icon size={18} /></span>
               <span className="small">{tr(...w.name)}</span>
-              <span className="tiny faint">{fits ? { s: tr('Small', 'Маленький'), m: tr('Medium', 'Средний'), w: tr('Wide', 'Широкий') }[w.size] : tr('No room', 'Нет места')}</span>
+              <span className="tiny faint">{fits ? { s: tr('Small', 'Маленький'), m: tr('Medium', 'Средний'), w: tr('Wide', 'Широкий'), t: tr('Large', 'Большой') }[w.size] : tr('No room', 'Нет места')}</span>
             </motion.button>
           );
         })}
@@ -131,9 +131,14 @@ export function HomeTab() {
               <button className="chip-btn accent" onClick={() => (setEdit(false), setGallery(false))}><Check size={13} /> {tr('Done', 'Готово')}</button>
             </motion.div>
           ) : (
-            <motion.button key="n" className="chip-btn ghost" onClick={() => setEdit(true)} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}>
-              <Pencil size={12} /> {tr('Edit', 'Изменить')}
-            </motion.button>
+            <motion.div key="n" className="row gap" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}>
+              <button className="chip-btn" onClick={() => (setEdit(true), setGallery(true))}>
+                <Plus size={12} /> {tr('Add widget', 'Добавить виджет')}
+              </button>
+              <button className="chip-btn" onClick={() => setEdit(true)}>
+                <Pencil size={12} /> {tr('Edit', 'Изменить')}
+              </button>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

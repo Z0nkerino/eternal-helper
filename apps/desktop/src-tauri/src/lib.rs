@@ -2,6 +2,8 @@
 mod afina;
 mod afina_tools;
 mod ai_accounts;
+mod clipwatch;
+mod hud;
 mod cloudy;
 mod music;
 mod planner;
@@ -39,6 +41,7 @@ use tauri_plugin_opener::OpenerExt;
 /// Island window size in logical pixels. The window is transparent and click-through outside the
 /// pill, so it can be big enough for the open panel without the window ever resizing.
 const ISLAND_W: f64 = 860.0;
+const ISLAND_H: f64 = 680.0;
 
 struct AppState {
     settings: SettingsStore,
@@ -80,13 +83,26 @@ struct Layout {
     /// Logical width of the island's display, for the safe-area debug overlay.
     screen_width: f64,
     scale: f64,
+    /// The island was moved to the lower half of the screen: it opens upward.
+    bottom: bool,
+    /// The island was moved away from its usual place at the top centre.
+    moved: bool,
 }
 
 fn layout_for(notch: Option<platform::Notch>, screen_width: f64, scale: f64) -> Layout {
+    layout_with(notch, screen_width, scale, None)
+}
+
+fn layout_with(notch: Option<platform::Notch>, screen_width: f64, scale: f64, pos: Option<IslandPos>) -> Layout {
+    let bottom = pos.is_some_and(|p| p.fy > 0.5);
+    let moved = pos.is_some();
+    let notch = if moved { None } else { notch };
     Layout {
+        bottom,
+        moved,
         platform: if cfg!(windows) { "windows" } else if cfg!(target_os = "macos") { "macos" } else { "linux" },
         notch,
-        top_inset: if cfg!(target_os = "macos") && notch.is_none() { 25.0 } else { 0.0 },
+        top_inset: if cfg!(target_os = "macos") && notch.is_none() && !moved { 25.0 } else { 0.0 },
         native_recording: platform::native_recording(),
         screen_width,
         scale,
@@ -105,20 +121,77 @@ fn place(app: &AppHandle, w: &WebviewWindow) {
     .or_else(|| w.primary_monitor().ok().flatten());
     let Some(m) = monitor else { return };
     let (pos, size, scale) = (m.position(), m.size(), m.scale_factor());
-    let x = pos.x + ((size.width as f64 - ISLAND_W * scale) / 2.0) as i32;
-    let target = PhysicalPosition::new(x, pos.y);
+    let ip = island_pos(&app.state::<AppState>().settings.get());
+    let target = match ip {
+        // Moved by the user: the pill's top-centre sits at the saved spot (as a share of the screen).
+        Some(p) => {
+            let (mw, mh) = (size.width as f64 / scale, size.height as f64 / scale);
+            // Keep the open panel on screen: its centre stays at least half a panel from the sides.
+            let cx = (p.fx * mw).clamp(PANEL_HALF + 8.0, (mw - PANEL_HALF - 8.0).max(PANEL_HALF + 8.0));
+            let top = p.fy * mh;
+            let y = if p.fy > 0.5 { top + PILL_H - ISLAND_H + 6.0 } else { top - 6.0 };
+            PhysicalPosition::new(pos.x + ((cx - ISLAND_W / 2.0) * scale) as i32, pos.y + (y * scale) as i32)
+        }
+        None => PhysicalPosition::new(pos.x + ((size.width as f64 - ISLAND_W * scale) / 2.0) as i32, pos.y),
+    };
     if w.outer_position().ok() != Some(target) {
         let _ = w.set_position(target);
     }
-    refresh_layout(app, pos.x as f64 / scale, size.width as f64 / scale, scale);
+    refresh_layout(app, pos.x as f64 / scale, size.width as f64 / scale, scale, ip);
+}
+
+const PILL_H: f64 = 40.0;
+const PANEL_HALF: f64 = 340.0;
+
+/// Where the user put the island: the pill's top-centre as a share of the screen (fx, fy in 0..1).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct IslandPos {
+    pub fx: f64,
+    pub fy: f64,
+}
+
+pub fn island_pos(s: &Settings) -> Option<IslandPos> {
+    let v = s.extra.get("islandPos")?;
+    let (fx, fy) = (v.get("fx")?.as_f64()?, v.get("fy")?.as_f64()?);
+    (fx.is_finite() && fy.is_finite()).then_some(IslandPos { fx: fx.clamp(0.0, 1.0), fy: fy.clamp(0.0, 1.0) })
+}
+
+/// Where a dropped pill should stay; None = back to the usual top-centre spot (dropped close to it).
+pub fn snap_pos(cx: f64, top: f64, mw: f64, mh: f64) -> Option<IslandPos> {
+    if top < 48.0 && (cx - mw / 2.0).abs() < 60.0 {
+        return None;
+    }
+    Some(IslandPos { fx: (cx / mw).clamp(0.0, 1.0), fy: (top.max(0.0) / mh).clamp(0.0, 1.0) })
+}
+
+/// Saves where the user dropped the island. `px`, `py`: the pill's top-centre inside the island window.
+#[tauri::command]
+async fn island_save_pos(app: AppHandle, px: f64, py: f64) -> Result<(), String> {
+    let w = island(&app).ok_or("no island")?;
+    let m = w.current_monitor().map_err(|e| e.to_string())?.ok_or("no monitor")?;
+    let scale = m.scale_factor();
+    let wp = w.outer_position().map_err(|e| e.to_string())?;
+    let cx = (wp.x - m.position().x) as f64 / scale + px;
+    let top = (wp.y - m.position().y) as f64 / scale + py;
+    let (mw, mh) = (m.size().width as f64 / scale, m.size().height as f64 / scale);
+    let st = app.state::<AppState>();
+    let mut s = st.settings.get();
+    match snap_pos(cx, top, mw, mh) {
+        Some(p) => s.extra.insert("islandPos".into(), serde_json::json!({ "fx": p.fx, "fy": p.fy })),
+        None => s.extra.remove("islandPos"),
+    };
+    let s = apply_settings(&app, s)?;
+    drop(s);
+    place(&app, &w);
+    Ok(())
 }
 
 /// Measures the notch of the given display (on the main thread, as AppKit requires) and tells the UI
 /// when the layout changed, e.g. after moving to an external monitor.
-fn refresh_layout(app: &AppHandle, x: f64, width: f64, scale: f64) {
+fn refresh_layout(app: &AppHandle, x: f64, width: f64, scale: f64, pos: Option<IslandPos>) {
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
-        let next = layout_for(platform::notch_for(x, width), width, scale);
+        let next = layout_with(platform::notch_for(x, width), width, scale, pos);
         let st = handle.state::<AppState>();
         let mut cur = st.layout.lock().unwrap();
         if *cur != next {
@@ -356,7 +429,7 @@ fn apply_settings(app: &AppHandle, value: Settings) -> Result<Settings, String> 
             platform::set_priority(&w, full_access(&value));
         }
     }
-    if value.monitor != old.monitor {
+    if value.monitor != old.monitor || island_pos(&value) != island_pos(&old) {
         if let Some(w) = island(app) {
             place(app, &w);
         }
@@ -697,6 +770,32 @@ async fn controls_read() -> Result<syscontrol::Controls, String> {
     .map_err(|e| e.to_string())
 }
 
+/// Brightness changes take PowerShell a moment each; while one runs, only the newest value is kept and
+/// applied next, so dragging the slider never builds up a queue.
+fn set_brightness_latest(level: u8) -> Result<(), String> {
+    use std::sync::atomic::{AtomicBool, AtomicU8};
+    static TARGET: AtomicU8 = AtomicU8::new(255);
+    static RUNNING: AtomicBool = AtomicBool::new(false);
+    TARGET.store(level, Ordering::SeqCst);
+    if RUNNING.swap(true, Ordering::SeqCst) {
+        return Ok(());
+    }
+    let mut result = Ok(());
+    loop {
+        let t = TARGET.swap(255, Ordering::SeqCst);
+        if t == 255 {
+            break;
+        }
+        result = syscontrol::set_brightness(t);
+    }
+    RUNNING.store(false, Ordering::SeqCst);
+    // A value that arrived just as we finished.
+    if TARGET.load(Ordering::SeqCst) != 255 {
+        return set_brightness_latest(TARGET.load(Ordering::SeqCst));
+    }
+    result
+}
+
 #[tauri::command]
 async fn controls_set(kind: String, value: serde_json::Value) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -706,7 +805,7 @@ async fn controls_set(kind: String, value: serde_json::Value) -> Result<(), Stri
         match kind.as_str() {
             "volume" => syscontrol::set_volume(num()?),
             "muted" => syscontrol::set_muted(flag()?),
-            "brightness" => syscontrol::set_brightness(num()?),
+            "brightness" => set_brightness_latest(num()?),
             "dark" => syscontrol::set_dark(flag()?),
             "wifi" => syscontrol::set_wifi(flag()?),
             "bluetooth" => syscontrol::set_bluetooth(flag()?),
@@ -786,8 +885,58 @@ fn ai_services() -> Vec<AiServiceInfo> {
 }
 
 #[tauri::command]
-async fn ai_open(app: AppHandle, service: String, prompt: Option<String>) -> Result<bool, String> {
-    ai_accounts::open(&app, &service, prompt.as_deref())
+async fn ai_open(app: AppHandle, service: String, prompt: Option<String>, docked: Option<bool>) -> Result<bool, String> {
+    let r = ai_accounts::open(&app, &service, prompt.as_deref())?;
+    // Docked: the AI window sits right under the island, like part of it.
+    if docked.unwrap_or(true) {
+        if let (Some(w), Some(isl)) = (app.get_webview_window(&format!("ai-{service}")), island(&app)) {
+            if let Ok(Some(m)) = isl.current_monitor() {
+                let scale = m.scale_factor();
+                let (mw, mx, my) = (m.size().width as f64 / scale, m.position().x as f64 / scale, m.position().y as f64 / scale);
+                let (ww, wh) = (780.0_f64.min(mw - 40.0), 720.0_f64.min(m.size().height as f64 / scale - 120.0));
+                let _ = w.set_size(tauri::LogicalSize::new(ww, wh));
+                let _ = w.set_position(tauri::LogicalPosition::new(mx + (mw - ww) / 2.0, my + 70.0));
+            }
+        }
+    }
+    Ok(r)
+}
+
+/// Shows a finished download in its folder (only files inside Downloads).
+#[tauri::command]
+fn reveal_download(app: AppHandle, path: String) -> Result<(), String> {
+    let dir = app.path().download_dir().map_err(|e| e.to_string())?;
+    let p = std::path::Path::new(&path);
+    if !p.starts_with(&dir) || path.contains("..") {
+        return Err("not a download".into());
+    }
+    app.opener().reveal_item_in_dir(p).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn clip_list(st: tauri::State<'_, clipwatch::ClipState>) -> Vec<clipwatch::Clip> {
+    st.items.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn clip_delete(st: tauri::State<'_, clipwatch::ClipState>, id: u64) {
+    st.items.lock().unwrap().retain(|c| c.id != id);
+    st.save();
+}
+
+#[tauri::command]
+fn clip_pin(st: tauri::State<'_, clipwatch::ClipState>, id: u64, pinned: bool) {
+    if let Some(c) = st.items.lock().unwrap().iter_mut().find(|c| c.id == id) {
+        c.pinned = pinned;
+    }
+    st.save();
+}
+
+/// Clears the history (pinned items stay).
+#[tauri::command]
+fn clip_clear(st: tauri::State<'_, clipwatch::ClipState>) {
+    st.items.lock().unwrap().retain(|c| c.pinned);
+    st.save();
 }
 
 /// Opens a web page in the default browser (https only), e.g. a web search Afina was asked for.
@@ -911,6 +1060,17 @@ mod tests {
         assert!(merge_settings(&cur, serde_json::json!([1])).is_err());
         assert!(merge_settings(&cur, serde_json::json!({ "doNotDisturb": "yes" })).is_err());
     }
+
+    #[test]
+    fn island_position() {
+        assert_eq!(snap_pos(962.0, 10.0, 1920.0, 1080.0), None, "near the top centre: back home");
+        let p = snap_pos(300.0, 900.0, 1920.0, 1080.0).unwrap();
+        assert!((p.fx - 0.15625).abs() < 1e-9 && p.fy > 0.5);
+        let mut s = Settings::default();
+        s.extra.insert("islandPos".into(), serde_json::json!({ "fx": 2.0, "fy": 0.2 }));
+        assert_eq!(island_pos(&s), Some(IslandPos { fx: 1.0, fy: 0.2 }));
+        assert!(layout_with(None, 1920.0, 1.0, Some(IslandPos { fx: 0.5, fy: 0.8 })).bottom);
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -951,6 +1111,7 @@ pub fn run() {
             let planner_state = state.planner.clone();
             app.manage(state);
             app.manage(screenshot::ShotState::default());
+            app.manage(clipwatch::ClipState::load(app.path().app_data_dir()?));
 
             let handle = app.handle().clone();
             if s.planner.enabled {
@@ -973,6 +1134,8 @@ pub fn run() {
             spawn_screen_watch(handle.clone());
             #[cfg(windows)]
             spawn_audio_watch(handle.clone());
+            clipwatch::spawn(handle.clone());
+            hud::spawn(handle.clone());
             spawn_media_watch(handle);
             Ok(())
         })
@@ -1027,6 +1190,12 @@ pub fn run() {
             afina_find_text,
             afina_open,
             afina_launch,
+            reveal_download,
+            island_save_pos,
+            clip_list,
+            clip_delete,
+            clip_pin,
+            clip_clear,
             ai_services,
             ai_open,
             open_url,

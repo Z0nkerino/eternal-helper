@@ -11,9 +11,10 @@ import { CAROUSEL_ITEMS, LIMITS, safeAccent } from '../lib/defaults';
 import { checkForUpdates, installUpdate } from '../lib/updates';
 import { Emoji } from '../lib/emoji';
 import { RELEASE } from '../lib/release';
-import { AfinaSettings, HotkeyField, Segment, Switch, WeatherPlace } from './parts';
+import { HotkeyField, Segment, Switch, WeatherPlace } from './parts';
 import { AccountSection } from './Account';
 import { AccessSection } from './Access';
+import { AiClipboardSection } from './AiClipboard';
 
 type S = Settings;
 const patch = <K extends keyof S>(key: K, cur: S[K], p: Partial<S[K]>) => void saveSettings({ [key]: { ...(cur as object), ...p } } as Partial<S>);
@@ -61,6 +62,13 @@ function Personalise({ s }: { s: S }) {
       <Switch label={tr('Show seconds', 'Показывать секунды')} on={s.clockSeconds} onChange={(clockSeconds) => void saveSettings({ clockSeconds })} />
       <Segment label={tr('Animations', 'Анимации')} value={s.motion} options={[['full', tr('Smooth & lively', 'Плавные и живые')], ['reduced', tr('Reduced', 'Минимум')]]} onChange={(motion) => void saveSettings({ motion })} />
       <Switch label={tr('Open the island when the cursor rests on it', 'Открывать остров при наведении курсора')} on={s.hoverOpen} onChange={(hoverOpen) => void saveSettings({ hoverOpen })} />
+      <div className="setting">
+        <span>
+          {tr('Island position', 'Положение острова')}
+          <span className="tiny faint setting-sub">{tr('Drag the island (or its tab bar) to move it anywhere.', 'Перетащи остров (или его панель вкладок), чтобы переместить.')}</span>
+        </span>
+        <button className="btn" disabled={!(s as unknown as { islandPos?: unknown }).islandPos} onClick={() => void saveSettings({ islandPos: null } as unknown as Partial<Settings>)}>{tr('Back to the top', 'Вернуть наверх')}</button>
+      </div>
       <div className="setting">
         <span className="faint small">{tr('Back to how it came', 'Вернуть как было')}</span>
         <button className="btn" onClick={() => void saveSettings({ name: '', uiScale: 1, fontScale: 1, islandOpacity: 1, motion: 'full', clockSeconds: false, hiddenTabs: [], hoverOpen: true })}>{tr('Reset', 'Сбросить')}</button>
@@ -446,7 +454,7 @@ export const SECTIONS: Section[] = [
   { id: 'personal', emoji: '✨', title: ['Personalise', 'Под себя'], desc: ['Your name, sizes, clock, animations and tabs', 'Имя, размеры, часы, анимации и вкладки'], keywords: 'name size scale text font opacity clock 24 seconds animation motion tabs имя размер текст шрифт прозрачность часы секунды анимация вкладки', Body: Personalise },
   { id: 'appearance', emoji: '🎨', title: ['Appearance', 'Внешний вид'], desc: ['Theme, colour, corners and the widgets in the pill', 'Тема, цвет, углы и виджеты в пилюле'], keywords: 'theme glass neon minimal accent colour color corner radius carousel widgets тема стекло неон цвет акцент углы карусель виджеты', Body: Appearance },
   { id: 'general', emoji: '⚙️', title: ['General', 'Общие'], desc: ['Language, monitor, shortcuts and start-up', 'Язык, монитор, горячие клавиши и запуск'], keywords: 'language monitor shortcut hotkey screenshot autostart login dnd fullscreen язык монитор клавиши скриншот автозапуск не беспокоить', Body: General },
-  { id: 'afina', emoji: '🔮', title: ['Afina & AI', 'Afina и ИИ'], desc: ['Afina’s brain, AI accounts and computer access', 'Мозг Афины, ИИ-аккаунты и доступ к компьютеру'], keywords: 'ai brain model webllm chatgpt claude gemini perplexity copilot deepseek files tools ии мозг модель файлы', Body: () => <AfinaSettings /> },
+  { id: 'ai', emoji: '🤖', title: ['AI & clipboard', 'ИИ и буфер обмена'], desc: ['Your AI accounts and copy history', 'ИИ-аккаунты и история копирования'], keywords: 'ai chatgpt claude gemini perplexity copilot deepseek account clipboard copy paste history ии аккаунт буфер копировать история', Body: AiClipboardSection },
   { id: 'music', emoji: '🎧', title: ['Music accounts', 'Музыка'], desc: ['Spotify, Yandex Music and SoundCloud', 'Spotify, Яндекс Музыка и SoundCloud'], keywords: 'spotify yandex soundcloud music player музыка плеер яндекс', Body: Music },
   { id: 'today', emoji: '🌤️', title: ['Weather & Today', 'Погода и «Сегодня»'], desc: ['City, currency pairs and world clocks', 'Город, валюты и мировые часы'], keywords: 'weather city currency rates clocks time zone погода город валюта курс часы пояс', Body: WeatherToday },
   { id: 'cloudy', emoji: '☁️', title: ['Cloudy', 'Cloudy'], desc: ['Your desktop cloud: size, speed and chatter', 'Облачко на рабочем столе: размер, скорость, реплики'], keywords: 'cloudy pet cloud feed облачко питомец кормить', Body: Cloudy },

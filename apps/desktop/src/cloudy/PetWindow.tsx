@@ -1,5 +1,6 @@
 // Cloudy's room: his own window. See how he feels, feed him, play, and tune how he behaves.
 import { motion } from 'framer-motion';
+import { TitleBar } from '../components/TitleBar';
 import { useEffect, useState } from 'react';
 import { emitEvent, listen } from '../lib/ipc';
 import { useTr } from '../lib/i18n';
@@ -59,6 +60,7 @@ export function PetWindow() {
 
   return (
     <div className="pet-window scroll">
+      <TitleBar className="floating" />
       <header className="pet-hero">
         <div className={`pet-preview cloudy-body anim-${state.sleeping ? 'sleep' : expr === 'eat' ? 'chomp' : expr === 'joy' || expr === 'love' ? 'joy' : 'idle'}`}>
           <CloudyFace expr={state.sleeping ? 'sleep' : expr} look={{ x: 0, y: 0 }} size={132} />

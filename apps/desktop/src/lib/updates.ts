@@ -2,7 +2,7 @@
 // announced on its own: a toast with an Install button, a dot on Settings and a pill on Home.
 import { call, listen } from './ipc';
 import { tNow } from './i18n';
-import { toast, useApp } from './store';
+import { openPanel, toast, useApp } from './store';
 
 let offered = '';
 
@@ -12,7 +12,7 @@ export async function checkForUpdates(manual = false) {
     useApp.setState({ update: { latest: info.latest, available: info.available, progress: null, error: null } });
     if (info.available && (manual || offered !== info.latest)) {
       offered = info.latest;
-      toast(`${tNow('upd.available')} ${info.latest}`, { force: true, ms: 15_000, action: { label: tNow('upd.install'), run: () => void installUpdate() } });
+      if (manual) toast(`${tNow('upd.available')} ${info.latest}`, { force: true, ms: 15_000, action: { label: tNow('upd.install'), run: () => void installUpdate() } });
     } else if (manual && !info.available) {
       toast(tNow('upd.latest'), { tone: 'ok', force: true });
     }
@@ -39,9 +39,14 @@ export async function installUpdate() {
 }
 
 export function startUpdateChecks() {
-  const run = () => useApp.getState().settings?.updates.auto !== false && void checkForUpdates();
-  const first = setTimeout(run, 8_000);
-  const timer = setInterval(run, 3 * 3600_000);
+  // Updates are required, so the check always runs: soon after start, then every hour. When one is found
+  // the island opens on the update screen.
+  const run = () =>
+    void checkForUpdates().then((info) => {
+      if (info?.available && useApp.getState().view !== 'panel') openPanel('home', { hover: true });
+    });
+  const first = setTimeout(run, 4_000);
+  const timer = setInterval(run, 3600_000);
   // Remind once a day if an update is still waiting.
   const remind = setInterval(() => {
     const u = useApp.getState().update;

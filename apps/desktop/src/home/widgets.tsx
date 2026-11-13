@@ -3,7 +3,7 @@
 // widget reads the shared store and shows one thing well.
 import { motion } from 'framer-motion';
 import {
-  BatteryCharging, BatteryFull, BatteryLow, BatteryMedium, CalendarDays, Camera, Clock, Cloud, Coins, Focus, Globe, Lightbulb, ListTodo, Music2, Pause, Play,
+  CalendarRange, BatteryCharging, BatteryFull, BatteryLow, BatteryMedium, CalendarDays, Camera, Clock, Cloud, Coins, Focus, Globe, Lightbulb, ListTodo, Music2, Pause, Play,
   Sparkles, Timer, Video, Waves, Zap, type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -17,7 +17,7 @@ import { factOfDay, formatRate, greeting, offsetFromLocal, rate, symbol, timeIn 
 import { fmtClock, useNow, WeatherIcon } from '../island/bits';
 import { CloudyFace } from '../cloudy/CloudyFace';
 
-export type WidgetSize = 's' | 'm' | 'w';
+export type WidgetSize = 's' | 'm' | 'w' | 't';
 export interface WidgetDef {
   id: string;
   name: [string, string];
@@ -25,7 +25,9 @@ export interface WidgetDef {
   size: WidgetSize;
   Body: () => JSX.Element | null;
 }
-const COLS: Record<WidgetSize, number> = { s: 1, m: 2, w: 4 };
+const COLS: Record<WidgetSize, number> = { s: 1, m: 2, w: 4, t: 2 };
+/** Grid cells a widget takes (a tall one is two columns by two rows). */
+const CELLS: Record<WidgetSize, number> = { s: 1, m: 2, w: 4, t: 4 };
 
 const locale = (lang: string) => (lang === 'ru' ? 'ru-RU' : 'en-US');
 
@@ -132,7 +134,7 @@ function ActionsW() {
     [Video, recording ? fmtClock(recElapsed(rec, now)) : tr('Record', 'Запись'), toggleRecording, recording],
     [Timer, tr('5 min', '5 мин'), () => startTimer(5)],
     [Focus, tr('Focus', 'Фокус'), () => (startTimer(25, 'focus'), void saveSettings({ doNotDisturb: true }))],
-    [Sparkles, 'Afina', () => (openPanel('afina'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 })))],
+    [Sparkles, tr('AI', 'ИИ'), () => (openPanel('ai'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 })))],
   ];
   return (
     <div className="w-actions">
@@ -187,6 +189,27 @@ function CalendarW() {
       <div className="w-cal-wd">{d.toLocaleDateString(locale(tr.lang), { weekday: 'short' })}</div>
       <div className="w-cal-day">{d.getDate()}</div>
       <div className="tiny faint">{d.toLocaleDateString(locale(tr.lang), { month: 'long' })}</div>
+    </div>
+  );
+}
+
+/** This month at a glance, today highlighted. */
+function MonthW() {
+  const tr = useTr();
+  const now = useNow(60_000);
+  const d = new Date(now);
+  const first = new Date(d.getFullYear(), d.getMonth(), 1);
+  const days = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  const lead = (first.getDay() + 6) % 7; // weeks start on Monday
+  const names = Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(locale(tr.lang), { weekday: 'narrow' }));
+  return (
+    <div className="w-month">
+      <div className="w-month-head"><span className="w-cal-wd">{d.toLocaleDateString(locale(tr.lang), { month: 'long' })}</span><span className="tiny faint">{d.getFullYear()}</span></div>
+      <div className="w-month-grid">
+        {names.map((n, i) => <span key={`n${i}`} className="w-mn faint">{n}</span>)}
+        {Array.from({ length: lead }, (_, i) => <span key={`b${i}`} />)}
+        {Array.from({ length: days }, (_, i) => <span key={i} className={i + 1 === d.getDate() ? 'today' : ''}>{i + 1}</span>)}
+      </div>
     </div>
   );
 }
@@ -281,6 +304,7 @@ export const WIDGETS: WidgetDef[] = [
   { id: 'actions', name: ['Quick actions', 'Быстрые действия'], icon: Zap, size: 'w', Body: ActionsW },
   { id: 'timer', name: ['Timer', 'Таймер'], icon: Timer, size: 's', Body: TimerW },
   { id: 'calendar', name: ['Date', 'Дата'], icon: CalendarDays, size: 's', Body: CalendarW },
+  { id: 'month', name: ['Calendar', 'Календарь'], icon: CalendarRange, size: 't', Body: MonthW },
   { id: 'battery', name: ['Battery', 'Батарея'], icon: BatteryMedium, size: 's', Body: BatteryW },
   { id: 'world', name: ['World clocks', 'Мировые часы'], icon: Globe, size: 's', Body: WorldW },
   { id: 'currency', name: ['Currency', 'Валюты'], icon: Coins, size: 's', Body: CurrencyW },
@@ -293,7 +317,8 @@ export const MAX_CELLS = 16;
 const byId = new Map(WIDGETS.map((w) => [w.id, w]));
 export const widget = (id: string) => byId.get(id);
 
-export const cellsOf = (ids: string[]) => ids.reduce((n, id) => n + COLS[widget(id)?.size ?? 's'], 0);
+export const cellsOf = (ids: string[]) => ids.reduce((n, id) => n + CELLS[widget(id)?.size ?? 's'], 0);
+export const cellsOfWidget = (w: WidgetDef) => CELLS[w.size];
 export const colsOf = (w: WidgetDef) => COLS[w.size];
 /** Rows the grid needs (the grid packs densely, so this is the cell count over four, rounded up). */
 export const rowsOf = (ids: string[]) => Math.max(1, Math.ceil(cellsOf(ids) / 4));

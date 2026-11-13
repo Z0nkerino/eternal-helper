@@ -3,13 +3,28 @@ import { create } from 'zustand';
 import { withDefaults } from './defaults';
 import { call, type Battery, type Layout, type MediaInfo, type MusicReport, type PlannerEvent, type PlannerSnapshot, type Settings } from './ipc';
 
-export type Tab = 'home' | 'music' | 'library' | 'afina' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
+export type Tab = 'home' | 'music' | 'library' | 'ai' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
 /** The island has four tabs; the other screens live inside Library. */
-export type MainTab = 'home' | 'music' | 'library' | 'afina' | 'settings';
+export type MainTab = 'home' | 'music' | 'library' | 'ai' | 'settings';
 export type LibSub = 'weather' | 'planner' | 'videos' | 'text' | 'timer' | 'calc' | 'translate' | 'wifi' | 'radio';
-export const MAIN_TABS: MainTab[] = ['home', 'music', 'library', 'afina', 'settings'];
+export const MAIN_TABS: MainTab[] = ['home', 'music', 'library', 'ai', 'settings'];
 const IN_LIBRARY: Tab[] = ['weather', 'planner', 'videos', 'text'];
 export type View = 'idle' | 'panel';
+
+export type Hud =
+  | { kind: 'volume'; value: number; muted: boolean }
+  | { kind: 'brightness'; value: number }
+  | { kind: 'caps'; on: boolean }
+  | { kind: 'download'; name: string; path: string; done: boolean; size: number };
+
+let hudTimer: ReturnType<typeof setTimeout> | undefined;
+/** Shows a live event in the pill; it fades after a moment (a finished download stays a little longer). */
+export function showHud(h: Hud) {
+  clearTimeout(hudTimer);
+  useApp.setState({ hud: h });
+  const ms = h.kind === 'download' ? (h.done ? 5000 : 6000) : 1700;
+  hudTimer = setTimeout(() => useApp.setState({ hud: null }), ms);
+}
 
 export interface Toast {
   id: number;
@@ -68,6 +83,12 @@ interface AppState {
   pinned: boolean;
   /** When the panel last closed, to reopen on the same tab soon after. */
   closedAt: number;
+  /** A live system event shown in the pill for a moment (volume, brightness, Caps Lock, a download). */
+  hud: Hud | null;
+  /** The user is dragging the island to a new place. */
+  moving: boolean;
+  /** The mouse button is held on the island (it keeps the mouse until released). */
+  pressing: boolean;
   /** A sheet over the panel: the developer notice or the full-access request. */
   sheet: 'news' | 'access' | null;
   /** Bumped to ask the Afina input to take focus. */
@@ -103,6 +124,9 @@ export const useApp = create<AppState>(() => ({
   pinned: false,
   closedAt: 0,
   sheet: null,
+  hud: null,
+  moving: false,
+  pressing: false,
   focusAfina: 0,
   media: null,
   mediaSource: { kind: 'system' },

@@ -23,6 +23,21 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.4.0 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **Calmer, easier on the eyes** | Far less motion: no wobble, glint, light sweeps or cascades. Springs settle quickly, like iOS, and moving with the beat is off by default. Text and surfaces are softer, and Cloudy plays less often. |
+| **Updates fixed and required** | Downloads now retry and resume when the connection drops, and the real reason is shown if one fails, with a "download from the website" fallback. On Windows the installer waits until the app has really quit, and paths with non-Latin letters work. When a new version is out, opening the island shows **Update required** and the old version can't be used. |
+| **AI tab** (replaces Afina) | ChatGPT, Claude, Gemini, Perplexity, Copilot and DeepSeek: sign in once on the service's own page and use it fully in a window docked under the island. Type a question in the island and it opens with the question filled in. |
+| **Clipboard** (replaces Text tools) | Everything you copy, newest first, with the time, the app and, for browsers, the website it came from. Search, copy again, pin, delete. Password managers' private copies are skipped, and it can be paused or cleared. |
+| **Live activities** | Like iOS: volume, brightness and Caps Lock changes and downloads (in progress and finished, with "show in folder") appear in the pill for a moment. |
+| **Better controls** | Big iOS-style volume and brightness sliders that follow your finger smoothly (with wheel and arrow keys); brightness changes never queue up. |
+| **Move the island anywhere** | Drag the pill, or the open island's tab bar, to any spot. In the lower half of the screen it opens upward. Drop it near the top centre to send it home (or use Settings → Personalise). |
+| **Widgets** | An **Add widget** button is always on Home, plus a new month **Calendar** widget. |
+| **Translator, Settings, windows** | The translator has two cards with a searchable language picker, swap, paste, read aloud and long texts. Settings look like iOS Settings (grouped cards, colour icons, big switches). Popped-out windows have their own dark title bar and fade in. |
+| **Cloudy** | His right-click menu now stays open. |
+
 ## Beta 0.3.1 — “Sunrise” 🌅
 
 | What | Details |
@@ -135,7 +150,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name is *Beta 0.3.1 “Sunrise”*; the build number is 0.5.1 so that in-app updates from earlier builds still see it as newer.
+- **Version naming:** the public name is *Beta 0.4.0 “Sunrise”*; the build number is 0.6.0 so that in-app updates from earlier builds still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -161,6 +176,18 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.4.0 — «Sunrise» 🌅
+
+- **Спокойнее и мягче для глаз:** гораздо меньше движения, мягкие цвета, ритм музыки по умолчанию выключен.
+- **Обновления исправлены и обязательны:** загрузка с повтором и докачкой, понятная ошибка и ссылка на сайт; когда выходит новая версия, остров просит обновиться.
+- **Вкладка ИИ** вместо Афины: ChatGPT, Claude, Gemini, Perplexity, Copilot, DeepSeek — вход на сайте сервиса, окно пристыковано под островом.
+- **Буфер обмена** вместо «Текста»: всё скопированное со временем, приложением и сайтом; поиск, закрепление, удаление.
+- **Живые события:** громкость, яркость, Caps Lock и загрузки файлов прямо в острове.
+- **Удобные ползунки** громкости и яркости в стиле iOS.
+- **Остров можно перетащить куда угодно** (внизу экрана он открывается вверх).
+- **Кнопка «Добавить виджет»** всегда на Главной и новый виджет **Календарь**.
+- Новый **переводчик**, **настройки** в стиле iOS, аккуратные **отдельные окна**; меню Cloudy по правому клику больше не пропадает.
 
 ## Beta 0.3.1 — «Sunrise» 🌅
 

@@ -83,6 +83,10 @@ export interface Layout {
   nativeRecording: boolean;
   screenWidth: number;
   scale: number;
+  /** Moved to the lower half of the screen: the island opens upward. */
+  bottom?: boolean;
+  /** Moved away from the top centre by the user. */
+  moved?: boolean;
 }
 
 export interface PlannerEvent {
@@ -111,6 +115,16 @@ export interface Recording {
   size: number;
   durationMs: number;
   createdAt: number;
+}
+
+export interface Clip {
+  id: number;
+  text: string;
+  at: number;
+  app: string | null;
+  title: string | null;
+  url: string | null;
+  pinned: boolean;
 }
 
 export interface Account {
@@ -211,7 +225,13 @@ interface Commands {
   afina_find_text: [{ query: string }, FoundFile[]];
   afina_open: [{ path: string; reveal: boolean }, void];
   ai_services: [void, { id: string; name: string; prefill: boolean }[]];
-  ai_open: [{ service: string; prompt: string | null }, boolean];
+  ai_open: [{ service: string; prompt: string | null; docked?: boolean }, boolean];
+  clip_list: [void, Clip[]];
+  reveal_download: [{ path: string }, void];
+  island_save_pos: [{ px: number; py: number }, void];
+  clip_delete: [{ id: number }, void];
+  clip_pin: [{ id: number; pinned: boolean }, void];
+  clip_clear: [void, void];
   open_url: [{ url: string }, void];
   window_ready: [void, void];
   quit: [void, void];
@@ -336,6 +356,15 @@ async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
       return [{ ssid: 'Eternal-Wi-Fi', signal: 88, secure: true, known: true }, { ssid: 'Cafe Sunrise', signal: 52, secure: false, known: false }, { ssid: 'Neighbours 5G', signal: 31, secure: true, known: false }];
     case 'ai_services':
       return [{ id: 'chatgpt', name: 'ChatGPT', prefill: true }, { id: 'claude', name: 'Claude', prefill: true }, { id: 'gemini', name: 'Gemini', prefill: false }, { id: 'perplexity', name: 'Perplexity', prefill: true }, { id: 'copilot', name: 'Copilot', prefill: true }, { id: 'deepseek', name: 'DeepSeek', prefill: false }];
+    case 'clip_list': {
+      const now = Date.now();
+      return [
+        { id: 4, text: 'The island moves like liquid glass and pulses with the beat of your music.', at: now - 60_000, app: 'Chrome', title: 'Eternal Helper — GitHub', url: 'https://github.com/Z0nkerino/eternal-helper', pinned: false },
+        { id: 3, text: 'npm install @eternal/plugin-sdk', at: now - 3600_000, app: 'VS Code', title: 'README.md — eternal-helper', url: null, pinned: true },
+        { id: 2, text: 'Meeting at 15:00 in room 4B', at: now - 5 * 3600_000, app: 'Telegram', title: 'Team', url: null, pinned: false },
+        { id: 1, text: 'Saint Petersburg, Nevsky Prospect 28', at: now - 30 * 3600_000, app: 'Edge', title: 'Maps', url: 'https://yandex.ru/maps', pinned: false },
+      ] satisfies Clip[];
+    }
     case 'afina_find_files':
       throw 'tools-off';
     case 'battery':

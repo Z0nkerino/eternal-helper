@@ -3,7 +3,7 @@
 // Fluent Emoji, MIT) — the same on Windows and macOS — or the system font.
 import { Fragment, type ReactNode } from 'react';
 import {
-  AlertTriangle, Battery, Bell, BellOff, Bluetooth, Bot, Calculator, Calendar, CalendarDays, Camera, Candy, Cat, CheckCircle2, Clapperboard, Clock, Cloud, CloudFog,
+  AlertTriangle, Battery, ClipboardList, Bell, BellOff, Bluetooth, Bot, Calculator, Calendar, CalendarDays, Camera, Candy, Cat, CheckCircle2, Clapperboard, Clock, Cloud, CloudFog,
   CloudLightning, CloudRain, CloudSnow, CloudSun, Coins, Compass, Cookie, Download, Droplet, Eye, Fish, Flame, Folder, Frown, Gauge, Gift, Globe, Hand, Headphones, Heart,
   House, IceCreamCone, Image, Info, Keyboard, Languages, Lightbulb, Lock, Mail, MapPin, Mic, Monitor, Moon, MoonStar, Music, Music2, Palette, PartyPopper, Rabbit,
   Radio, Rainbow, RefreshCw, Rocket, Search, Settings, Smile, Snowflake, Sparkles, Star, Sun, Sunrise, Sunset, Thermometer, Timer, Trophy, Type, Umbrella, User,
@@ -27,7 +27,7 @@ const ICONS: Record<string, [LucideIcon, string?]> = {
   '🌈': [Rainbow, MAGIC], '☂': [Umbrella, RAIN], '☔': [Umbrella, RAIN], '💧': [Droplet, RAIN], '🌡': [Thermometer], '🧭': [Compass], '🌅': [Sunrise, SUN], '🌇': [Sunset, '#ff9f5a'], '🌄': [Sunrise, SUN],
   '⚙': [Settings], '🛠': [Wrench], '🔧': [Wrench], '🔄': [RefreshCw], '🔐': [Lock], '🔒': [Lock], '🔋': [Battery, GOOD], '⚡': [Zap, WARN], '📶': [Wifi], '🔵': [Bluetooth, '#5aa0ff'],
   '🔕': [BellOff], '🔔': [Bell, WARN], '⏱': [Timer], '⏰': [Clock], '🕐': [Clock], '🏠': [House], '📁': [Folder], '📂': [Folder], '🖥': [Monitor], '💻': [Monitor], '⌨': [Keyboard],
-  '🔍': [Search], '🔎': [Search], '💡': [Lightbulb, WARN], '📍': [MapPin, BAD], '✉': [Mail], '📧': [Mail], '👤': [User], '🤖': [Bot], '🚀': [Rocket], '🎁': [Gift, LOVE], '🏆': [Trophy, SUN],
+  '🔍': [Search], '🔎': [Search], '💡': [Lightbulb, WARN], '📍': [MapPin, BAD], '✉': [Mail], '📧': [Mail], '👤': [User], '🤖': [Bot], '📋': [ClipboardList], '🚀': [Rocket], '🎁': [Gift, LOVE], '🏆': [Trophy, SUN],
   '🎉': [PartyPopper, MAGIC], '🎊': [PartyPopper, MAGIC], '🔥': [Flame, '#ff8a3d'], '👀': [Eye], '👋': [Hand], '🎨': [Palette], '🆕': [Sparkles, MAGIC], 'ℹ': [Info], '⬇': [Download],
   '✅': [CheckCircle2, GOOD], '⚠': [AlertTriangle, WARN], '❌': [XCircle, BAD], '⛔': [XCircle, BAD], '🎾': [Volleyball, '#d6ef5a'], '🍽': [Utensils], '🍪': [Cookie, '#e0a96d'], '🍬': [Candy, LOVE],
   '🍦': [IceCreamCone, '#ffd1e0'], '💙': [Heart, '#5aa0ff'], '💗': [Heart, LOVE], '💖': [Heart, LOVE], '❤': [Heart, LOVE], '💞': [Heart, LOVE], '🫶': [Heart, LOVE], '🥰': [Heart, LOVE],
