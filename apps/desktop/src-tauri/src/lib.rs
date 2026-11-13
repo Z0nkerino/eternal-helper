@@ -231,6 +231,10 @@ fn spawn_hit_test(app: AppHandle) {
                 let (Ok(c), Ok(p), Ok(scale)) = (w.cursor_position(), w.outer_position(), w.scale_factor()) else { continue };
                 let (x, y) = ((c.x - p.x as f64) / scale, (c.y - p.y as f64) / scale);
                 let inside = rects.get(label).is_some_and(|&(hx, hy, hw, hh)| x >= hx && x <= hx + hw && y >= hy && y <= hy + hh);
+                // Re-apply now and then: hiding and showing a window (screenshots do) can reset it.
+                if tick % 50 == 0 {
+                    ignoring.remove(label);
+                }
                 if ignoring.get(label) != Some(&!inside) && w.set_ignore_cursor_events(!inside).is_ok() {
                     ignoring.insert(label.to_string(), !inside);
                 }
@@ -331,7 +335,8 @@ fn spawn_screen_watch(app: AppHandle) {
             // monitor plugged in) so the notch-safe layout always matches the current screen.
             place(&app, &w);
             tick = tick.wrapping_add(1);
-            if priority {
+            let editor_open = app.get_webview_window(screenshot::LABEL).is_some();
+            if priority && !editor_open {
                 // Re-assert the top spot every second, so other always-on-top windows can't cover it.
                 platform::raise_topmost(&w);
             } else if tick % 5 == 0 && app.get_webview_window(cloudy::LABEL).is_some() {
@@ -423,6 +428,9 @@ fn apply_settings(app: &AppHandle, value: Settings) -> Result<Settings, String> 
     let cloud_on = cloudy::enabled(&value);
     if cloud_on != cloudy::enabled(&old) {
         cloudy::sync(app, cloud_on);
+    }
+    if value.recording.folder != old.recording.folder {
+        let _ = app.asset_protocol_scope().allow_directory(rec_dir(&app.state::<AppState>()), true);
     }
     if full_access(&value) != full_access(&old) {
         if let Some(w) = island(app) {
@@ -570,10 +578,40 @@ fn rec_append(st: S, request: tauri::ipc::Request<'_>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn rec_finish(app: AppHandle, st: S, id: String, duration_ms: u64) -> Result<recordings::Recording, String> {
-    let rec = st.recorder.finish(&rec_dir(&st), &id, duration_ms)?;
+fn rec_finish(app: AppHandle, st: S, id: String, duration_ms: u64, title: Option<String>) -> Result<recordings::Recording, String> {
+    let dir = rec_dir(&st);
+    let mut rec = st.recorder.finish(&dir, &id, duration_ms)?;
+    // An edited copy gets the name it was given ("Trip (edited)").
+    if let Some(t) = title.filter(|t| !t.trim().is_empty()) {
+        if st.recorder.rename(&dir, &rec.path, &t).is_ok() {
+            if let Some(r) = recordings::list(&dir).into_iter().find(|r| r.id == rec.id) {
+                rec = r;
+            }
+        }
+    }
     let _ = app.emit("recordings://changed", ());
     Ok(rec)
+}
+
+/// A recording's bytes (for the video editor, which needs them as a same-origin blob to cut and export).
+#[tauri::command]
+async fn rec_read(app: AppHandle, path: String) -> Result<tauri::ipc::Response, String> {
+    let st = app.state::<AppState>();
+    if !recordings::list(&rec_dir(&st)).iter().any(|r| r.path == path) {
+        return Err("Not a recording".into());
+    }
+    let bytes = tauri::async_runtime::spawn_blocking(move || std::fs::read(&path)).await.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+/// Opens a recording in the video editor (trim, mute, snapshot, save a copy).
+#[tauri::command]
+async fn video_edit(app: AppHandle, path: String) -> Result<(), String> {
+    let st = app.state::<AppState>();
+    if !recordings::list(&rec_dir(&st)).iter().any(|r| r.path == path) {
+        return Err("Not a recording".into());
+    }
+    windows::open_video_editor(&app, &path)
 }
 
 #[tauri::command]
@@ -733,21 +771,94 @@ fn shot_image(app: AppHandle) -> Result<tauri::ipc::Response, String> {
     screenshot::take_png(&app).map(tauri::ipc::Response::new).ok_or_else(|| "no screenshot".into())
 }
 
-/// Saves the edited screenshot (raw PNG body) to Pictures/Eternal Helper and returns the path.
+/// Saves an edited screenshot (raw PNG body) to Pictures/Eternal Helper and returns the path. Headers:
+/// `x-replace: <path>` saves over that screenshot; `x-copy: 1` also puts it on the clipboard.
 #[tauri::command]
-fn shot_save(request: tauri::ipc::Request<'_>) -> Result<String, String> {
-    match request.body() {
-        tauri::ipc::InvokeBody::Raw(bytes) => screenshot::save(bytes).map(|p| p.to_string_lossy().into_owned()),
-        _ => Err("expected PNG bytes".into()),
+fn shot_save(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<String, String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else { return Err("expected PNG bytes".into()) };
+    let replace = request.headers().get("x-replace").and_then(|v| v.to_str().ok()).map(|s| percent_decode(s)).filter(|s| !s.is_empty()).map(std::path::PathBuf::from);
+    let path = screenshot::save(bytes, replace.as_deref())?;
+    if request.headers().get("x-copy").is_some_and(|v| v == "1") {
+        screenshot::copy_png(&app, bytes)?;
     }
+    let _ = app.emit("shots://changed", ());
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// Header values are ASCII: the path comes percent-encoded.
+fn percent_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'%' && i + 2 < b.len() {
+            if let Ok(v) = u8::from_str_radix(&s[i + 1..i + 3], 16) {
+                out.push(v);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 #[tauri::command]
 fn shot_close(app: AppHandle) {
-    *app.state::<screenshot::ShotState>().png.lock().unwrap() = None;
-    if let Some(w) = app.get_webview_window(screenshot::LABEL) {
-        let _ = w.destroy();
+    screenshot::close(&app);
+}
+
+/// What the editor is working on: a fresh capture, or a saved screenshot (its path).
+#[tauri::command]
+fn shot_info(app: AppHandle) -> Option<String> {
+    app.state::<screenshot::ShotState>().editing.lock().unwrap().as_ref().map(|p| p.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn shot_list() -> Vec<screenshot::ShotFile> {
+    screenshot::list()
+}
+
+#[tauri::command]
+async fn shot_edit(app: AppHandle, path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || screenshot::edit(&app, std::path::Path::new(&path))).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn shot_rename(app: AppHandle, path: String, title: String) -> Result<String, String> {
+    let p = screenshot::rename(std::path::Path::new(&path), &title)?;
+    let _ = app.emit("shots://changed", ());
+    Ok(p.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn shot_delete(app: AppHandle, path: String) -> Result<(), String> {
+    screenshot::delete(std::path::Path::new(&path))?;
+    let _ = app.emit("shots://changed", ());
+    Ok(())
+}
+
+/// Copies a saved screenshot to the clipboard.
+#[tauri::command]
+async fn shot_copy(app: AppHandle, path: String) -> Result<(), String> {
+    if !screenshot::inside_folder(std::path::Path::new(&path)) {
+        return Err("That isn't one of your screenshots.".into());
     }
+    tauri::async_runtime::spawn_blocking(move || {
+        let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+        screenshot::copy_png(&app, &bytes)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn shot_open(app: AppHandle, path: String) -> Result<(), String> {
+    if !screenshot::inside_folder(std::path::Path::new(&path)) {
+        return Err("That isn't one of your screenshots.".into());
+    }
+    app.opener().open_path(&path, None::<&str>).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -1062,6 +1173,12 @@ mod tests {
     }
 
     #[test]
+    fn decodes_header_paths() {
+        assert_eq!(percent_decode("C%3A%5CUsers%5C%D0%98%D0%B2%D0%B0%D0%BD%5Ca.png"), "C:\\Users\\Иван\\a.png");
+        assert_eq!(percent_decode("plain%2"), "plain%2");
+    }
+
+    #[test]
     fn island_position() {
         assert_eq!(snap_pos(962.0, 10.0, 1920.0, 1080.0), None, "near the top centre: back home");
         let p = snap_pos(300.0, 900.0, 1920.0, 1080.0).unwrap();
@@ -1112,6 +1229,13 @@ pub fn run() {
             app.manage(state);
             app.manage(screenshot::ShotState::default());
             app.manage(clipwatch::ClipState::load(app.path().app_data_dir()?));
+            // Previews of screenshots and recordings in the island (the recordings folder can be custom).
+            {
+                let scope = app.asset_protocol_scope();
+                let _ = std::fs::create_dir_all(screenshot::folder());
+                let _ = scope.allow_directory(screenshot::folder(), true);
+                let _ = scope.allow_directory(rec_dir(&app.state::<AppState>()), true);
+            }
 
             let handle = app.handle().clone();
             if s.planner.enabled {
@@ -1180,6 +1304,15 @@ pub fn run() {
             shot_image,
             shot_save,
             shot_close,
+            shot_info,
+            shot_list,
+            shot_edit,
+            shot_rename,
+            shot_delete,
+            shot_copy,
+            shot_open,
+            rec_read,
+            video_edit,
             shot_reveal,
             controls_read,
             controls_set,

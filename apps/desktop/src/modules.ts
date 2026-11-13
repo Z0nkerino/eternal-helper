@@ -6,7 +6,7 @@ import type { Key } from './lib/i18n';
 import { HomeTab } from './tabs/HomeTab';
 import { AiTab } from './tabs/AiTab';
 import { PlannerTab } from './tabs/PlannerTab';
-import { VideosTab } from './tabs/VideosTab';
+import { CapturesView } from './library/CapturesView';
 import { ClipboardTab } from './tabs/ClipboardTab';
 import { SettingsTab } from './tabs/SettingsTab';
 import { WeatherTab } from './tabs/WeatherTab';
@@ -24,7 +24,7 @@ export const ALL_MODULES: TabModule[] = [
   defineModule<TabModule>({ id: 'settings', name: 'tab.settings', icon: Settings, tab: SettingsTab }),
   defineModule<TabModule>({ id: 'weather', name: 'tab.weather', icon: CloudSun, tab: WeatherTab }),
   defineModule<TabModule>({ id: 'planner', name: 'tab.planner', icon: CalendarCheck, tab: PlannerTab }),
-  defineModule<TabModule>({ id: 'videos', name: 'tab.videos', icon: Video, tab: VideosTab }),
+  defineModule<TabModule>({ id: 'videos', name: 'tab.videos', icon: Video, tab: CapturesView }),
   defineModule<TabModule>({ id: 'text', name: 'tab.text', icon: ClipboardList, tab: ClipboardTab }),
 ];
 

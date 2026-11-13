@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shot-list"
+description = "Enables the shot_list command without any pre-configured scope."
+commands.allow = ["shot_list"]
+
+[[permission]]
+identifier = "deny-shot-list"
+description = "Denies the shot_list command without any pre-configured scope."
+commands.deny = ["shot_list"]

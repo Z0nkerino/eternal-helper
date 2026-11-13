@@ -50,7 +50,18 @@ export async function startRecording() {
       setRec({ status: 'recording', startedAt: Date.now() });
       return;
     }
-    const display = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: audio !== 'none' });
+    if (!navigator.mediaDevices?.getDisplayMedia) throw new Error(tNow('rec.unsupported'));
+    // The system's "choose what to share" picker opens inside the island's window, which normally only
+    // takes clicks on the pill: let the whole window take clicks and the keyboard until a choice is made.
+    useApp.setState({ pressing: true });
+    void call('island_set_expanded', { expanded: true, focus: true });
+    let display: MediaStream;
+    try {
+      display = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: audio !== 'none' });
+    } finally {
+      useApp.setState({ pressing: false });
+      if (useApp.getState().view !== 'panel') void call('island_set_expanded', { expanded: false });
+    }
     streams.push(display);
     const stream = await buildStream(display, audio === 'system+mic');
     const mimeType = pickMime();
@@ -73,8 +84,9 @@ export async function startRecording() {
     if (recId) void call('rec_cancel', { id: recId });
     recId = '';
     setRec({ status: 'idle' });
-    // Cancelling the system picker isn't an error worth a toast.
-    if ((e as DOMException)?.name !== 'NotAllowedError') toast(`${tNow('rec.failed')}: ${String((e as Error)?.message ?? e)}`, { tone: 'error' });
+    // Cancelled in the picker (or blocked by the system): say so, quietly, instead of doing nothing.
+    if ((e as DOMException)?.name === 'NotAllowedError' || (e as DOMException)?.name === 'AbortError') toast(tNow('rec.cancelled'), { tone: 'warn', force: true });
+    else toast(`${tNow('rec.failed')}: ${String((e as Error)?.message ?? e)}`, { tone: 'error', force: true });
   }
 }
 
@@ -111,7 +123,8 @@ export async function stopRecording(): Promise<Recording | null> {
     toast(tNow('rec.saved'), {
       tone: 'ok',
       force: true,
-      action: { label: tNow('rec.play'), run: () => void call('rec_open', { path: saved.path, reveal: false }) },
+      ms: 7000,
+      action: { label: tNow('rec.edit'), run: () => void call('video_edit', { path: saved.path }) },
     });
     return saved;
   } catch (e) {

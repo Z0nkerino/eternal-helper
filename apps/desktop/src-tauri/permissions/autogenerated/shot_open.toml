@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shot-open"
+description = "Enables the shot_open command without any pre-configured scope."
+commands.allow = ["shot_open"]
+
+[[permission]]
+identifier = "deny-shot-open"
+description = "Denies the shot_open command without any pre-configured scope."
+commands.deny = ["shot_open"]

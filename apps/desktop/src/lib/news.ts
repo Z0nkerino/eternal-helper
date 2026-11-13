@@ -10,9 +10,9 @@ export interface NewsItem {
 const URL = 'https://raw.githubusercontent.com/Z0nkerino/eternal-helper/main/NEWS.json';
 
 export const BUNDLED: NewsItem[] = [
-  {date: "2026-11-13", tag: "update", title: "Beta 0.4.0 — calmer and more useful", body: "Much less motion and softer colours. New AI tab for ChatGPT, Claude, Gemini and more; a clipboard history with the time and website of everything you copy; live volume, brightness, Caps Lock and download activity in the island; and you can drag the island anywhere."},
-  {date: "2026-11-13", tag: "tip", title: "Move the island", body: "Grab the closed island — or the tab bar of the open one — and drop it anywhere. Drop it near the top centre to send it home."},
-  {date: "2026-11-13", tag: "news", title: "Updates are now required", body: "When a new version is out, the island asks you to update before you continue. It takes a minute and restarts by itself."},
+  {date: "2026-11-13", tag: "update", title: "Beta 0.4.1 — captures you can edit", body: "Screenshots are now saved as files every time (and copied), and recording works with the system's screen picker. Library → Captures shows all of them: open a screenshot to draw on it again, or a video to trim it, change its speed, drop the sound or save a frame."},
+  {date: "2026-11-13", tag: "tip", title: "Pick how lively it is", body: "Settings → Personalise → Animations: Calm, Balanced (new default) or Lively."},
+  {date: "2026-11-13", tag: "news", title: "Updates are required", body: "When a new version is out, the island asks you to update before you continue. It takes a minute and restarts by itself."},
 ];
 
 const valid = (x: unknown): x is NewsItem => {

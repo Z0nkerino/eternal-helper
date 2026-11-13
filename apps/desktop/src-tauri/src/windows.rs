@@ -35,3 +35,24 @@ pub fn open(app: &AppHandle, kind: &str) -> Result<(), String> {
     let b = b.decorations(false).shadow(true);
     b.build().map(|_| ()).map_err(|e| e.to_string())
 }
+
+/// The video editor for one recording (`path` is checked by the caller).
+pub fn open_video_editor(app: &AppHandle, path: &str) -> Result<(), String> {
+    let label = "video-edit";
+    if let Some(w) = app.get_webview_window(label) {
+        let _ = w.destroy();
+    }
+    let enc: String = path.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect();
+    let b = WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html#video/{enc}").into()))
+        .title("Eternal Helper — Video")
+        .inner_size(960.0, 680.0)
+        .min_inner_size(640.0, 480.0)
+        .center()
+        .background_color(tauri::webview::Color(14, 14, 18, 255))
+        .theme(Some(tauri::Theme::Dark));
+    #[cfg(target_os = "macos")]
+    let b = b.title_bar_style(tauri::TitleBarStyle::Overlay).hidden_title(true);
+    #[cfg(not(target_os = "macos"))]
+    let b = b.decorations(false).shadow(true);
+    b.build().map(|_| ()).map_err(|e| e.to_string())
+}

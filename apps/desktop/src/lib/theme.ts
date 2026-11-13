@@ -10,6 +10,7 @@ export function applyTheme(s: Settings | null) {
   const root = document.documentElement;
   root.dataset.theme = s.theme;
   root.dataset.motion = s.motion;
+  root.dataset.level = s.motion === 'reduced' ? 'calm' : s.motionLevel ?? 'balanced';
   root.style.setProperty('--accent', safeAccent(s.accent));
   root.style.setProperty('--radius-scale', String(s.radius));
   root.style.setProperty('--ui-scale', String(s.uiScale));

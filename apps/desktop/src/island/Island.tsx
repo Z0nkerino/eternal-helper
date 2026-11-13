@@ -23,7 +23,7 @@ import { Rich } from '../lib/emoji';
 const PANEL_W = 660;
 /** Each tab gets the height it needs; the island springs between them. */
 const PANEL_H: Record<MainTab, number> = { home: 350, music: 420, library: 404, ai: 300, settings: 470 };
-const SUB_H: Record<LibSub, number> = { weather: 500, planner: 452, videos: 452, text: 470, timer: 452, calc: 452, translate: 480, wifi: 452, radio: 400 };
+const SUB_H: Record<LibSub, number> = { weather: 500, planner: 452, videos: 500, text: 470, timer: 452, calc: 452, translate: 480, wifi: 452, radio: 400 };
 
 /** Normal top padding of the open panel when there's no notch to clear. */
 const PANEL_PAD = 10;
@@ -220,6 +220,19 @@ function useHoverOpen(islandRef: React.RefObject<HTMLDivElement>, activity: stri
  * for it and it composes with the island's own size spring.
  */
 function useLiquid(islandRef: React.RefObject<HTMLDivElement>, outerRef: React.RefObject<HTMLDivElement>, beatRef: React.RefObject<HTMLDivElement>) {
+  const view = useApp((s) => s.view);
+  const tab = useApp((s) => s.tab);
+  const level = useApp((s) => (s.settings?.motion === 'reduced' ? 'calm' : s.settings?.motionLevel ?? 'balanced'));
+  // A soft gel wobble when it opens, closes or changes tab (not in Calm).
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el || level === 'calm') return;
+    el.classList.remove('gel');
+    void el.offsetWidth;
+    el.classList.add('gel');
+    const id = setTimeout(() => el.classList.remove('gel'), 700);
+    return () => clearTimeout(id);
+  }, [view, tab, level, outerRef]);
   const on = useApp((s) => (s.settings as unknown as { liquid?: { enabled?: boolean } })?.liquid?.enabled !== false && s.settings?.motion !== 'reduced');
   useEffect(() => {
     const el = islandRef.current;
@@ -423,7 +436,7 @@ export function Island() {
         {/* A soft glow behind the island: breathes in the cover's colour while music plays. */}
         <motion.span className={`island-glow ${playing ? 'music' : ''} ${activities.length ? 'on' : ''} ${panel ? 'open' : ''}`} initial={false} animate={{ width: size.w, height: size.h }} transition={springs.island} aria-hidden />
         <div className="liquid" ref={outerRef}>
-        <div className={`beat-layer ${playing ? 'on' : ''}`} ref={beatRef}>
+        <div className={`beat-layer ${playing && !panel ? 'on' : ''}`} ref={beatRef}>
         <motion.div
           ref={islandRef}
           className={`island ${panel ? 'open' : ''} ${notch && !panel ? 'notch' : ''} ${panel && tinted ? 'tinted' : ''} ${activities.length ? 'live' : ''}`}

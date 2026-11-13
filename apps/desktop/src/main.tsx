@@ -7,6 +7,7 @@ import { PopOut } from './settings/PopOut';
 import { CloudyStage, type MoodSignal } from './cloudy/CloudyStage';
 import { PetWindow } from './cloudy/PetWindow';
 import { ShotEditor } from './shot/ShotEditor';
+import { VideoEditor } from './video/VideoEditor';
 import { call, emitEvent, inTauri, listen, type Layout, type MediaInfo, type Settings } from './lib/ipc';
 import { closePanel, openPanel, openSheet, saveSettings, showHud, tickTimer, toast, useApp, type Hud, type Tab } from './lib/store';
 import { useControls } from './lib/controls';
@@ -22,7 +23,7 @@ import { tNow } from './lib/i18n';
 import { RELEASE } from './lib/release';
 import './styles.css';
 
-type View = { kind: 'island' } | { kind: 'settings' } | { kind: 'panel'; tab: Tab } | { kind: 'cloudy' } | { kind: 'pet' } | { kind: 'shot' };
+type View = { kind: 'island' } | { kind: 'settings' } | { kind: 'panel'; tab: Tab } | { kind: 'cloudy' } | { kind: 'pet' } | { kind: 'shot' } | { kind: 'video'; path: string };
 
 function currentView(): View {
   const h = location.hash.replace(/^#/, '');
@@ -31,6 +32,7 @@ function currentView(): View {
   if (h === 'cloudy') return { kind: 'cloudy' };
   if (h === 'pet') return { kind: 'pet' };
   if (h === 'shot') return { kind: 'shot' };
+  if (h.startsWith('video/')) return { kind: 'video', path: decodeURIComponent(h.slice(6)) };
   return { kind: 'island' };
 }
 
@@ -84,7 +86,7 @@ function bootIsland() {
   // Messages from other windows (screenshot copied, errors from the Rust side…).
   listen<string>('island://toast', (text) => toast(text, { force: true }));
   listen<string>('island://shot-saved', (path) =>
-    toast(tNow('shot.saved'), { tone: 'ok', force: true, action: { label: tNow('rec.reveal'), run: () => void call('shot_reveal', { path }) } }),
+    toast(tNow('shot.saved'), { tone: 'ok', force: true, ms: 6000, action: { label: tNow('rec.edit'), run: () => void call('shot_edit', { path }) } }),
   );
 
   setInterval(() => {
@@ -215,6 +217,8 @@ function Root() {
       return <PetWindow />;
     case 'shot':
       return <ShotEditor />;
+    case 'video':
+      return <VideoEditor path={view.path} />;
     default:
       return <Island />;
   }

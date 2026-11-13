@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shot-edit"
+description = "Enables the shot_edit command without any pre-configured scope."
+commands.allow = ["shot_edit"]
+
+[[permission]]
+identifier = "deny-shot-edit"
+description = "Denies the shot_edit command without any pre-configured scope."
+commands.deny = ["shot_edit"]

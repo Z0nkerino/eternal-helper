@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shot-copy"
+description = "Enables the shot_copy command without any pre-configured scope."
+commands.allow = ["shot_copy"]
+
+[[permission]]
+identifier = "deny-shot-copy"
+description = "Denies the shot_copy command without any pre-configured scope."
+commands.deny = ["shot_copy"]

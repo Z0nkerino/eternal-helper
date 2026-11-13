@@ -60,7 +60,12 @@ function Personalise({ s }: { s: S }) {
       <Range label={tr('Island opacity', 'Непрозрачность острова')} value={s.islandOpacity} set={(islandOpacity) => void saveSettings({ islandOpacity })} range={LIMITS.islandOpacity} step={0.02} fmt={pct} />
       <Segment label={tr('Clock', 'Часы')} value={s.clock24 ? '24' : '12'} options={[['24', '24 h'], ['12', '12 h AM/PM']]} onChange={(v) => void saveSettings({ clock24: v === '24' })} />
       <Switch label={tr('Show seconds', 'Показывать секунды')} on={s.clockSeconds} onChange={(clockSeconds) => void saveSettings({ clockSeconds })} />
-      <Segment label={tr('Animations', 'Анимации')} value={s.motion} options={[['full', tr('Smooth & lively', 'Плавные и живые')], ['reduced', tr('Reduced', 'Минимум')]]} onChange={(motion) => void saveSettings({ motion })} />
+      <Segment
+        label={tr('Animations', 'Анимации')}
+        value={s.motion === 'reduced' ? 'off' : s.motionLevel}
+        options={[['calm', tr('Calm', 'Спокойно')], ['balanced', tr('Balanced', 'Сбалансированно')], ['lively', tr('Lively', 'Живо')], ['off', tr('Off', 'Выкл')]]}
+        onChange={(v) => void saveSettings(v === 'off' ? { motion: 'reduced' } : { motion: 'full', motionLevel: v as Settings['motionLevel'] })}
+      />
       <Switch label={tr('Open the island when the cursor rests on it', 'Открывать остров при наведении курсора')} on={s.hoverOpen} onChange={(hoverOpen) => void saveSettings({ hoverOpen })} />
       <div className="setting">
         <span>

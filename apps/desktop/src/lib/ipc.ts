@@ -39,6 +39,8 @@ export interface Settings {
   fullAccess: { granted: boolean; at: number };
   /** Show the developer notice (news and updates) when the app starts. */
   newsAtStart: boolean;
+  /** How much the app moves: calm, balanced (default) or lively. */
+  motionLevel: 'calm' | 'balanced' | 'lively';
   /** Liquid-glass motion of the island and moving with the music's beat. */
   liquid: { enabled: boolean; beat: boolean };
   shotHotkey: string;
@@ -114,6 +116,13 @@ export interface Recording {
   path: string;
   size: number;
   durationMs: number;
+  createdAt: number;
+}
+
+export interface ShotFile {
+  path: string;
+  name: string;
+  size: number;
   createdAt: number;
 }
 
@@ -194,7 +203,7 @@ interface Commands {
   afina_ask: [{ context: string; history: ChatMessage[] }, string];
   rec_info: [void, { folder: string; native: boolean }];
   rec_begin: [{ ext: string }, string];
-  rec_finish: [{ id: string; durationMs: number }, Recording];
+  rec_finish: [{ id: string; durationMs: number; title?: string | null }, Recording];
   rec_cancel: [{ id: string }, void];
   rec_native_start: [{ mic: boolean }, void];
   rec_native_stop: [void, Recording];
@@ -229,6 +238,14 @@ interface Commands {
   clip_list: [void, Clip[]];
   reveal_download: [{ path: string }, void];
   island_save_pos: [{ px: number; py: number }, void];
+  shot_info: [void, string | null];
+  shot_list: [void, ShotFile[]];
+  shot_edit: [{ path: string }, void];
+  shot_rename: [{ path: string; title: string }, string];
+  shot_delete: [{ path: string }, void];
+  shot_copy: [{ path: string }, void];
+  shot_open: [{ path: string }, void];
+  video_edit: [{ path: string }, void];
   clip_delete: [{ id: number }, void];
   clip_pin: [{ id: number; pinned: boolean }, void];
   clip_clear: [void, void];
@@ -356,6 +373,10 @@ async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
       return [{ ssid: 'Eternal-Wi-Fi', signal: 88, secure: true, known: true }, { ssid: 'Cafe Sunrise', signal: 52, secure: false, known: false }, { ssid: 'Neighbours 5G', signal: 31, secure: true, known: false }];
     case 'ai_services':
       return [{ id: 'chatgpt', name: 'ChatGPT', prefill: true }, { id: 'claude', name: 'Claude', prefill: true }, { id: 'gemini', name: 'Gemini', prefill: false }, { id: 'perplexity', name: 'Perplexity', prefill: true }, { id: 'copilot', name: 'Copilot', prefill: true }, { id: 'deepseek', name: 'DeepSeek', prefill: false }];
+    case 'shot_list': {
+      const now = Date.now();
+      return [1, 2, 3, 4].map((i) => ({ path: `/Pictures/Eternal Helper/Screenshot ${i}.png`, name: `Screenshot 2026-11-1${i} 10-0${i}-12`, size: 380_000 * i, createdAt: now - i * 3600_000 })) satisfies ShotFile[];
+    }
     case 'clip_list': {
       const now = Date.now();
       return [

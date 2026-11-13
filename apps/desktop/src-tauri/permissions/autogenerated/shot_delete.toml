@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shot-delete"
+description = "Enables the shot_delete command without any pre-configured scope."
+commands.allow = ["shot_delete"]
+
+[[permission]]
+identifier = "deny-shot-delete"
+description = "Denies the shot_delete command without any pre-configured scope."
+commands.deny = ["shot_delete"]

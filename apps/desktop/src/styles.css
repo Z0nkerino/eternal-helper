@@ -1113,41 +1113,55 @@ html[data-motion='reduced'] .liquid, html[data-motion='reduced'] .beat-layer { s
 .update-req-err { color: #ffb4ae; max-width: 380px; user-select: text; -webkit-user-select: text; }
 .pill-update-ic { color: #7fb2ff; flex: none; }
 
-/* ===================== 0.4: calm and easy on the eyes ===================== */
-/* Softer text and surfaces: less pure white on pure black. */
+/* ===================== Motion levels: calm / balanced / lively ===================== */
+/* Softer text and surfaces for every level: less pure white on pure black. */
 :root { --text: #ececf1; --muted: rgba(236, 236, 241, 0.64); --faint: rgba(236, 236, 241, 0.4); font-size: 13.5px; }
-/* Fewer moving things: no glint on the pill, no light sweep on open, no cascade, a still glow. */
-.island:not(.open):not(.notch)::after { animation: none; opacity: 0; }
-.island.open::before { animation: none; opacity: 0; }
-.panel-anim > * > * { animation: none; }
-.island-glow.music { animation: none; opacity: 0.28; }
-.island-glow.on { opacity: 0.18; }
-.island .rim { opacity: 0.35; }
-.island.open .rim { opacity: 0.5; }
-/* Liquid glass, gently: a small lean toward the cursor and a soft press — no wobble. */
-.liquid {
-  translate: calc(var(--jx) * 2px) calc(var(--jy) * 1px);
-  scale: calc(1 + var(--hov) * 0.008 + var(--press) * 0.015) calc(1 + var(--hov) * 0.008 - var(--press) * 0.025);
-  transition: translate 0.5s cubic-bezier(0.25, 1, 0.4, 1), scale 0.35s cubic-bezier(0.25, 1.2, 0.4, 1);
-}
-.liquid.gel { animation: none; }
-.beat-layer.on { scale: calc(1 + var(--beat) * 0.01) calc(1 + var(--beat) * 0.025); }
-.beat-layer.on .island { box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.65), 0 0 0 0.5px rgba(255, 255, 255, 0.08); }
-.ripple { background: radial-gradient(circle, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 70%); }
-.island .sheen { background: radial-gradient(180px circle at var(--mx, 50%) var(--my, -40px), rgba(255, 255, 255, 0.05), transparent 60%); }
-/* Music decorations slower and dimmer. */
-.aurora { opacity: 0.32; }
-.aurora i:nth-child(1) { animation-duration: 40s; } .aurora i:nth-child(2) { animation-duration: 48s; } .aurora i:nth-child(3) { animation-duration: 56s; }
-.music.playing .vinyl { animation-duration: 9s; }
-.viz i { opacity: 0.6; }
-.ly.on { text-shadow: none; }
-/* Edit mode: a smaller wiggle. */
-@keyframes jiggle { from { rotate: -0.4deg; } to { rotate: 0.4deg; } }
-.w-vibes i { animation-duration: 12s; } .w-vibes.on i { animation-duration: 5s; }
-.update-pill::after { animation: none; }
-/* Cloudy moves less too. */
-.anim-idle .cloudy-svg { animation-duration: 6s; }
-.cloudy-body.beat .cloudy-reach { scale: calc(1 + var(--beat, 0) * 0.03) calc(1 - var(--beat, 0) * 0.025); }
+
+/* Calm: almost still. */
+html[data-level='calm'] .island:not(.open):not(.notch)::after { animation: none; opacity: 0; }
+html[data-level='calm'] .island.open::before { animation: none; opacity: 0; }
+html[data-level='calm'] .panel-anim > * > * { animation: none; }
+html[data-level='calm'] .island-glow.music { animation: none; opacity: 0.28; }
+html[data-level='calm'] .island-glow.on { opacity: 0.18; }
+html[data-level='calm'] .island .rim { opacity: 0.35; }
+html[data-level='calm'] .island.open .rim { opacity: 0.5; }
+html[data-level='calm'] .liquid { translate: calc(var(--jx) * 2px) calc(var(--jy) * 1px); scale: calc(1 + var(--hov) * 0.008 + var(--press) * 0.015) calc(1 + var(--hov) * 0.008 - var(--press) * 0.025); transition: translate 0.5s cubic-bezier(0.25, 1, 0.4, 1), scale 0.35s cubic-bezier(0.25, 1.2, 0.4, 1); }
+html[data-level='calm'] .liquid.gel { animation: none; }
+html[data-level='calm'] .beat-layer.on { scale: calc(1 + var(--beat) * 0.01) calc(1 + var(--beat) * 0.025); }
+html[data-level='calm'] .beat-layer.on .island { box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.65), 0 0 0 0.5px rgba(255, 255, 255, 0.08); }
+html[data-level='calm'] .ripple { background: radial-gradient(circle, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 70%); }
+html[data-level='calm'] .island .sheen { background: radial-gradient(180px circle at var(--mx, 50%) var(--my, -40px), rgba(255, 255, 255, 0.05), transparent 60%); }
+html[data-level='calm'] .aurora { opacity: 0.32; }
+html[data-level='calm'] .aurora i:nth-child(1) { animation-duration: 40s; } html[data-level='calm'] .aurora i:nth-child(2) { animation-duration: 48s; } html[data-level='calm'] .aurora i:nth-child(3) { animation-duration: 56s; }
+html[data-level='calm'] .music.playing .vinyl { animation-duration: 9s; }
+html[data-level='calm'] .viz i { opacity: 0.6; }
+html[data-level='calm'] .ly.on { text-shadow: none; }
+html[data-level='calm'] .editing .widget { animation-name: jiggle-calm; }
+@keyframes jiggle-calm { from { rotate: -0.4deg; } to { rotate: 0.4deg; } }
+html[data-level='calm'] .w-vibes i { animation-duration: 12s; } html[data-level='calm'] .w-vibes.on i { animation-duration: 5s; }
+html[data-level='calm'] .update-pill::after { animation: none; }
+html[data-level='calm'] .anim-idle .cloudy-svg { animation-duration: 6s; }
+html[data-level='calm'] .cloudy-body.beat .cloudy-reach { scale: calc(1 + var(--beat, 0) * 0.03) calc(1 - var(--beat, 0) * 0.025); }
+
+/* Balanced (default): alive, but never busy. */
+html[data-level='balanced'] .island:not(.open):not(.notch)::after { animation-duration: 16s; background-image: linear-gradient(105deg, transparent 38%, rgba(255, 255, 255, 0.06) 50%, transparent 62%); }
+html[data-level='balanced'] .island.open::before { animation-duration: 1.1s; opacity: 0.7; }
+html[data-level='balanced'] .panel-anim > * > * { animation: rise-b 0.36s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+@keyframes rise-b { from { opacity: 0; transform: translateY(5px); } }
+html[data-level='balanced'] .island-glow.music { animation-duration: 4s; }
+html[data-level='balanced'] .island .rim { opacity: 0.45; }
+html[data-level='balanced'] .liquid { translate: calc(var(--jx) * 3.5px) calc(var(--jy) * 1.8px); scale: calc(1 + var(--hov) * 0.015 + var(--press) * 0.025 + var(--jx) * var(--jx) * 0.006) calc(1 + var(--hov) * 0.015 - var(--press) * 0.04); transition: translate 0.55s cubic-bezier(0.25, 1.3, 0.45, 1), scale 0.4s cubic-bezier(0.3, 1.5, 0.5, 1); }
+html[data-level='balanced'] .liquid.gel { animation: gel-b 0.6s cubic-bezier(0.3, 0.9, 0.4, 1); }
+@keyframes gel-b { 0% { transform: scale(1, 1); } 25% { transform: scale(1.018, 0.982); } 55% { transform: scale(0.993, 1.01); } 100% { transform: scale(1, 1); } }
+html[data-level='balanced'] .beat-layer.on { scale: calc(1 + var(--beat) * 0.016 + var(--lvl) * 0.006) calc(1 + var(--beat) * 0.045 + var(--lvl) * 0.012); }
+html[data-level='balanced'] .aurora { opacity: 0.45; }
+html[data-level='balanced'] .aurora i:nth-child(1) { animation-duration: 26s; } html[data-level='balanced'] .aurora i:nth-child(2) { animation-duration: 30s; } html[data-level='balanced'] .aurora i:nth-child(3) { animation-duration: 36s; }
+html[data-level='balanced'] .music.playing .vinyl { animation-duration: 6s; }
+html[data-level='balanced'] .editing .widget { animation-name: jiggle-b; }
+@keyframes jiggle-b { from { rotate: -0.65deg; } to { rotate: 0.65deg; } }
+html[data-level='balanced'] .anim-idle .cloudy-svg { animation-duration: 5s; }
+html[data-level='balanced'] .cloudy-body.beat .cloudy-reach { scale: calc(1 + var(--beat, 0) * 0.05) calc(1 - var(--beat, 0) * 0.04); }
+/* Lively: everything at full strength (the effects' own values). */
 
 /* ===================== AI ===================== */
 .ai { display: flex; flex-direction: column; gap: 12px; height: 100%; }
@@ -1304,3 +1318,61 @@ html[data-view='panel'] #root, html[data-view='settings'] #root, html[data-view=
 .w-t { grid-column: span 2; grid-row: span 2; }
 .w-month-grid { font-size: 11px; line-height: 1.75; gap: 1px 2px; }
 .w-month-grid span.today { border-radius: 50%; }
+
+/* Screenshot editor 0.4.1 */
+.shot-crop { position: absolute; z-index: 6; border: 2px dashed #fff; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35); pointer-events: none; }
+.shot-notice { position: fixed; top: 20px; left: 50%; translate: -50% 0; z-index: 30; display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 16px; border-radius: 14px; background: #2a1614; color: #ffb4ae; border: 0.5px solid #ff453a66; box-shadow: 0 10px 30px #000a; max-width: 80vw; }
+.shot-img { position: absolute; }
+.shot.editing { background: radial-gradient(120% 90% at 50% 40%, #1b1b22, #08080b); cursor: default; }
+
+/* ===================== Captures gallery ===================== */
+.captures { display: flex; flex-direction: column; gap: 10px; height: 100%; }
+.cap-top { display: flex; align-items: center; gap: 6px; }
+.cap-seg button { display: inline-flex; align-items: center; gap: 5px; }
+.chip-btn.rec-on { background: rgba(255, 69, 58, 0.18); color: #ff8a80; }
+.cap-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-content: start; padding-right: 2px; }
+.cap-card { position: relative; display: flex; flex-direction: column; border-radius: 14px; background: var(--surface-2); border: 0.5px solid var(--line); overflow: hidden; transition: border-color 0.2s, translate 0.25s cubic-bezier(0.25, 1.3, 0.4, 1), box-shadow 0.25s; }
+.cap-card:hover { border-color: rgba(255, 255, 255, 0.16); translate: 0 -2px; box-shadow: 0 12px 24px -12px #000; }
+.cap-thumb { position: relative; aspect-ratio: 16 / 10; background: #0b0b0e; display: grid; place-items: center; overflow: hidden; }
+.cap-thumb img, .cap-thumb video { width: 100%; height: 100%; object-fit: cover; transition: scale 0.35s cubic-bezier(0.25, 1, 0.4, 1); pointer-events: none; }
+.cap-card:hover .cap-thumb img, .cap-card:hover .cap-thumb video { scale: 1.05; }
+.cap-play { position: absolute; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px); color: #fff; transition: scale 0.2s; }
+.cap-card:hover .cap-play { scale: 1.12; }
+.cap-dur { position: absolute; right: 6px; bottom: 6px; padding: 1px 6px; border-radius: 6px; background: rgba(0, 0, 0, 0.6); font-size: 10.5px; }
+.cap-meta { display: flex; flex-direction: column; gap: 1px; padding: 7px 10px 2px; min-width: 0; }
+.cap-title { font-weight: 600; font-size: 12.5px; min-height: 16px; }
+.cap-actions { display: flex; gap: 1px; padding: 2px 6px 6px; }
+.cap-aa { font-size: 10.5px; font-weight: 700; }
+.cap-rename { flex: 1; min-width: 0; background: var(--surface); border: 0.5px solid var(--accent); border-radius: 8px; padding: 3px 7px; outline: none; }
+.cap-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; text-align: center; color: var(--faint); }
+.cap-empty p { max-width: 360px; margin: 0; line-height: 1.5; }
+
+/* ===================== Video editor ===================== */
+html[data-view='video'], html[data-view='video'] body { background: #0e0e12; }
+html[data-view='video'] #root { animation: win-in 0.28s ease-out both; }
+.veditor { height: 100vh; display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px; }
+.veditor .titlebar { margin: 0 -16px; padding-left: 16px; }
+.veditor .titlebar.mac { padding-left: 80px; }
+.ve-title { flex: 1; max-width: 420px; background: transparent; border: 0.5px solid transparent; border-radius: 8px; padding: 4px 8px; outline: none; font-weight: 600; color: var(--text); }
+.ve-title:hover, .ve-title:focus { border-color: var(--line); background: var(--surface); }
+.ve-stage { position: relative; flex: 1; min-height: 0; border-radius: 16px; overflow: hidden; background: #000; display: grid; place-items: center; cursor: pointer; }
+.ve-stage video { max-width: 100%; max-height: 100%; }
+.ve-bigplay { position: absolute; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.16); backdrop-filter: blur(10px); color: #fff; padding-left: 4px; }
+.ve-export { position: absolute; inset: auto 20px 20px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(14, 14, 18, 0.85); backdrop-filter: blur(12px); cursor: default; }
+.ve-bar { flex: 1; height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.ve-bar i { display: block; height: 100%; background: var(--accent); transform-origin: left; transition: transform 0.2s linear; }
+.ve-controls { display: flex; align-items: center; gap: 10px; }
+.play-btn.sm { width: 38px; height: 38px; }
+.chip-btn.on { background: rgba(255, 207, 77, 0.16); color: #ffcf4d; }
+.ve-track { position: relative; height: 64px; border-radius: 12px; overflow: hidden; background: #000; cursor: pointer; touch-action: none; }
+.ve-thumbs { position: absolute; inset: 0; display: flex; }
+.ve-thumbs img { flex: 1; min-width: 0; height: 100%; object-fit: cover; opacity: 0.9; animation: win-in 0.3s ease-out both; }
+.ve-shade { position: absolute; top: 0; bottom: 0; background: rgba(0, 0, 0, 0.62); pointer-events: none; }
+.ve-range { position: absolute; top: 0; bottom: 0; border: 3px solid #ffcf4d; border-left-width: 12px; border-right-width: 12px; border-radius: 10px; pointer-events: none; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4); }
+.ve-handle { position: absolute; top: -3px; bottom: -3px; width: 18px; cursor: ew-resize; pointer-events: auto; }
+.ve-handle.in { left: -15px; } .ve-handle.out { right: -15px; }
+.ve-handle::after { content: ''; position: absolute; left: 50%; top: 50%; width: 2px; height: 18px; translate: -50% -50%; border-radius: 2px; background: rgba(0, 0, 0, 0.55); }
+.ve-head { position: absolute; top: -2px; bottom: -2px; width: 3px; margin-left: -1.5px; border-radius: 3px; background: #fff; box-shadow: 0 0 6px #000; pointer-events: none; }
+.ve-actions { display: flex; align-items: center; gap: 8px; }
+.ve-notice { position: fixed; left: 50%; bottom: 70px; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 12px; background: #1e2a1f; color: #9be7a8; border: 0.5px solid #30d15855; box-shadow: 0 10px 30px #000a; }
+.ve-error { margin: auto; color: #ffb4ae; text-align: center; }

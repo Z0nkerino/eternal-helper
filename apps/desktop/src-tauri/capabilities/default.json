@@ -8,7 +8,8 @@
     "panel-*",
     "cloudy",
     "pet",
-    "shot"
+    "shot",
+    "video-edit"
   ],
   "permissions": [
     "core:default",
@@ -72,6 +73,15 @@
     "allow-afina-launch",
     "allow-reveal-download",
     "allow-island-save-pos",
+    "allow-shot-info",
+    "allow-shot-list",
+    "allow-shot-edit",
+    "allow-shot-rename",
+    "allow-shot-delete",
+    "allow-shot-copy",
+    "allow-shot-open",
+    "allow-rec-read",
+    "allow-video-edit",
     "core:window:allow-start-dragging",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",

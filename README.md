@@ -23,6 +23,17 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.4.1 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **Screenshots fixed** | **Done** now saves every screenshot to *Pictures/Eternal Helper* **and** copies it. Copying is done by the app itself, and errors show in the editor instead of freezing it. The island and Cloudy stay out of the way until the editor closes, even with full access on. |
+| **Recording fixed** | The system's "choose what to share" picker opens inside the island's window, which used to let clicks pass through it, so it couldn't be clicked. While the picker is open the whole window now takes clicks and the keyboard. Cancelling says so instead of doing nothing silently. |
+| **Captures** (Library) | A gallery of every screenshot and recording, all stored as files, with thumbnails. Edit, copy, open, rename, show in folder and delete, and start a new screenshot or recording from there. |
+| **Edit screenshots fully** | Any saved screenshot opens in the drawing editor again: pen, marker, arrow, shapes, text, numbered steps, blur and a new **crop**. Save over it or as a copy. |
+| **Video editor** | Trim with handles on a timeline of thumbnails, play at 0.5×–2×, keep or drop the sound, rename, save the current frame as a screenshot and save the result as a new video (the original stays). |
+| **Animation level** | Settings → Personalise → Animations: **Calm**, **Balanced** (new default: gel wobble, light glint and sweep, content cascade, the beat on the closed pill) or **Lively** (everything at full strength). Cloudy follows it too. |
+
 ## Beta 0.4.0 — “Sunrise” 🌅
 
 | What | Details |
@@ -150,7 +161,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name is *Beta 0.4.0 “Sunrise”*; the build number is 0.6.0 so that in-app updates from earlier builds still see it as newer.
+- **Version naming:** the public name is *Beta 0.4.1 “Sunrise”*; the build number is 0.6.1 so that in-app updates from earlier builds still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -176,6 +187,14 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.4.1 — «Sunrise» 🌅
+
+- **Скриншоты исправлены:** «Готово» сохраняет каждый снимок в «Изображения/Eternal Helper» и копирует его; ошибки показываются в редакторе.
+- **Запись экрана исправлена:** окно выбора экрана теперь нажимается; при отмене появляется понятное сообщение.
+- **Снимки и записи** в Библиотеке: галерея всех файлов с превью — изменить, скопировать, переименовать, показать в папке, удалить.
+- **Полное редактирование:** скриншоты открываются в редакторе снова (рисование, текст, размытие, новая обрезка); видео — обрезка, скорость 0,5×–2×, звук, кадр в скриншот, сохранение копией.
+- **Уровень анимаций:** «Спокойно», «Сбалансированно» (по умолчанию) или «Живо».
 
 ## Beta 0.4.0 — «Sunrise» 🌅
 

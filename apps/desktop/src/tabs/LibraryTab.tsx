@@ -19,7 +19,7 @@ import { TranslateView } from '../library/TranslateView';
 import { WifiView } from '../library/WifiView';
 import { WeatherTab } from './WeatherTab';
 import { PlannerTab } from './PlannerTab';
-import { VideosTab } from './VideosTab';
+import { CapturesView } from '../library/CapturesView';
 import { ClipboardTab } from './ClipboardTab';
 
 
@@ -65,7 +65,7 @@ function Tool({ emoji, label, sub, onClick, hot, i = 0 }: { emoji: string; label
 const TITLES: Record<LibSub, [string, string, string]> = {
   weather: ['🌤️', 'Weather', 'Погода'],
   planner: ['🗓️', 'Planner', 'Планер'],
-  videos: ['🎬', 'Recordings', 'Записи'],
+  videos: ['🎬', 'Captures', 'Снимки и записи'],
   text: ['📋', 'Clipboard', 'Буфер обмена'],
   timer: ['⏱️', 'Timer', 'Таймер'],
   calc: ['🧮', 'Calculator', 'Калькулятор'],
@@ -81,7 +81,7 @@ function SubView({ sub }: { sub: LibSub }) {
     case 'planner':
       return <PlannerTab />;
     case 'videos':
-      return <VideosTab />;
+      return <CapturesView />;
     case 'text':
       return <ClipboardTab />;
     case 'timer':
@@ -123,7 +123,7 @@ export function LibraryTab() {
     { emoji: '⏱️', label: tr('Timer', 'Таймер'), sub: timer ? fmtClock(timerLeft(timer, now)) : undefined, onClick: () => openLibrary('timer'), hot: !!timer },
     { emoji: '📷', label: tr('Screenshot', 'Скриншот'), onClick: () => void takeScreenshot() },
     { emoji: '🎥', label: rec === 'idle' ? tr('Record', 'Запись') : tr('Stop rec', 'Стоп'), onClick: toggleRecording, hot: rec !== 'idle' },
-    { emoji: '🎬', label: tr('Recordings', 'Записи'), onClick: () => openLibrary('videos') },
+    { emoji: '🎬', label: tr('Captures', 'Снимки'), onClick: () => openLibrary('videos') },
     { emoji: '📻', label: tr('Radio', 'Радио'), onClick: () => openPanel('music') },
     { emoji: '🧮', label: tr('Calculator', 'Калькулятор'), onClick: () => openLibrary('calc') },
     { emoji: '🌐', label: tr('Translator', 'Переводчик'), onClick: () => openLibrary('translate') },

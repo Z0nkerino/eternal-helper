@@ -156,6 +156,8 @@ export function CloudyStage() {
   const petRef = useRef(pet);
   petRef.current = pet;
   const lang = resolveLang(settings?.language);
+  const level = settings?.motion === 'reduced' ? 'calm' : settings?.motionLevel ?? 'balanced';
+  useEffect(() => void (document.documentElement.dataset.level = level), [level]);
   const sound = (k: Parameters<typeof chirp>[0]) => cfg.sounds && chirp(k);
 
   // ----- talking & reacting -----
@@ -549,9 +551,11 @@ export function CloudyStage() {
       } else {
         const acts: [Expr, Anim, number][] = [
           ['curious', 'lean', 1800], ['wink', 'wiggle', 1100], ['joy', 'hop', 900], ['proud', 'idle', 1600], ['cheeky', 'wiggle', 1200], ['think', 'idle', 1800],
-          ['tongue', 'wiggle', 1600], ['joy', 'wave', 1600], ['curious', 'tilt', 1800], ['tongue', 'tilt', 1600], ['squint', 'idle', 1600],
+          ['tongue', 'wiggle', 1600], ['joy', 'wave', 1600], ['curious', 'tilt', 1800], ['tongue', 'tilt', 1600], ['squint', 'idle', 1600], ['joy', 'boing', 1000],
+          ...(level === 'calm' ? [] : ([['joy', 'jelly', 1200], ['happy', 'inflate', 1600], ['squint', 'shakeoff', 1300], ['joy', 'widen', 1400]] as [Expr, Anim, number][])),
+          ...(level === 'lively' ? ([['joy', 'flip', 1100], ['proud', 'yoga', 2400], ['cheeky', 'rollover', 1400], ['happy', 'spin', 1300]] as [Expr, Anim, number][]) : []),
         ];
-        if (r < 0.3) {
+        if (r < (level === 'lively' ? 0.45 : 0.35)) {
           const [e, a, ms] = pick(acts);
           react(e, a, ms);
           if (a === 'spin' || a === 'flip') sound('joy');
@@ -576,9 +580,9 @@ export function CloudyStage() {
           react('sad', 'idle', 5000);
         }
       }
-    }, 15_000 + Math.random() * 12_000);
+    }, (level === 'lively' ? 7_000 : level === 'calm' ? 18_000 : 10_000) + Math.random() * (level === 'lively' ? 6_000 : 10_000));
     return () => clearInterval(id);
-  }, [n, sleeping, dragging, menu, say, signal]);
+  }, [n, sleeping, dragging, menu, say, signal, level]);
 
   // Moving with the music: --beat on his body follows the speakers (or a gentle simulated beat).
   const bodyRef = useRef<HTMLDivElement>(null);
