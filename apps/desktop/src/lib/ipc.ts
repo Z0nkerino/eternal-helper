@@ -219,7 +219,7 @@ interface Commands {
   music_services: [void, MusicService[]];
   music_open: [{ service: string; show: boolean }, void];
   music_hide: [{ service: string }, void];
-  music_control: [{ service: string; action: 'toggle' | 'next' | 'previous' | `seek:${number}` }, void];
+  music_control: [{ service: string; action: 'toggle' | 'next' | 'previous' | `seek:${number}` | `volume:${number}` }, void];
   music_sign_out: [void, void];
   shot_start: [void, void];
   shot_close: [void, void];
@@ -233,8 +233,22 @@ interface Commands {
   afina_find_files: [{ query: string }, FoundFile[]];
   afina_find_text: [{ query: string }, FoundFile[]];
   afina_open: [{ path: string; reveal: boolean }, void];
-  ai_services: [void, { id: string; name: string; prefill: boolean }[]];
-  ai_open: [{ service: string; prompt: string | null; docked?: boolean }, boolean];
+  ai_services: [void, ChatService[]];
+  chat_show: [{ service: string; x: number; y: number; w: number; h: number; prompt?: string | null }, boolean];
+  chat_place: [{ service: string; x: number; y: number; w: number; h: number }, void];
+  chat_hide: [void, void];
+  chat_reload: [{ service: string }, void];
+  music_volume_get: [{ appName: string }, number | null];
+  music_volume_set: [{ appName: string; level: number }, void];
+  foreground_app: [void, { app: string; title: string } | null];
+  notif_status: [void, NotifAccess];
+  notif_request: [void, NotifAccess];
+  shelf_list: [void, ShelfItem[]];
+  shelf_add: [{ paths: string[] }, number];
+  shelf_remove: [{ name: string }, void];
+  shelf_open: [{ name: string; reveal: boolean }, void];
+  shelf_export: [{ name: string; to: 'desktop' | 'downloads' }, string];
+  files_to_desktop: [{ paths: string[] }, number];
   clip_list: [void, Clip[]];
   reveal_download: [{ path: string }, void];
   island_save_pos: [{ px: number; py: number }, void];
@@ -258,6 +272,28 @@ interface Commands {
   open_url: [{ url: string }, void];
   window_ready: [void, void];
   quit: [void, void];
+}
+
+export interface ChatService {
+  id: string;
+  name: string;
+  prefill: boolean;
+  kind: 'ai' | 'messenger';
+}
+export type NotifAccess = 'allowed' | 'denied' | 'ask' | 'unsupported';
+export interface PcNotification {
+  id: number;
+  app: string;
+  title: string;
+  body: string;
+  at: number;
+}
+export interface ShelfItem {
+  name: string;
+  path: string;
+  size: number;
+  modified: number;
+  isDir: boolean;
 }
 
 export interface FoundFile {
@@ -378,7 +414,32 @@ async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
     case 'wifi_networks':
       return [{ ssid: 'Eternal-Wi-Fi', signal: 88, secure: true, known: true }, { ssid: 'Cafe Sunrise', signal: 52, secure: false, known: false }, { ssid: 'Neighbours 5G', signal: 31, secure: true, known: false }];
     case 'ai_services':
-      return [{ id: 'chatgpt', name: 'ChatGPT', prefill: true }, { id: 'claude', name: 'Claude', prefill: true }, { id: 'gemini', name: 'Gemini', prefill: false }, { id: 'perplexity', name: 'Perplexity', prefill: true }, { id: 'copilot', name: 'Copilot', prefill: true }, { id: 'deepseek', name: 'DeepSeek', prefill: false }];
+      return [
+        { id: 'chatgpt', name: 'ChatGPT', prefill: true, kind: 'ai' },
+        { id: 'claude', name: 'Claude', prefill: true, kind: 'ai' },
+        { id: 'gemini', name: 'Gemini', prefill: false, kind: 'ai' },
+        { id: 'perplexity', name: 'Perplexity', prefill: true, kind: 'ai' },
+        { id: 'copilot', name: 'Copilot', prefill: true, kind: 'ai' },
+        { id: 'deepseek', name: 'DeepSeek', prefill: false, kind: 'ai' },
+        { id: 'telegram', name: 'Telegram', prefill: false, kind: 'messenger' },
+        { id: 'whatsapp', name: 'WhatsApp', prefill: false, kind: 'messenger' },
+        { id: 'discord', name: 'Discord', prefill: false, kind: 'messenger' },
+      ] satisfies ChatService[];
+    case 'notif_status':
+    case 'notif_request':
+      return 'unsupported';
+    case 'shelf_list': {
+      const now = Date.now();
+      return [
+        { name: 'Report Q4.pdf', path: '/Shelf/Report Q4.pdf', size: 1_820_000, modified: now - 600_000, isDir: false },
+        { name: 'sunrise.png', path: '/Shelf/sunrise.png', size: 640_000, modified: now - 3_600_000, isDir: false },
+        { name: 'Project', path: '/Shelf/Project', size: 12_400_000, modified: now - 86_400_000, isDir: true },
+      ] satisfies ShelfItem[];
+    }
+    case 'music_volume_get':
+      return 0.8;
+    case 'foreground_app':
+      return { app: 'chrome', title: 'YouTube — Lo-fi beats' };
     case 'shot_list': {
       const now = Date.now();
       return [1, 2, 3, 4].map((i) => ({ path: `/Pictures/Eternal Helper/Screenshot ${i}.png`, name: `Screenshot 2026-11-1${i} 10-0${i}-12`, size: 380_000 * i, createdAt: now - i * 3600_000 })) satisfies ShotFile[];

@@ -30,13 +30,14 @@ const line = (x1: number, y1: number, x2: number, y2: number, n: number, r: numb
     return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, r];
   });
 
-/** His everyday look: a simple, clean cloud — a soft flat base and three round bumps. */
+/**
+ * His everyday look: a soft, round cloud made of only a few big puffs (so it reads as one solid 3D shape
+ * rather than a bunch of circles) — a wide base and two domes on top.
+ */
 const cloud: Shape = {
   puffs: [
-    [28, 68, 15], [44, 70, 16], [61, 70, 16], [78, 70, 16], [94, 68, 15],
-    [40, 54, 17], [63, 42, 22], [87, 55, 15],
-    [61, 60, 20], [50, 62, 16], [74, 62, 16], [63, 48, 18],
-    [28, 68, 15], [94, 68, 15], [40, 54, 17], [87, 55, 15],
+    [61, 66, 24], [36, 66, 18], [86, 66, 18], [47, 48, 20], [71, 42, 25], [61, 74, 20], [40, 72, 15], [82, 72, 15],
+    [61, 66, 24], [36, 66, 18], [86, 66, 18], [47, 48, 20], [71, 42, 25], [61, 74, 20], [40, 72, 15], [82, 72, 15],
   ],
   face: [61, 61, 1],
 };

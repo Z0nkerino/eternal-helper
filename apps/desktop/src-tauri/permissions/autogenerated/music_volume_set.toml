@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-music-volume-set"
+description = "Enables the music_volume_set command without any pre-configured scope."
+commands.allow = ["music_volume_set"]
+
+[[permission]]
+identifier = "deny-music-volume-set"
+description = "Denies the music_volume_set command without any pre-configured scope."
+commands.deny = ["music_volume_set"]

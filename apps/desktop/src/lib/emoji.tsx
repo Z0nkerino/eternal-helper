@@ -7,7 +7,7 @@ import {
   CloudLightning, CloudRain, CloudSnow, CloudSun, Coins, Compass, Cookie, Download, Droplet, Eye, Fish, Flame, Folder, Frown, Gauge, Gift, Globe, Hand, Headphones, Heart,
   House, IceCreamCone, Image, Info, Keyboard, Languages, Lightbulb, Lock, Mail, MapPin, Mic, Monitor, Moon, MoonStar, Music, Music2, Palette, PartyPopper, Rabbit,
   Radio, Rainbow, RefreshCw, Rocket, Search, Settings, Smile, Snowflake, Sparkles, Star, Sun, Sunrise, Sunset, Thermometer, Timer, Trophy, Type, Umbrella, User,
-  Utensils, Video, Volleyball, Volume2, Wifi, Wind, Wrench, XCircle, Zap, type LucideIcon,
+  Utensils, Video, Volleyball, Volume2, Wifi, Wind, Wrench, XCircle, Zap, StickyNote, Archive, MessageCircle, type LucideIcon,
 } from 'lucide-react';
 import manifest from './emoji-manifest.json';
 
@@ -31,7 +31,7 @@ const ICONS: Record<string, [LucideIcon, string?]> = {
   '🎉': [PartyPopper, MAGIC], '🎊': [PartyPopper, MAGIC], '🔥': [Flame, '#ff8a3d'], '👀': [Eye], '👋': [Hand], '🎨': [Palette], '🆕': [Sparkles, MAGIC], 'ℹ': [Info], '⬇': [Download],
   '✅': [CheckCircle2, GOOD], '⚠': [AlertTriangle, WARN], '❌': [XCircle, BAD], '⛔': [XCircle, BAD], '🎾': [Volleyball, '#d6ef5a'], '🍽': [Utensils], '🍪': [Cookie, '#e0a96d'], '🍬': [Candy, LOVE],
   '🍦': [IceCreamCone, '#ffd1e0'], '💙': [Heart, '#5aa0ff'], '💗': [Heart, LOVE], '💖': [Heart, LOVE], '❤': [Heart, LOVE], '💞': [Heart, LOVE], '🫶': [Heart, LOVE], '🥰': [Heart, LOVE],
-  '😊': [Smile], '🙂': [Smile], '😄': [Smile], '🥺': [Frown], '😢': [Frown], '🐰': [Rabbit], '🐱': [Cat], '🐟': [Fish], '🐠': [Fish], '🌊': [Wind, RAIN], '📊': [Gauge],
+  '😊': [Smile], '🙂': [Smile], '😄': [Smile], '🥺': [Frown], '😢': [Frown], '🐰': [Rabbit], '🐱': [Cat], '🐟': [Fish], '🐠': [Fish], '🌊': [Wind, RAIN], '📊': [Gauge], '📝': [StickyNote, '#ffe27a'], '🗂': [Archive, '#ffb547'], '💬': [MessageCircle, '#5b8cff'],
 };
 
 export const hasEmoji = (e: string) => strip(e) in files || strip(e) in ICONS;

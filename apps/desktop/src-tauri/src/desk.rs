@@ -1,6 +1,7 @@
 //! Desktop widgets: widgets that live on the desktop itself (not in the island) — small frameless windows
 //! kept below other windows, like desktop gadgets. Drag one anywhere; where it is is remembered. The
-//! list is stored in the settings as `desktopWidgets: [{ id, x, y }]` (logical pixels).
+//! list is stored in the settings as `desktopWidgets: [{ id, x, y, w, h }]` (logical pixels). Widgets can
+//! be resized from their corner; the size is remembered too.
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
@@ -9,6 +10,11 @@ pub struct DeskWidget {
     pub id: String,
     pub x: f64,
     pub y: f64,
+    /// Size chosen by the user (none: the widget's own size).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub w: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub h: Option<f64>,
 }
 
 pub fn label(id: &str) -> String {
@@ -20,7 +26,7 @@ pub fn size_of(id: &str) -> (f64, f64) {
     match id {
         "clock" | "music" | "next" | "fact" => (360.0, 190.0),
         "actions" => (560.0, 190.0),
-        "month" => (360.0, 360.0),
+        "month" | "face" | "notes" => (360.0, 360.0),
         _ => (190.0, 190.0),
     }
 }
@@ -46,7 +52,8 @@ pub fn open(app: &AppHandle, w: &DeskWidget) -> Result<(), String> {
     if app.get_webview_window(&lbl).is_some() {
         return Ok(());
     }
-    let (ww, hh) = size_of(&w.id);
+    let (dw, dh) = size_of(&w.id);
+    let (ww, hh) = (w.w.unwrap_or(dw).clamp(150.0, 900.0), w.h.unwrap_or(dh).clamp(120.0, 700.0));
     WebviewWindowBuilder::new(app, &lbl, WebviewUrl::App(format!("index.html#desk/{}", w.id).into()))
         .title("Eternal Helper widget")
         .additional_browser_args(&crate::webview_args())
@@ -56,7 +63,9 @@ pub fn open(app: &AppHandle, w: &DeskWidget) -> Result<(), String> {
         .transparent(true)
         .always_on_bottom(true)
         .skip_taskbar(true)
-        .resizable(false)
+        .resizable(true)
+        .min_inner_size(150.0, 120.0)
+        .max_inner_size(900.0, 700.0)
         .shadow(false)
         .focused(false)
         .visible_on_all_workspaces(true)
@@ -90,7 +99,7 @@ pub fn add(app: &AppHandle, id: &str) -> Result<(), String> {
         .unwrap_or((1920.0, 1080.0));
     let (ww, hh) = size_of(id);
     let n = items.len() as f64;
-    let w = DeskWidget { id: id.into(), x: (mw - ww - 40.0 - (n * 24.0)).max(0.0), y: (110.0 + n * 40.0).min(mh - hh - 60.0) };
+    let w = DeskWidget { id: id.into(), x: (mw - ww - 40.0 - (n * 24.0)).max(0.0), y: (110.0 + n * 40.0).min(mh - hh - 60.0), w: None, h: None };
     open(app, &w)?;
     items.push(w);
     save(app, &items)
@@ -104,15 +113,20 @@ pub fn remove(app: &AppHandle, id: &str) -> Result<(), String> {
     save(app, &items)
 }
 
-/// Remembers where a widget was dragged to.
+/// Remembers where a widget was dragged to and how big it was made.
 pub fn save_pos(app: &AppHandle, id: &str) -> Result<(), String> {
     let w = app.get_webview_window(&label(id)).ok_or("no widget")?;
     let scale = w.scale_factor().map_err(|e| e.to_string())?;
     let p = w.outer_position().map_err(|e| e.to_string())?.to_logical::<f64>(scale);
+    let sz = w.inner_size().map_err(|e| e.to_string())?.to_logical::<f64>(scale);
     let mut items = list(app);
     if let Some(it) = items.iter_mut().find(|x| x.id == id) {
         it.x = p.x;
         it.y = p.y;
+        let def = size_of(id);
+        let custom = (sz.width - def.0).abs() > 2.0 || (sz.height - def.1).abs() > 2.0;
+        it.w = custom.then_some(sz.width.round());
+        it.h = custom.then_some(sz.height.round());
     }
     save(app, &items)
 }
@@ -125,5 +139,13 @@ mod tests {
         assert!(!super::valid("../x"));
         assert_eq!(super::size_of("month"), (360.0, 360.0));
         assert_eq!(super::size_of("weather"), (190.0, 190.0));
+    }
+
+    #[test]
+    fn old_saved_widgets_still_load() {
+        let w: super::DeskWidget = serde_json::from_str(r#"{"id":"clock","x":10,"y":20}"#).unwrap();
+        assert_eq!((w.w, w.h), (None, None));
+        let s = serde_json::to_string(&w).unwrap();
+        assert!(!s.contains("\"w\""));
     }
 }

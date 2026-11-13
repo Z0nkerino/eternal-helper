@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shelf-export"
+description = "Enables the shelf_export command without any pre-configured scope."
+commands.allow = ["shelf_export"]
+
+[[permission]]
+identifier = "deny-shelf-export"
+description = "Denies the shelf_export command without any pre-configured scope."
+commands.deny = ["shelf_export"]

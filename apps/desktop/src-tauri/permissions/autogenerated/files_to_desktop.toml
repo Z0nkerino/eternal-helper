@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-files-to-desktop"
+description = "Enables the files_to_desktop command without any pre-configured scope."
+commands.allow = ["files_to_desktop"]
+
+[[permission]]
+identifier = "deny-files-to-desktop"
+description = "Denies the files_to_desktop command without any pre-configured scope."
+commands.deny = ["files_to_desktop"]

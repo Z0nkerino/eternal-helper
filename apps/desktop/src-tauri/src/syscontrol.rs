@@ -481,6 +481,7 @@ pub fn settings_url(page: &str) -> Option<&'static str> {
         ("accessibility", true) => "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
         ("accessibility", false) => "ms-settings:easeofaccess",
         ("screen", true) => "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+        ("notifications", false) => "ms-settings:privacy-notifications",
         ("startup", false) => "ms-settings:startupapps",
         ("startup", true) => "x-apple.systempreferences:com.apple.LoginItems-Settings.extension",
         _ => return None,

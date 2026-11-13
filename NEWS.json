@@ -4,20 +4,20 @@
     {
       "date": "2026-11-13",
       "tag": "update",
-      "title": "Beta 0.5.0 — music, widgets, game stats",
-      "body": "Synced lyrics for almost any song, YouTube Music, a bigger music tab with seeking. Widgets can live on your desktop. Recording now starts on the whole screen with no picker, and games show FPS, CPU, GPU and RAM in a corner."
+      "title": "Beta 0.6.0 — liquid, chats, music",
+      "body": "The island opens like liquid glass and comes in five shapes. Chats (ChatGPT, Claude, Telegram, WhatsApp, Discord…) open right inside it. A new Music tab with its own volume, a Time tab, Calendar, a Notes board, a file shelf and notifications from your PC."
     },
     {
       "date": "2026-11-13",
       "tag": "tip",
-      "title": "Pick how the island opens",
-      "body": "Settings → Personalise → Opening animation: Morph, Unfold, Drop or Zoom."
+      "title": "Drop files on the island",
+      "body": "Drag files onto the island: drop on the left to keep them on the shelf, on the right to copy them to the Desktop."
     },
     {
       "date": "2026-11-13",
       "tag": "news",
-      "title": "Update alerts",
-      "body": "The island now checks for updates every 30 minutes and sends a notification when a new version is out."
+      "title": "Meet the new Cloudy",
+      "body": "Cloudy is now a soft 3D cloud, puts on headphones when music plays, talks about what's on your screen and has his own room. Put him on your desktop from his room."
     }
   ]
 }

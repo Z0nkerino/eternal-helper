@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-shelf-open"
+description = "Enables the shelf_open command without any pre-configured scope."
+commands.allow = ["shelf_open"]
+
+[[permission]]
+identifier = "deny-shelf-open"
+description = "Denies the shelf_open command without any pre-configured scope."
+commands.deny = ["shelf_open"]

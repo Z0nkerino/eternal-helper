@@ -1,20 +1,20 @@
 // What the closed island shows: the clock and weather at rest, or the most important live activity.
-import { ArrowBigUp, ArrowDownToLine, Download, FileCheck2, FolderOpen, Music, Pause, Play, Square, SunMedium, Timer, Volume1, Volume2, VolumeX } from 'lucide-react';
+import { ArrowBigUp, ArrowDownToLine, Bell, Download, FileCheck2, FolderOpen, Music, Pause, Play, Square, SunMedium, Timer, Volume1, Volume2, VolumeX } from 'lucide-react';
 import { call } from '../lib/ipc';
 import { colors } from '@eternal/ui';
 import { Orb } from '../afina/Orb';
 import { useT } from '../lib/i18n';
-import { recElapsed, stopTimer, timerLeft, useApp } from '../lib/store';
-import { pauseRecording, stopRecording } from '../lib/recorder';
+import { stopTimer, timerLeft, useApp } from '../lib/store';
+import { AppLogo } from '../lib/brands';
 import { mediaControl } from '../lib/music';
 import { Carousel } from './Carousel';
 import { Equalizer, Ring, fmtClock, useNow } from './bits';
 
-export type ActivityId = 'update' | 'hud' | 'rec' | 'timer' | 'afina' | 'planner' | 'media';
+export type ActivityId = 'update' | 'hud' | 'notif' | 'timer' | 'afina' | 'planner' | 'media';
 
 /** Live activities, most important first. The first takes the pill; the second becomes the side bubble. */
 export function useActivities(): ActivityId[] {
-  const rec = useApp((s) => s.rec.status);
+  const notif = useApp((s) => !!s.notifFlash);
   const timer = useApp((s) => !!s.timer);
   const thinking = useApp((s) => s.afinaThinking);
   const flash = useApp((s) => !!s.plannerFlash);
@@ -24,7 +24,7 @@ export function useActivities(): ActivityId[] {
   const hud = useApp((s) => !!s.hud);
   if (update) out.push('update');
   if (hud) out.push('hud');
-  if (rec !== 'idle') out.push('rec');
+  if (notif) out.push('notif');
   if (timer) out.push('timer');
   if (thinking) out.push('afina');
   if (flash) out.push('planner');
@@ -101,32 +101,18 @@ export function PillContent({ activity, notch }: { activity: ActivityId | undefi
     );
   }
 
-  if (activity === 'rec') {
-    const r = s.rec;
-    const label = r.status === 'saving' ? t('rec.saving') : r.status === 'starting' ? '…' : fmtClock(recElapsed(r, now));
+  if (activity === 'notif' && s.notifFlash) {
+    const n = s.notifFlash;
     return (
       <Wings
         notch={notch}
         left={
           <>
-            <span className={`rec-dot ${r.status === 'paused' ? 'paused' : ''}`} />
-            <span className="mono">{label}</span>
+            <AppLogo name={n.app} size={16} fallback={<Bell size={14} className="hud-on" />} />
+            <span className="small ellipsis notif-pill-title" style={{ maxWidth: notch ? 110 : 190 }}>{n.title || n.app}</span>
           </>
         }
-        right={
-          (r.status === 'recording' || r.status === 'paused') && (
-            <>
-              {!r.native && (
-                <button className="pill-btn" onClick={(e) => (stop(e), pauseRecording())} aria-label={r.status === 'paused' ? t('rec.resume') : t('rec.pause')}>
-                  {r.status === 'paused' ? <Play size={13} /> : <Pause size={13} />}
-                </button>
-              )}
-              <button className="pill-btn danger" onClick={(e) => (stop(e), void stopRecording())} aria-label={t('rec.stop')}>
-                <Square size={11} fill="currentColor" />
-              </button>
-            </>
-          )
-        }
+        right={<span className="tiny faint ellipsis" style={{ maxWidth: 70 }}>{n.app}</span>}
       />
     );
   }
@@ -207,8 +193,8 @@ export function Bubble({ activity }: { activity: ActivityId }) {
   const s = useApp();
   const now = useNow();
   switch (activity) {
-    case 'rec':
-      return <span className={`rec-dot ${s.rec.status === 'paused' ? 'paused' : ''}`} />;
+    case 'notif':
+      return <AppLogo name={s.notifFlash?.app ?? ''} size={16} fallback={<Bell size={14} />} />;
     case 'timer':
       return s.timer ? <Ring progress={Math.max(0, (timerLeft(s.timer, now)) / s.timer.totalMs)} size={18} color={colors.warn} /> : null;
     case 'afina':

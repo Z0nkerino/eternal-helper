@@ -60,13 +60,23 @@ const BRIDGE: &str = r#"
     const setPos = ms.setPositionState && ms.setPositionState.bind(ms);
     if (setPos) ms.setPositionState = (s) => { pos = s ? { ...s, at: Date.now() } : null; try { return setPos(s); } catch (e) {} };
   }
-  const media = () => { const all = [...document.querySelectorAll('audio,video')]; return all.find((m) => !m.paused) || all[0]; };
+  // Every media element that played, including ones never added to the page (new Audio()).
+  const played = new Set();
+  let vol = null;
+  const origPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () { played.add(this); if (vol != null) try { this.volume = vol; } catch (e) {} return origPlay.apply(this, arguments); };
+  const media = () => { const all = [...new Set([...document.querySelectorAll('audio,video'), ...played])]; return all.find((m) => !m.paused) || all[0]; };
   window.__ehMusic = (action) => {
     const playing = ms && ms.playbackState === 'playing';
     if (action === 'toggle') {
       const h = handlers[playing ? 'pause' : 'play'];
       if (h) return h({ action: playing ? 'pause' : 'play' });
       const m = media(); if (m) return m.paused ? m.play() : m.pause();
+      return;
+    }
+    if (action.startsWith('volume:')) {
+      vol = Math.max(0, Math.min(1, Number(action.slice(7)) / 100));
+      for (const m of new Set([...document.querySelectorAll('audio,video'), ...played])) try { m.volume = vol; } catch (e) {}
       return;
     }
     if (action.startsWith('seek:')) {
@@ -139,7 +149,8 @@ pub fn open(app: &AppHandle, id: &str, show: bool) -> Result<(), String> {
 }
 
 pub fn control(app: &AppHandle, id: &str, action: &str) -> Result<(), String> {
-    let seek = action.strip_prefix("seek:").is_some_and(|n| !n.is_empty() && n.len() < 12 && n.bytes().all(|b| b.is_ascii_digit()));
+    let num = |p: &str| action.strip_prefix(p).is_some_and(|n| !n.is_empty() && n.len() < 12 && n.bytes().all(|b| b.is_ascii_digit()));
+    let seek = num("seek:") || num("volume:");
     if !seek && !["toggle", "next", "previous"].contains(&action) {
         return Err("bad action".into());
     }

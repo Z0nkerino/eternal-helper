@@ -1,6 +1,6 @@
 [package]
 name = "eternal-helper"
-version = "0.7.0"
+version = "0.8.0"
 description = "Eternal Helper — a dynamic island for Windows and macOS"
 authors = ["Eternal Inc."]
 edition = "2021"
@@ -14,7 +14,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api", "protocol-asset"] }
+tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api", "protocol-asset", "unstable"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-opener = "2"
@@ -69,6 +69,9 @@ windows = { version = "0.58", features = [
   "Win32_Globalization",
   "Win32_System_Performance",
   "Win32_Graphics_Dwm",
+  "UI_Notifications",
+  "UI_Notifications_Management",
+  "ApplicationModel",
 ] }
 
 [target.'cfg(target_os = "macos")'.dependencies]

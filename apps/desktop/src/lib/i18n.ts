@@ -4,7 +4,12 @@ import { useApp } from './store';
 const ru = {
   'tab.home': 'Главная',
   'tab.music': 'Музыка',
-  'tab.ai': 'ИИ',
+  'tab.ai': 'Чаты',
+  'tab.time': 'Время',
+  'tab.calendar': 'Календарь',
+  'tab.notes': 'Заметки',
+  'tab.shelf': 'Полка',
+  'tab.notify': 'Уведомления',
   'upd.notifyTitle': 'Eternal Helper: доступно обновление',
   'upd.notifyBody': 'Открой остров, чтобы установить.',
   'rec.cancelled': 'Запись отменена — выбери экран или окно, чтобы начать',
@@ -19,7 +24,7 @@ const ru = {
   'tab.weather': 'Погода',
   'tab.library': 'Библиотека',
   'shot.saved': 'Скриншот сохранён',
-  'rel.welcome': 'Beta 0.5.0 «Sunrise»: текст песен, YouTube Music, виджеты на рабочем столе, запись в один клик, FPS в играх',
+  'rel.welcome': 'Beta 0.6.0 «Sunrise»: жидкий остров, новая музыка, чаты в острове, вкладка «Время», полка файлов',
   'rel.play': 'Включить «Sunrise»',
   'upd.available': 'Доступна новая версия',
   'upd.install': 'Обновить',
@@ -123,7 +128,12 @@ export type Key = keyof typeof ru;
 const en: Record<Key, string> = {
   'tab.home': 'Home',
   'tab.music': 'Music',
-  'tab.ai': 'AI',
+  'tab.ai': 'Chats',
+  'tab.time': 'Time',
+  'tab.calendar': 'Calendar',
+  'tab.notes': 'Notes',
+  'tab.shelf': 'Shelf',
+  'tab.notify': 'Notifications',
   'upd.notifyTitle': 'Eternal Helper: update available',
   'upd.notifyBody': 'Open the island to install it.',
   'rec.cancelled': 'Recording cancelled — choose a screen or window to start',
@@ -138,7 +148,7 @@ const en: Record<Key, string> = {
   'tab.weather': 'Weather',
   'tab.library': 'Library',
   'shot.saved': 'Screenshot saved',
-  'rel.welcome': 'Beta 0.5.0 “Sunrise”: synced lyrics, YouTube Music, desktop widgets, one-click recording, in-game FPS',
+  'rel.welcome': 'Beta 0.6.0 “Sunrise”: liquid island, new music tab, chats in the island, Time tab, file shelf',
   'rel.play': 'Play “Sunrise”',
   'upd.available': 'A new version is available:',
   'upd.install': 'Update',
@@ -257,4 +267,9 @@ export const tNow = (k: Key) => translate(resolveLang(useApp.getState().settings
 export function useTr() {
   const lang = useApp((s) => resolveLang(s.settings?.language));
   return Object.assign((en: string, ru: string) => (lang === 'ru' ? ru : en), { lang });
+}
+
+/** Picks the English or Russian text for the current language, outside React. */
+export function trNow(en: string, ru: string) {
+  return resolveLang(useApp.getState().settings?.language) === "ru" ? ru : en;
 }

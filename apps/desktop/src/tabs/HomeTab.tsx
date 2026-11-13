@@ -1,16 +1,19 @@
 // Home: your widgets on a small grid. "Edit" makes them wiggle: drag to reorder, × to remove, + to add
 // from the gallery. The island grows and shrinks to fit the rows.
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDownToLine, Check, Monitor, Pencil, Plus, X } from 'lucide-react';
+import { ArrowDownToLine, Check, Maximize2, Monitor, Pencil, Plus, X } from 'lucide-react';
 import { call } from '../lib/ipc';
 import { installUpdate } from '../lib/updates';
 import { useEffect, useRef, useState } from 'react';
 import { useTr } from '../lib/i18n';
 import { saveSettings, useApp } from '../lib/store';
-import { cellsOf, cellsOfWidget, MAX_CELLS, widget, WIDGETS, DEFAULT_WIDGETS } from '../home/widgets';
+import { cellsOf, cellsOfWidget, MAX_CELLS, nextSize, sizeOf, widget, WIDGETS, DEFAULT_WIDGETS } from '../home/widgets';
+import { readExtra, saveExtra } from '../lib/extra';
 
 export function useHomeWidgets(): string[] {
   const ids = useApp((s) => s.settings?.homeWidgets);
+  // Re-render when a widget is resized, too.
+  useApp((s) => JSON.stringify((s.settings as unknown as { widgetSizes?: unknown } | null)?.widgetSizes ?? null));
   return (ids ?? DEFAULT_WIDGETS).filter((id) => widget(id));
 }
 
@@ -98,12 +101,14 @@ export function HomeTab() {
         <AnimatePresence initial={false}>
           {ids.map((id, i) => {
             const w = widget(id)!;
+            const size = sizeOf(id);
+            const canResize = (w.sizes?.length ?? 1) > 1;
             return (
               <motion.div
                 key={id}
                 data-wid={id}
                 layout
-                className={`widget w-${w.size}`}
+                className={`widget w-${size}`}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.6, transition: { duration: 0.18 } }}
@@ -119,8 +124,31 @@ export function HomeTab() {
                   <w.Body />
                 </div>
                 <AnimatePresence>
+                  {edit && canResize && (
+                    <motion.button
+                      key="resize"
+                      className="w-resize"
+                      aria-label={tr('Resize', 'Изменить размер')}
+                      title={tr('Resize', 'Изменить размер')}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      whileTap={{ scale: 0.8 }}
+                      transition={{ type: 'spring', stiffness: 600, damping: 26 }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => {
+                        const to = nextSize(id);
+                        const test = { ...readExtra<Record<string, string>>('widgetSizes', {}), [id]: to };
+                        // Only if the grid still fits.
+                        const cells = ids.reduce((n, x) => n + ({ s: 1, m: 2, w: 4, t: 4 } as const)[(x === id ? to : sizeOf(x)) as 's'], 0);
+                        if (cells <= MAX_CELLS) void saveExtra('widgetSizes', test);
+                      }}
+                    >
+                      <Maximize2 size={10} strokeWidth={3} />
+                    </motion.button>
+                  )}
                   {edit && (
-                    <motion.button className="w-remove" aria-label={tr('Remove', 'Убрать')} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 26 }} onClick={() => save(ids.filter((x) => x !== id))} onPointerDown={(e) => e.stopPropagation()}>
+                    <motion.button key="remove" className="w-remove" aria-label={tr('Remove', 'Убрать')} initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 26 }} onClick={() => save(ids.filter((x) => x !== id))} onPointerDown={(e) => e.stopPropagation()}>
                       <X size={11} strokeWidth={3} />
                     </motion.button>
                   )}

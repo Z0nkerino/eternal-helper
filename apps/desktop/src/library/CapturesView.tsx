@@ -1,15 +1,14 @@
-// Captures: every screenshot and screen recording, saved as files (Pictures / Videos → Eternal Helper)
-// and shown here as a gallery. Open, edit fully (screenshots in the drawing editor, videos in the video
-// editor), copy, rename, show in the folder or delete. New screenshots and recordings start right here.
+// Captures: every screenshot (and videos recorded with earlier versions), saved as files and shown here as
+// a gallery. Open, edit fully (screenshots in the drawing editor, videos in the video editor), copy,
+// rename, show in the folder or delete. New screenshots start right here.
 import { AnimatePresence, motion } from 'framer-motion';
-import { Camera, Circle, Copy, FolderOpen, Image as ImageIcon, Pause, Pencil, Play, Square, Trash2, Video } from 'lucide-react';
+import { Camera, Copy, FolderOpen, Image as ImageIcon, Pencil, Play, Trash2, Video } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { call, inTauri, listen, type Recording, type ShotFile } from '../lib/ipc';
 import { useTr } from '../lib/i18n';
-import { recElapsed, takeScreenshot, toast, useApp } from '../lib/store';
-import { fmtDuration, fmtSize, pauseRecording, startRecording, stopRecording } from '../lib/recorder';
-import { fmtClock, useNow } from '../island/bits';
+import { takeScreenshot, toast } from '../lib/store';
+import { fmtDuration, fmtSize } from '../lib/recorder';
 
 type Kind = 'shots' | 'videos';
 const src = (path: string) => (inTauri ? convertFileSrc(path) : '');
@@ -41,9 +40,6 @@ export function CapturesView() {
   const [videos, setVideos] = useState<Recording[]>([]);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
-  const rec = useApp((s) => s.rec);
-  const now = useNow(500);
-  const recording = rec.status === 'recording' || rec.status === 'paused';
   const loc = tr.lang === 'ru' ? 'ru-RU' : 'en-US';
   const when = (t: number) => new Date(t).toLocaleString(loc, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -58,8 +54,6 @@ export function CapturesView() {
     const c = listen<string>('island://shot-saved', load);
     return () => (a(), b(), c());
   }, [load]);
-  // A new recording switches to the videos.
-  useEffect(() => void (recording && setKind('videos')), [recording]);
 
   const safe = async (p: Promise<unknown>, ok?: string) => {
     try {
@@ -91,22 +85,6 @@ export function CapturesView() {
         <button className="chip-btn" onClick={() => void takeScreenshot()}>
           <Camera size={13} /> {tr('Screenshot', 'Скриншот')}
         </button>
-        {recording ? (
-          <>
-            {!rec.native && (
-              <button className="chip-btn" onClick={pauseRecording} aria-label={rec.status === 'paused' ? tr('Resume', 'Продолжить') : tr('Pause', 'Пауза')}>
-                {rec.status === 'paused' ? <Play size={12} /> : <Pause size={12} />}
-              </button>
-            )}
-            <button className="chip-btn rec-on" onClick={() => void stopRecording()}>
-              <Square size={11} fill="currentColor" /> <span className="mono">{fmtClock(recElapsed(rec, now))}</span>
-            </button>
-          </>
-        ) : (
-          <button className="chip-btn" onClick={() => void startRecording()} disabled={rec.status !== 'idle'}>
-            <Circle size={12} fill="#ff453a" color="#ff453a" /> {rec.status === 'saving' ? tr('Saving…', 'Сохраняю…') : tr('Record', 'Запись')}
-          </button>
-        )}
         <button className="icon-btn" title={tr('Open the folder', 'Открыть папку')} aria-label={tr('Open the folder', 'Открыть папку')} onClick={() => void (kind === 'videos' ? call('rec_open_folder') : shots[0] ? call('shot_reveal', { path: shots[0].path }) : takeScreenshot())}>
           <FolderOpen size={15} />
         </button>

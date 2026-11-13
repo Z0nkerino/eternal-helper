@@ -1,10 +1,12 @@
-// Cloudy's room: his own window. See how he feels, feed him, play, and tune how he behaves.
+// Cloudy's room: his own little room (the window shows the real sky and weather, the lamp glows at night,
+// the bowl fills as he eats, he naps in his bed), how he feels, food, games, and how he behaves.
 import { motion } from 'framer-motion';
 import { TitleBar } from '../components/TitleBar';
 import { useEffect, useState } from 'react';
-import { emitEvent, listen } from '../lib/ipc';
+import { call, emitEvent, listen } from '../lib/ipc';
 import { useTr } from '../lib/i18n';
-import { saveSettings, useApp } from '../lib/store';
+import { saveSettings, toast, useApp } from '../lib/store';
+import { weatherScene } from '../lib/weather';
 import { Emoji, Rich } from '../lib/emoji';
 import { Segment, Switch } from '../settings/parts';
 import { CloudyFace, type Expr } from './CloudyFace';
@@ -23,6 +25,45 @@ function Bar({ emoji, label, value, color }: { emoji: string; label: string; val
       <div className="pet-track">
         <motion.div className="pet-fill" style={{ background: color }} initial={false} animate={{ width: `${value}%` }} transition={{ type: 'spring', stiffness: 120, damping: 20 }} />
       </div>
+    </div>
+  );
+}
+
+/** His room: wall and window that follow the time of day and the weather, a rug, a bed, a lamp, a plant. */
+function Room({ state, expr }: { state: CloudyState; expr: Expr }) {
+  const weather = useApp((s) => s.weather);
+  const playing = useApp((s) => !!s.media?.playing);
+  const h = new Date().getHours();
+  const time = h >= 21 || h < 6 ? 'night' : h < 9 ? 'morning' : h >= 18 ? 'evening' : 'day';
+  const scene = weather ? weatherScene(weather) : 'sun';
+  const full = state.pet.fullness;
+  return (
+    <div className={`room ${time} w-${scene} ${state.sleeping ? 'sleeping' : ''}`}>
+      <div className="room-wall">
+        <div className="room-window">
+          <div className="room-sky">
+            {time === 'night' && <span className="room-moon" />}
+            {time !== 'night' && scene !== 'rain' && scene !== 'storm' && <span className="room-sun" />}
+            {(scene === 'cloudy' || scene === 'rain' || scene === 'storm') && <><span className="room-cloud a" /><span className="room-cloud b" /></>}
+            {(scene === 'rain' || scene === 'storm') && <span className="room-rain" />}
+            {scene === 'snow' && <span className="room-snow" />}
+            {time === 'night' && <span className="room-stars" />}
+          </div>
+          <span className="room-frame" />
+        </div>
+        <span className="room-picture" />
+        <span className="room-shelf"><i /><i /><i /></span>
+      </div>
+      <div className="room-floor" />
+      <span className="room-rug" />
+      <span className="room-bed" />
+      <span className="room-plant"><i /><i /><i /></span>
+      <span className={`room-lamp ${time === 'night' || time === 'evening' ? 'on' : ''}`} />
+      <span className="room-bowl"><i style={{ height: `${Math.max(8, full)}%` }} /></span>
+      <motion.div className={`room-cloudy cloudy-body anim-${state.sleeping ? 'sleep' : expr === 'eat' ? 'chomp' : expr === 'joy' || expr === 'love' ? 'joy' : 'idle'} ${playing ? 'beat' : ''}`} animate={state.sleeping ? { x: 112, y: 46, scale: 0.8 } : { x: 0, y: [0, -8, 0], scale: 1 }} transition={state.sleeping ? { type: 'spring', stiffness: 80, damping: 16 } : { y: { duration: 3.2, repeat: Infinity, ease: 'easeInOut' } }}>
+        <CloudyFace expr={state.sleeping ? 'sleep' : expr} look={{ x: 0, y: 0 }} size={120} headphones={playing && !state.sleeping} />
+      </motion.div>
+      {state.sleeping && <span className="room-zzz">z<i>z</i><b>z</b></span>}
     </div>
   );
 }
@@ -61,10 +102,8 @@ export function PetWindow() {
   return (
     <div className="pet-window scroll">
       <TitleBar className="floating" />
-      <header className="pet-hero">
-        <div className={`pet-preview cloudy-body anim-${state.sleeping ? 'sleep' : expr === 'eat' ? 'chomp' : expr === 'joy' || expr === 'love' ? 'joy' : 'idle'}`}>
-          <CloudyFace expr={state.sleeping ? 'sleep' : expr} look={{ x: 0, y: 0 }} size={132} />
-        </div>
+      <Room state={state} expr={expr} />
+      <header className="pet-hero room-head">
         <div className="pet-title">
           <h1>Cloudy</h1>
           <div className="small muted">
@@ -77,6 +116,9 @@ export function PetWindow() {
             </div>
           </div>
         </div>
+        <button className="btn accent" onClick={() => void call('desk_add', { id: 'cloudy' }).then(() => toast(tr('Cloudy is on your desktop now', 'Cloudy теперь на рабочем столе'), { tone: 'ok', force: true })).catch((e) => toast(String(e), { tone: 'error' }))}>
+          <Emoji e="🖥️" size={15} /> {tr('Put on the desktop', 'На рабочий стол')}
+        </button>
       </header>
 
       <section className="pet-card">

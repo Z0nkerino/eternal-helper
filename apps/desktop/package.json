@@ -1,7 +1,7 @@
 {
   "name": "@eternal/desktop",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,10 +17,12 @@
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-clipboard-manager": "^2",
     "@tauri-apps/plugin-dialog": "^2",
+    "country-flag-icons": "^1.6.20",
     "framer-motion": "11.18.2",
     "lucide-react": "0.468.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "simple-icons": "^16.37.0",
     "zustand": "5.0.3"
   },
   "devDependencies": {
@@ -34,5 +36,5 @@
     "vite": "6.0.7",
     "vitest": "3.0.5"
   },
-  "releaseName": "Beta 0.5.0 — Sunrise"
+  "releaseName": "Beta 0.6.0 — Sunrise"
 }

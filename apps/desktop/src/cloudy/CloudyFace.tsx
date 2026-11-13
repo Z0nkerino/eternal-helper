@@ -1,5 +1,6 @@
-// Cloudy: a minimal little cloud — one soft white silhouette, two big black rounded-rectangle eyes and a
-// small mouth.
+// Cloudy: a little 3D cloud — a few big soft puffs lit from the top left (a glossy highlight, a cool
+// shade underneath), two big black rounded-rectangle eyes and a small mouth. He wears headphones while
+// music plays.
 // The silhouette is made of 16 puffs (one shared gradient, so they merge into a single shape) that can
 // glide into other shapes (see shapes.ts) or scatter like vapour when he dissolves.
 // Every feature is drawn once and only scaled or faded between expressions, so changes are smooth.
@@ -104,7 +105,31 @@ const TINTS = {
 } as const;
 export type Tint = keyof typeof TINTS;
 
-export function CloudyFace({ expr, look, size, tint = 'white', shape = 'cloud', dissolved = false }: { expr: Expr; look: { x: number; y: number }; size: number; tint?: Tint; shape?: ShapeId; dissolved?: boolean }) {
+/** Headphones he puts on while music plays (only in his own cloud shape). */
+function Headphones({ uid, on }: { uid: string; on: boolean }) {
+  return (
+    <g className={`cf-phones ${on ? 'on' : ''}`} aria-hidden>
+      <defs>
+        <linearGradient id={`cup-${uid}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#3b3f4c" />
+          <stop offset="1" stopColor="#14161c" />
+        </linearGradient>
+      </defs>
+      <path className="cf-band" d="M24 60 C22 14, 100 14, 98 60" fill="none" stroke="#1b1d24" strokeWidth="4.5" strokeLinecap="round" />
+      <path d="M27 50 C30 22, 92 22, 95 50" fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="1.2" strokeLinecap="round" />
+      <g className="cf-cup l">
+        <rect x="15" y="50" width="14" height="22" rx="6" fill={`url(#cup-${uid})`} />
+        <rect x="17.5" y="53" width="4" height="16" rx="2" fill="var(--cover, #5b8cff)" opacity="0.9" />
+      </g>
+      <g className="cf-cup r">
+        <rect x="93" y="50" width="14" height="22" rx="6" fill={`url(#cup-${uid})`} />
+        <rect x="100.5" y="53" width="4" height="16" rx="2" fill="var(--cover, #5b8cff)" opacity="0.9" />
+      </g>
+    </g>
+  );
+}
+
+export function CloudyFace({ expr, look, size, tint = 'white', shape = 'cloud', dissolved = false, headphones = false }: { expr: Expr; look: { x: number; y: number }; size: number; tint?: Tint; shape?: ShapeId; dissolved?: boolean; headphones?: boolean }) {
   const uid = useId().replace(/:/g, '');
   const [top, bottom] = TINTS[tint];
   const sh = SHAPES[shape] ?? SHAPES.cloud;
@@ -117,13 +142,41 @@ export function CloudyFace({ expr, look, size, tint = 'white', shape = 'cloud', 
           <stop offset="0.35" stopColor={top} />
           <stop offset="1" stopColor={bottom} />
         </linearGradient>
+        <radialGradient id={`vol-${uid}`} gradientUnits="userSpaceOnUse" cx="48" cy="34" r="74">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.5" />
+          <stop offset="0.55" stopColor="#fff" stopOpacity="0" />
+          <stop offset="1" stopColor="#6d7ba8" stopOpacity="0.38" />
+        </radialGradient>
+        <radialGradient id={`under-${uid}`}>
+          <stop offset="0" stopColor="#7b8bc0" stopOpacity="0.45" />
+          <stop offset="1" stopColor="#7b8bc0" stopOpacity="0" />
+        </radialGradient>
+        <filter id={`soft-${uid}`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" />
+        </filter>
       </defs>
-      <g className="cf-puffs" fill={`url(#body-${uid})`}>
-        {sh.puffs.map((p, i) => {
+      {(() => {
+        const circles = sh.puffs.map((p, i) => {
           const [dx, dy] = dissolved ? scatter(p, i) : [0, 0];
           return <circle key={i} className="puff" r="10" style={{ transform: `translate(${p[0] + dx}px, ${p[1] + dy}px) scale(${dissolved ? 0.2 : p[2] / 10})`, opacity: dissolved ? 0 : 1, transitionDelay: `${(dissolved ? i % 5 : (i * 7) % 16) * 18}ms` }} />;
-        })}
-      </g>
+        });
+        return (
+          <>
+            {/* The silhouette again as a mask, so the 3D shading below covers exactly his shape. */}
+            <mask id={`sil-${uid}`} maskUnits="userSpaceOnUse" x="-20" y="-20" width="162" height="136">
+              <g fill="#fff">{circles}</g>
+            </mask>
+            <g className="cf-puffs" fill={`url(#body-${uid})`}>{circles}</g>
+            <g mask={`url(#sil-${uid})`} className="cf-volume">
+              {/* Light from the top left: a soft sphere-like falloff, a glossy highlight and a cool shade underneath. */}
+              <rect x="-20" y="-20" width="162" height="136" fill={`url(#vol-${uid})`} />
+              <ellipse cx="46" cy="34" rx="20" ry="11" fill="#fff" opacity="0.75" filter={`url(#soft-${uid})`} />
+              <ellipse cx="61" cy="96" rx="52" ry="18" fill={`url(#under-${uid})`} />
+            </g>
+          </>
+        );
+      })()}
+      {shape === 'cloud' && !dissolved && <Headphones uid={uid} on={headphones} />}
       <g className="cf-face" style={{ transform: `translate(${fx - 60}px, ${fy - 61}px) scale(${dissolved ? 0 : fs})`, opacity: dissolved || fs === 0 ? 0 : 1 }}>
         <Face expr={expr} look={look} />
       </g>

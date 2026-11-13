@@ -17,6 +17,8 @@ import { CloudyFace, type Expr, type Tint } from './CloudyFace';
 import { SHAPE_NAMES, SHOW_SHAPES, type ShapeId } from './shapes';
 import { startBeat } from '../lib/beat';
 import { chirp } from './sounds';
+import { useApp } from '../lib/store';
+import { pageTitle, remarkFor, remarkForTrack } from './remarks';
 
 export interface MoodSignal {
   weather: 'rain' | 'snow' | 'storm' | 'sun' | 'cloudy' | null;
@@ -621,6 +623,41 @@ export function CloudyStage() {
     return () => clearInterval(id);
   }, [cfg.chatter, sleeping, signal?.recording, n, say]);
 
+  // Remarks about what's on the screen: the app in front, or the song that just started.
+  const media = useApp((s) => s.media);
+  const lastFg = useRef('');
+  useEffect(() => {
+    const every = { never: 0, rare: 240, normal: 100, often: 50 }[cfg.chatter];
+    if (!every || !inTauri) return;
+    const id = setInterval(async () => {
+      if (sleeping || directed.current || Date.now() - lastSay.current < 30_000) return;
+      const fg = await call('foreground_app').catch(() => null);
+      const key = fg ? `${fg.app}|${pageTitle(fg.title)}` : '';
+      if (!fg || key === lastFg.current) return;
+      lastFg.current = key;
+      const line = remarkFor(fg, lang);
+      if (line) {
+        sayText(line, 4400);
+        react('curious', 'lookup', 1300);
+      }
+    }, every * 1000);
+    return () => clearInterval(id);
+  }, [cfg.chatter, sleeping, lang]);
+  const trackKey = media?.playing ? `${media.title}|${media.artist}` : '';
+  useEffect(() => {
+    if (!trackKey || cfg.chatter === 'never' || sleeping) return;
+    const t = setTimeout(() => {
+      if (Date.now() - lastSay.current < 20_000 || Math.random() > 0.6) return;
+      const m = useApp.getState().media;
+      const line = remarkForTrack(m ? { title: m.title, artist: m.artist } : null, lang);
+      if (line) {
+        sayText(line, 4400);
+        react('joy', 'dance', 1600);
+      }
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [trackKey]);
+
   // ----- signals from the island -----
   useEffect(() => {
     const prev = lastSignal.current;
@@ -918,7 +955,7 @@ export function CloudyStage() {
         {fx === 'rainbow' && <span className="cl-rainbow" aria-hidden />}
         <div ref={bodyRef} className={`cloudy-body anim-${anim} ${signal?.playing ? 'beat' : ''}`} style={{ ['--tilt' as string]: `${tilt}deg`, ['--dir' as string]: body.current.facing }} onPointerDown={onPointerDown}>
           <div className="cloudy-reach" style={{ ['--reach' as string]: reach }}>
-            <CloudyFace expr={expr} look={dragging ? { x: 0, y: 0.8 } : look} size={cfg.size} tint={tint} shape={dragging ? 'cloud' : shape} dissolved={dissolved} />
+            <CloudyFace expr={expr} look={dragging ? { x: 0, y: 0.8 } : look} size={cfg.size} tint={tint} shape={dragging ? 'cloud' : shape} dissolved={dissolved} headphones={!!media?.playing} />
           </div>
         </div>
         {(fx === 'rain' || fx === 'storm' || fx === 'snow') && (

@@ -10,11 +10,10 @@ import { ShotEditor } from './shot/ShotEditor';
 import { VideoEditor } from './video/VideoEditor';
 import { PerfOverlay } from './perf/PerfOverlay';
 import { DesktopWidget } from './home/DesktopWidget';
-import { call, emitEvent, inTauri, listen, type Layout, type MediaInfo, type Settings } from './lib/ipc';
-import { closePanel, openPanel, openSheet, saveSettings, showHud, tickTimer, toast, useApp, type Hud, type Tab } from './lib/store';
+import { call, emitEvent, inTauri, listen, type Layout, type MediaInfo, type PcNotification, type Settings } from './lib/ipc';
+import { closePanel, openPanel, openSheet, pushNotification, saveSettings, showHud, tickTimer, toast, useApp, type Hud, type Tab } from './lib/store';
 import { useControls } from './lib/controls';
 import { refreshWeather, weatherScene } from './lib/weather';
-import { startPlannerSync } from './lib/planner';
 import { setSystemMedia, startMusicSync } from './lib/music';
 import { startBattery } from './lib/battery';
 import { startUpdateChecks } from './lib/updates';
@@ -59,10 +58,9 @@ async function bootCommon(view: View) {
   listen<Layout>('island://layout', (layout) => useApp.setState({ layout }));
   startMusicSync();
   // The pet and settings windows don't show weather or the Planner: skip the network work there.
-  if (view.kind === 'island' || view.kind === 'panel' || view.kind === 'desk') {
+  if (view.kind === 'island' || view.kind === 'panel' || view.kind === 'desk' || view.kind === 'pet') {
     void refreshWeather();
     setInterval(() => void refreshWeather(), 30 * 60_000);
-    startPlannerSync();
   }
   if (!inTauri && new URLSearchParams(location.search).get('demo') === '1') {
     const { demoWeather, demoPlanner } = await import('./lib/demo');
@@ -74,6 +72,8 @@ async function bootCommon(view: View) {
 
 /** Island-only duties: the hotkey, timers, battery toasts, updates, Cloudy's signals. */
 function bootIsland() {
+  // Dev only: lets the browser preview switch states (drops, shapes) for visual checks.
+  if (import.meta.env.DEV) (window as unknown as { __app: typeof useApp }).__app = useApp;
   // The global shortcut opens Home (press again to close).
   listen('island://hotkey', () => {
     const s = useApp.getState();
@@ -87,6 +87,8 @@ function bootIsland() {
     if (h.kind === 'volume') useControls.setState((s) => (s.c ? { c: { ...s.c, volume: h.value, muted: h.muted } } : s));
     if (h.kind === 'brightness') useControls.setState((s) => (s.c ? { c: { ...s.c, brightness: h.value } } : s));
   });
+  // Notifications from other apps on this PC.
+  listen<PcNotification>('notif://new', pushNotification);
   // Messages from other windows (screenshot copied, errors from the Rust side…).
   listen<string>('island://toast', (text) => toast(text, { force: true }));
   listen<string>('island://shot-saved', (path) =>

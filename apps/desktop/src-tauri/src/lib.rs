@@ -1,7 +1,11 @@
 //! Eternal Helper — a dynamic island for Windows and macOS. © Eternal Inc.
 mod afina;
 mod afina_tools;
-mod ai_accounts;
+mod appvol;
+mod chats;
+mod context;
+mod notif;
+mod shelf;
 mod clipwatch;
 mod hud;
 mod perf;
@@ -260,19 +264,7 @@ fn spawn_hit_test(app: AppHandle) {
 /// recorder: Chromium selects the source whose name contains this text ("Entire screen" / "Screen 1",
 /// or "Весь экран" / "Экран 1" on Russian, Ukrainian or Kazakh Windows).
 pub fn webview_args() -> String {
-    format!("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --auto-select-desktop-capture-source={}", screen_source_name())
-}
-
-#[cfg(windows)]
-fn screen_source_name() -> &'static str {
-    // Primary language of the Windows UI: Russian 0x19, Ukrainian 0x22, Belarusian 0x23, Kazakh 0x3F.
-    let lang = unsafe { ::windows::Win32::Globalization::GetUserDefaultUILanguage() } & 0x3ff;
-    if [0x19, 0x22, 0x23, 0x3f].contains(&lang) { "кран" } else { "creen" }
-}
-
-#[cfg(not(windows))]
-fn screen_source_name() -> &'static str {
-    "creen"
+    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection".into()
 }
 
 /// "Full access" (granted by the user in the app): the island stays above everything, fullscreen apps
@@ -376,13 +368,31 @@ fn spawn_media_watch(app: AppHandle) {
     std::thread::spawn(move || {
         platform::init_thread();
         let media = app.state::<AppState>().media.clone();
+        // Where the island thinks the track is: the last position sent and when it was sent.
+        let mut sent: Option<(u64, std::time::Instant)> = None;
         loop {
             let now = media.now_playing();
             let st = app.state::<AppState>();
             let mut last = st.last_media.lock().unwrap();
             let strip = |m: &Option<MediaInfo>| m.as_ref().map(|m| MediaInfo { position_ms: None, ..m.clone() });
-            if strip(&now) != strip(&last) {
+            // Also resend when the real position drifts from the island's estimate (seeking, buffering,
+            // a player that reports late), so lyrics and the bar stay in sync.
+            let drift = match (&now, sent) {
+                (Some(m), Some((at, t))) if m.position_ms.is_some() => {
+                    let expected = at + if m.playing { t.elapsed().as_millis() as u64 } else { 0 };
+                    m.position_ms.unwrap().abs_diff(expected) > 450
+                }
+                (Some(m), None) => m.position_ms.is_some(),
+                _ => false,
+            };
+            if strip(&now) != strip(&last) || drift {
                 let _ = app.emit("media://changed", &now);
+                sent = now.as_ref().and_then(|m| m.position_ms).map(|p| (p, std::time::Instant::now()));
+            } else if let (Some(m), Some((at, _))) = (&now, sent) {
+                // Paused: keep the estimate pinned so resuming doesn't look like drift.
+                if !m.playing {
+                    sent = Some((m.position_ms.unwrap_or(at), std::time::Instant::now()));
+                }
             }
             *last = now;
             drop(last);
@@ -1020,33 +1030,116 @@ fn afina_open(app: AppHandle, path: String, reveal: bool) -> Result<(), String> 
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct AiServiceInfo {
+struct ChatServiceInfo {
     id: &'static str,
     name: &'static str,
     prefill: bool,
+    kind: &'static str,
 }
 
 #[tauri::command]
-fn ai_services() -> Vec<AiServiceInfo> {
-    ai_accounts::SERVICES.iter().map(|s| AiServiceInfo { id: s.id, name: s.name, prefill: s.ask.is_some() }).collect()
+fn ai_services() -> Vec<ChatServiceInfo> {
+    chats::SERVICES.iter().map(|s| ChatServiceInfo { id: s.id, name: s.name, prefill: s.ask.is_some(), kind: s.kind }).collect()
 }
 
+/// Shows a chat (AI or messenger) over the open panel, at the panel body's place.
 #[tauri::command]
-async fn ai_open(app: AppHandle, service: String, prompt: Option<String>, docked: Option<bool>) -> Result<bool, String> {
-    let r = ai_accounts::open(&app, &service, prompt.as_deref())?;
-    // Docked: the AI window sits right under the island, like part of it.
-    if docked.unwrap_or(true) {
-        if let (Some(w), Some(isl)) = (app.get_webview_window(&format!("ai-{service}")), island(&app)) {
-            if let Ok(Some(m)) = isl.current_monitor() {
-                let scale = m.scale_factor();
-                let (mw, mx, my) = (m.size().width as f64 / scale, m.position().x as f64 / scale, m.position().y as f64 / scale);
-                let (ww, wh) = (780.0_f64.min(mw - 40.0), 720.0_f64.min(m.size().height as f64 / scale - 120.0));
-                let _ = w.set_size(tauri::LogicalSize::new(ww, wh));
-                let _ = w.set_position(tauri::LogicalPosition::new(mx + (mw - ww) / 2.0, my + 70.0));
-            }
-        }
+fn chat_show(app: AppHandle, service: String, x: f64, y: f64, w: f64, h: f64, prompt: Option<String>) -> Result<bool, String> {
+    if let Some(isl) = island(&app) {
+        // Typing into the chat needs the keyboard.
+        platform::set_activatable(&isl, true);
     }
-    Ok(r)
+    chats::show(&app, &service, (x, y, w, h), prompt.as_deref())
+}
+
+#[tauri::command]
+fn chat_place(app: AppHandle, service: String, x: f64, y: f64, w: f64, h: f64) {
+    chats::place(&app, &service, (x, y, w, h));
+}
+
+#[tauri::command]
+fn chat_hide(app: AppHandle) {
+    chats::hide_all(&app);
+}
+
+#[tauri::command]
+fn chat_reload(app: AppHandle, service: String) {
+    chats::reload(&app, &service);
+}
+
+/// The music app's own volume (0..1), separate from the system volume. None when it can't be read.
+#[tauri::command]
+async fn music_volume_get(app_name: String) -> Option<f32> {
+    tauri::async_runtime::spawn_blocking(move || appvol::get(&app_name)).await.ok().flatten()
+}
+
+#[tauri::command]
+async fn music_volume_set(app_name: String, level: f32) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || appvol::set(&app_name, level)).await.map_err(|e| e.to_string())?
+}
+
+/// The app in front and its window title (for Cloudy's remarks).
+#[tauri::command]
+async fn foreground_app() -> Option<context::Foreground> {
+    tauri::async_runtime::spawn_blocking(context::foreground).await.ok().flatten()
+}
+
+#[tauri::command]
+async fn notif_status() -> String {
+    tauri::async_runtime::spawn_blocking(|| {
+        platform::init_thread();
+        notif::status()
+    })
+    .await
+    .unwrap_or_else(|_| "unsupported".into())
+}
+
+#[tauri::command]
+async fn notif_request() -> String {
+    tauri::async_runtime::spawn_blocking(|| {
+        platform::init_thread();
+        notif::request()
+    })
+    .await
+    .unwrap_or_else(|_| "unsupported".into())
+}
+
+#[tauri::command]
+fn shelf_list() -> Vec<shelf::Item> {
+    shelf::list()
+}
+
+#[tauri::command]
+async fn shelf_add(paths: Vec<String>) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || shelf::add(&paths)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn files_to_desktop(paths: Vec<String>) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || shelf::to_desktop(&paths)).await.map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn shelf_remove(name: String) -> Result<(), String> {
+    shelf::remove(&name)
+}
+
+#[tauri::command]
+fn shelf_open(app: AppHandle, name: String, reveal: bool) -> Result<(), String> {
+    let p = if name.is_empty() {
+        let d = shelf::dir();
+        let _ = std::fs::create_dir_all(&d);
+        d
+    } else {
+        shelf::path(&name)?
+    };
+    let o = app.opener();
+    if reveal && !name.is_empty() { o.reveal_item_in_dir(&p) } else { o.open_path(p.to_string_lossy(), None::<&str>) }.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn shelf_export(name: String, to: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || shelf::export(&name, &to)).await.map_err(|e| e.to_string())?
 }
 
 /// Shows a finished download in its folder (only files inside Downloads).
@@ -1338,6 +1431,7 @@ pub fn run() {
             cloudy::sync(&handle, cloudy::enabled(&s));
             spawn_hit_test(handle.clone());
             spawn_screen_watch(handle.clone());
+            notif::start(handle.clone());
             #[cfg(windows)]
             spawn_audio_watch(handle.clone());
             clipwatch::spawn(handle.clone());
@@ -1418,7 +1512,21 @@ pub fn run() {
             clip_pin,
             clip_clear,
             ai_services,
-            ai_open,
+            chat_show,
+            chat_place,
+            chat_hide,
+            chat_reload,
+            music_volume_get,
+            music_volume_set,
+            foreground_app,
+            notif_status,
+            notif_request,
+            shelf_list,
+            shelf_add,
+            shelf_remove,
+            shelf_open,
+            shelf_export,
+            files_to_desktop,
             open_url,
             window_ready,
             quit,

@@ -20,7 +20,7 @@ pub struct Media {
     art: std::sync::Mutex<(String, Option<String>)>,
 }
 
-pub const MEDIA_POLL_MS: u64 = 1000;
+pub const MEDIA_POLL_MS: u64 = 500;
 
 /// WinRT calls from our background threads need the thread joined to the multithreaded apartment.
 pub fn init_thread() {
@@ -88,7 +88,7 @@ impl MediaProvider for Media {
             playing,
             source: friendly_source(&source),
             artwork,
-            position_ms: tl.as_ref().and_then(|t| t.Position().ok()).map(ms),
+            position_ms: tl.as_ref().and_then(|t| live_position(t, playing)),
             duration_ms: tl.as_ref().and_then(|t| t.EndTime().ok()).map(ms).filter(|d| *d > 0),
         })
     }
@@ -108,6 +108,29 @@ impl MediaProvider for Media {
         // Positions are in 100-nanosecond units.
         s.TryChangePlaybackPositionAsync(ms as i64 * 10_000).and_then(|o| o.get()).map(|_| ()).map_err(|e| e.to_string())
     }
+}
+
+/// The timeline's position is only as fresh as its last update (players report it every few seconds or
+/// only on changes), so while playing we add the time since then. Without this lyrics lag behind.
+fn live_position(t: &::windows::Media::Control::GlobalSystemMediaTransportControlsSessionTimelineProperties, playing: bool) -> Option<u64> {
+    let pos = t.Position().ok()?.Duration;
+    let end = t.EndTime().ok().map(|e| e.Duration).filter(|e| *e > 0);
+    let mut p = pos;
+    if playing {
+        if let Ok(upd) = t.LastUpdatedTime() {
+            // DateTime is 100 ns since 1601; SystemTime is since 1970.
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).ok()?.as_nanos() as i64 / 100 + 116_444_736_000_000_000;
+            let since = now - upd.UniversalTime;
+            // Ignore nonsense (clock jumps, players that never set it).
+            if (0..6 * 3600 * 10_000_000).contains(&since) && upd.UniversalTime > 0 {
+                p += since;
+            }
+        }
+    }
+    if let Some(e) = end {
+        p = p.min(e);
+    }
+    Some((p.max(0) / 10_000) as u64)
 }
 
 /// "Spotify.exe" / "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify" → "Spotify".

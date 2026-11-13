@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-notif-request"
+description = "Enables the notif_request command without any pre-configured scope."
+commands.allow = ["notif_request"]
+
+[[permission]]
+identifier = "deny-notif-request"
+description = "Denies the notif_request command without any pre-configured scope."
+commands.deny = ["notif_request"]

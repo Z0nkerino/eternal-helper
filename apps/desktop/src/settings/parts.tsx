@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { call, type Settings } from '../lib/ipc';
 import { useT } from '../lib/i18n';
-import { saveSettings, toast, useApp } from '../lib/store';
+import { openChat, saveSettings, toast, useApp } from '../lib/store';
 import { refreshWeather, searchPlaces, type Place } from '../lib/weather';
 import { Emoji } from '../lib/emoji';
 import { MODELS, checkSupport, explainLlm, loadModel, removeModel, setBaseModel, switchModel, useLlm } from '../afina/llm';
@@ -203,7 +203,7 @@ export function AfinaSettings() {
           <span className="small muted">
             {tr('Sign in once in the service’s own window — no API key needed. Afina opens it with your question filled in.', 'Войди один раз в окне самого сервиса — API-ключ не нужен. Афина открывает его уже с твоим вопросом.')}
           </span>
-          <button className="btn accent" onClick={() => void call('ai_open', { service: a.provider, prompt: null })}>{tr('Open & sign in', 'Открыть и войти')}</button>
+          <button className="btn accent" onClick={() => openChat(a.provider)}>{tr('Open & sign in', 'Открыть и войти')}</button>
         </div>
       )}
 

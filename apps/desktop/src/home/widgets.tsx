@@ -3,14 +3,16 @@
 // widget reads the shared store and shows one thing well.
 import { motion } from 'framer-motion';
 import {
-  CalendarRange, BatteryCharging, BatteryFull, BatteryLow, BatteryMedium, CalendarDays, Camera, Clock, Cloud, Coins, Focus, Globe, Lightbulb, ListTodo, Music2, Pause, Play,
-  Sparkles, Timer, Video, Waves, Zap, type LucideIcon,
+  CalendarRange, BatteryCharging, BatteryFull, BatteryLow, BatteryMedium, CalendarDays, Camera, Clock, Cloud, Coins, Focus, Globe, Lightbulb, ListTodo, Music2, Pause, Play, Sparkles, Timer, Waves, Zap, type LucideIcon, Smile, Archive, Gauge, StickyNote,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { emitEvent } from '../lib/ipc';
 import { useTr } from '../lib/i18n';
-import { openLibrary, openPanel, recElapsed, saveSettings, startTimer, takeScreenshot, timerLeft, useApp } from '../lib/store';
-import { toggleRecording } from '../lib/recorder';
+import { openLibrary, openPanel, saveSettings, startTimer, takeScreenshot, timerLeft, useApp } from '../lib/store';
+import { useEvents, ymd } from '../library/CalendarView';
+import { HoloFace } from './HoloFace';
+import { NotesBoard } from '../library/NotesBoard';
+import { iconFor, useShelf } from '../library/ShelfView';
 import { describeWeather } from '../lib/weather';
 import { mediaControl } from '../lib/music';
 import { factOfDay, formatRate, greeting, offsetFromLocal, rate, symbol, timeIn } from '../lib/today';
@@ -22,7 +24,10 @@ export interface WidgetDef {
   id: string;
   name: [string, string];
   icon: LucideIcon;
+  /** The size it starts at. */
   size: WidgetSize;
+  /** Sizes it can be resized to (in Home's edit mode). */
+  sizes?: WidgetSize[];
   Body: () => JSX.Element | null;
 }
 const COLS: Record<WidgetSize, number> = { s: 1, m: 2, w: 4, t: 2 };
@@ -103,22 +108,23 @@ function MusicW() {
 function NextW() {
   const tr = useTr();
   const now = useNow(30_000);
-  const planner = useApp((s) => s.planner);
-  const today = new Date(now).toDateString();
-  const events = (planner?.upcoming ?? []).filter((e) => new Date(e.start).toDateString() === today && e.end > now).slice(0, 2);
+  const events = useEvents();
+  const today = ymd(new Date(now));
+  const hm = new Date(now).toTimeString().slice(0, 5);
+  const list = events.filter((e) => e.date === today && (!e.time || e.time >= hm)).sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '')).slice(0, 2);
   return (
-    <button className="w-next" onClick={() => openLibrary('planner')}>
+    <button className="w-next" onClick={() => openLibrary('calendar')}>
       <div className="row gap tiny faint"><ListTodo size={13} /> {tr('Up next', 'Дальше')}</div>
-      {events.length ? (
-        events.map((e) => (
-          <div key={e.id ?? e.title} className="w-event">
-            <span className="w-dot" />
-            <span className="mono tiny">{new Date(e.start).toLocaleTimeString(locale(tr.lang), { hour: '2-digit', minute: '2-digit' })}</span>
+      {list.length ? (
+        list.map((e) => (
+          <div key={e.id} className="w-event">
+            <span className="w-dot" style={{ background: e.color }} />
+            {e.time && <span className="mono tiny">{e.time}</span>}
             <span className="ellipsis">{e.title}</span>
           </div>
         ))
       ) : (
-        <div className="small muted">{planner ? (planner.tasksToday.length ? `${planner.tasksToday.length} ${tr('tasks today', 'задач на сегодня')}` : tr('A free day', 'Свободный день')) : tr('Connect Universal Planner', 'Подключи Universal Planner')}</div>
+        <div className="small muted">{tr('A free day', 'Свободный день')}</div>
       )}
     </button>
   );
@@ -126,15 +132,12 @@ function NextW() {
 
 function ActionsW() {
   const tr = useTr();
-  const rec = useApp((s) => s.rec);
-  const now = useNow();
-  const recording = rec.status === 'recording' || rec.status === 'paused';
   const items: [LucideIcon, string, () => void, boolean?][] = [
     [Camera, tr('Screenshot', 'Скриншот'), () => void takeScreenshot()],
-    [Video, recording ? fmtClock(recElapsed(rec, now)) : tr('Record', 'Запись'), toggleRecording, recording],
+    [StickyNote, tr('Note', 'Заметка'), () => openLibrary('notes')],
     [Timer, tr('5 min', '5 мин'), () => startTimer(5)],
     [Focus, tr('Focus', 'Фокус'), () => (startTimer(25, 'focus'), void saveSettings({ doNotDisturb: true }))],
-    [Sparkles, tr('AI', 'ИИ'), () => (openPanel('ai'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 })))],
+    [Sparkles, tr('Chats', 'Чаты'), () => openPanel('ai')],
   ];
   return (
     <div className="w-actions">
@@ -276,6 +279,71 @@ function VibesW() {
   );
 }
 
+function FaceW() {
+  return (
+    <div className="w-face">
+      <HoloFace />
+    </div>
+  );
+}
+
+function NotesW() {
+  return (
+    <div className="w-notes">
+      <NotesBoard compact />
+    </div>
+  );
+}
+
+function ShelfW() {
+  const tr = useTr();
+  const items = useShelf();
+  return (
+    <button className="w-shelf" onClick={() => openLibrary('shelf')}>
+      <div className="row gap tiny faint"><Archive size={13} /> {tr('Shelf', 'Полка')} · {items.length}</div>
+      {items.length ? (
+        <div className="w-shelf-list">
+          {items.slice(0, 4).map((f) => {
+            const Icon = iconFor(f.name, f.isDir);
+            return (
+              <span key={f.name} className="w-shelf-item">
+                <Icon size={16} />
+                <span className="tiny ellipsis">{f.name}</span>
+              </span>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="small muted">{tr('Drop files on the island', 'Перетащи файлы на остров')}</div>
+      )}
+    </button>
+  );
+}
+
+function ProgressW() {
+  const tr = useTr();
+  const now = useNow(60_000);
+  const d = new Date(now);
+  const day = (d.getHours() * 60 + d.getMinutes()) / 1440;
+  const y0 = new Date(d.getFullYear(), 0, 1).getTime();
+  const year = (now - y0) / (new Date(d.getFullYear() + 1, 0, 1).getTime() - y0);
+  const ring = (v: number, label: string, i: number) => {
+    const r = 26;
+    const c = 2 * Math.PI * r;
+    return (
+      <div className="w-ring" key={label}>
+        <svg viewBox="0 0 64 64" aria-hidden>
+          <circle cx="32" cy="32" r={r} className="w-ring-bg" />
+          <motion.circle cx="32" cy="32" r={r} className={`w-ring-fg r${i}`} strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c * (1 - v) }} transition={{ type: 'spring', stiffness: 60, damping: 16 }} />
+        </svg>
+        <span className="mono small">{Math.floor(v * 100)}%</span>
+        <span className="tiny faint">{label}</span>
+      </div>
+    );
+  };
+  return <div className="w-progress">{[ring(day, tr('Day', 'День'), 0), ring(year, tr('Year', 'Год'), 1)]}</div>;
+}
+
 function FactW() {
   const tr = useTr();
   const now = useNow(3600_000);
@@ -297,27 +365,43 @@ function Empty({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
 }
 
 export const WIDGETS: WidgetDef[] = [
-  { id: 'clock', name: ['Clock', 'Часы'], icon: Clock, size: 'm', Body: ClockW },
-  { id: 'music', name: ['Now playing', 'Сейчас играет'], icon: Music2, size: 'm', Body: MusicW },
-  { id: 'weather', name: ['Weather', 'Погода'], icon: Cloud, size: 's', Body: WeatherW },
-  { id: 'next', name: ['Up next', 'Дальше по плану'], icon: ListTodo, size: 'm', Body: NextW },
-  { id: 'actions', name: ['Quick actions', 'Быстрые действия'], icon: Zap, size: 'w', Body: ActionsW },
-  { id: 'timer', name: ['Timer', 'Таймер'], icon: Timer, size: 's', Body: TimerW },
-  { id: 'calendar', name: ['Date', 'Дата'], icon: CalendarDays, size: 's', Body: CalendarW },
-  { id: 'month', name: ['Calendar', 'Календарь'], icon: CalendarRange, size: 't', Body: MonthW },
-  { id: 'battery', name: ['Battery', 'Батарея'], icon: BatteryMedium, size: 's', Body: BatteryW },
-  { id: 'world', name: ['World clocks', 'Мировые часы'], icon: Globe, size: 's', Body: WorldW },
-  { id: 'currency', name: ['Currency', 'Валюты'], icon: Coins, size: 's', Body: CurrencyW },
-  { id: 'cloudy', name: ['Cloudy', 'Cloudy'], icon: Cloud, size: 's', Body: CloudyW },
-  { id: 'vibes', name: ['Vibes', 'Вайб'], icon: Waves, size: 's', Body: VibesW },
-  { id: 'fact', name: ['Did you know?', 'А ты знал?'], icon: Lightbulb, size: 'm', Body: FactW },
+  { id: 'clock', name: ['Clock', 'Часы'], icon: Clock, size: 'm', sizes: ['s', 'm', 'w'], Body: ClockW },
+  { id: 'music', name: ['Now playing', 'Сейчас играет'], icon: Music2, size: 'm', sizes: ['m', 'w'], Body: MusicW },
+  { id: 'weather', name: ['Weather', 'Погода'], icon: Cloud, size: 's', sizes: ['s', 'm'], Body: WeatherW },
+  { id: 'face', name: ['Face', 'Лицо'], icon: Smile, size: 's', sizes: ['s', 'm', 't'], Body: FaceW },
+  { id: 'next', name: ['Up next', 'Дальше по плану'], icon: ListTodo, size: 'm', sizes: ['m', 'w'], Body: NextW },
+  { id: 'actions', name: ['Quick actions', 'Быстрые действия'], icon: Zap, size: 'w', sizes: ['m', 'w'], Body: ActionsW },
+  { id: 'notes', name: ['Notes', 'Заметки'], icon: StickyNote, size: 't', sizes: ['m', 't', 'w'], Body: NotesW },
+  { id: 'shelf', name: ['Shelf', 'Полка'], icon: Archive, size: 'm', sizes: ['s', 'm', 'w'], Body: ShelfW },
+  { id: 'progress', name: ['Day & year', 'День и год'], icon: Gauge, size: 'm', sizes: ['s', 'm'], Body: ProgressW },
+  { id: 'timer', name: ['Timer', 'Таймер'], icon: Timer, size: 's', sizes: ['s', 'm'], Body: TimerW },
+  { id: 'calendar', name: ['Date', 'Дата'], icon: CalendarDays, size: 's', sizes: ['s', 'm'], Body: CalendarW },
+  { id: 'month', name: ['Calendar', 'Календарь'], icon: CalendarRange, size: 't', sizes: ['t'], Body: MonthW },
+  { id: 'battery', name: ['Battery', 'Батарея'], icon: BatteryMedium, size: 's', sizes: ['s', 'm'], Body: BatteryW },
+  { id: 'world', name: ['World clocks', 'Мировые часы'], icon: Globe, size: 's', sizes: ['s', 'm', 't'], Body: WorldW },
+  { id: 'currency', name: ['Currency', 'Валюты'], icon: Coins, size: 's', sizes: ['s', 'm'], Body: CurrencyW },
+  { id: 'cloudy', name: ['Cloudy', 'Cloudy'], icon: Cloud, size: 's', sizes: ['s', 'm', 't'], Body: CloudyW },
+  { id: 'vibes', name: ['Vibes', 'Вайб'], icon: Waves, size: 's', sizes: ['s', 'm', 'w'], Body: VibesW },
+  { id: 'fact', name: ['Did you know?', 'А ты знал?'], icon: Lightbulb, size: 'm', sizes: ['m', 'w'], Body: FactW },
 ];
 export const DEFAULT_WIDGETS = ['clock', 'weather', 'calendar', 'music', 'next', 'actions'];
 export const MAX_CELLS = 16;
 const byId = new Map(WIDGETS.map((w) => [w.id, w]));
 export const widget = (id: string) => byId.get(id);
 
-export const cellsOf = (ids: string[]) => ids.reduce((n, id) => n + CELLS[widget(id)?.size ?? 's'], 0);
+/** A widget's size on Home: the one the user picked (edit mode), else its own. */
+export function sizeOf(id: string): WidgetSize {
+  const picked = (useApp.getState().settings as unknown as { widgetSizes?: Record<string, WidgetSize> } | null)?.widgetSizes?.[id];
+  const w = widget(id);
+  return picked && (w?.sizes ?? [w?.size]).includes(picked) ? picked : w?.size ?? 's';
+}
+/** The next size in the widget's list (for the resize button). */
+export function nextSize(id: string): WidgetSize {
+  const w = widget(id);
+  const list = w?.sizes ?? [w?.size ?? 's'];
+  return list[(list.indexOf(sizeOf(id)) + 1) % list.length];
+}
+export const cellsOf = (ids: string[]) => ids.reduce((n, id) => n + CELLS[sizeOf(id)], 0);
 export const cellsOfWidget = (w: WidgetDef) => CELLS[w.size];
 export const colsOf = (w: WidgetDef) => COLS[w.size];
 /** Rows the grid needs (the grid packs densely, so this is the cell count over four, rounded up). */

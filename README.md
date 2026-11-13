@@ -23,6 +23,24 @@ All versions: [Releases](https://github.com/Z0nkerino/eternal-helper/releases).
 
 New versions: raise `version` in `apps/desktop/src-tauri/tauri.conf.json` and push to `main`. The **Release** workflow builds both installers and publishes them; the links above always point to the newest one.
 
+## Beta 0.6.0 — “Sunrise” 🌅
+
+| What | Details |
+| --- | --- |
+| **Liquid island** | Opening spills drops of liquid glass that merge into the island, with a ripple of light and a watery wobble; content rises in with a slight 3D tilt. Tabs slide with depth. Six opening styles (Liquid, 3D, Morph, Unfold, Drop, Zoom). Dragging the island lifts it. No more click dots. |
+| **Island shapes** | Island, Notch (attached to the top edge with soft ears), Capsule, Mini and Frost — Settings → Personalise. |
+| **Music, redone** | A 3D cover that tilts toward the cursor, the record sliding out, the source's real logo, a seek line and bottom edge of the island that pulse with the beat, and a **music-only volume** (Windows: the player app's own volume; web players and Eternal Radio: their own) so the system volume stays as it is. Panes: Lyrics (with an early/late nudge), Players (choose the music), Radio, Recent. |
+| **Lyrics in sync** | Windows reports the song position only every few seconds; the island now corrects it with the time of that report and resyncs whenever it drifts, so lyrics no longer lag. |
+| **Chats in the island** | ChatGPT, Claude, Gemini, Perplexity, Copilot, DeepSeek, Telegram, WhatsApp and Discord open inside the island (no separate windows), with a rail of real logos and unread counts from notifications. |
+| **Notifications** | Notifications from every app on the PC show in the pill and in Library → Notifications (Windows asks once). Messenger notifications have a Reply button that opens the chat. |
+| **Time tab** | A big analog clock, day/week/year progress, sunrise and sunset, the moon, your time zone, world clocks, a stopwatch with laps. |
+| **Calendar, Notes, Shelf** | A month calendar with your own events (replaces the Planner connection for now), a board of draggable sticky notes, and a shelf: drop files on the island — left half keeps a copy on the shelf, right half copies to the Desktop. |
+| **Translator** | Redesigned: real flags for 40+ languages, a big from → to bar with an animated swap, side-by-side cards, recent languages and history. |
+| **Real logos** | Spotify, Claude, Yandex Music, Perplexity, Telegram and more show their own logos. |
+| **Cloudy** | A soft 3D cloud with fewer, rounder puffs, headphones while music plays, remarks about what's on your screen and the song playing, his own room (the window shows the real sky and weather), and he can live on the desktop as a widget. |
+| **Widgets** | Resize widgets on Home (edit mode) and on the desktop (drag the corner). New: a hologram **Face** made of glowing dots that follows the mouse, blinks, blushes, vibes to music and reacts to tabs; Notes; Shelf; Day & year. |
+| **Removed** | Screen recording and the Access settings page. |
+
 ## Beta 0.5.0 — “Sunrise” 🌅
 
 | What | Details |
@@ -174,7 +192,7 @@ packages/plugin-sdk/     module/plugin API (the built-in tabs use it)
 - **AI accounts** open in their own windows; the answer appears there, not in the island (Eternal Helper doesn't read other sites). ChatGPT, Claude, Perplexity and Copilot get the question filled in; for Gemini and DeepSeek it's copied to the clipboard. Google sign-in may refuse embedded browsers; use email sign-in there.
 - **Control centre on macOS:** there's no public API for display brightness or for listing Wi-Fi networks without Location access, so the Mac shows "use the brightness keys" and joins Wi-Fi by name. Bluetooth switches if `blueutil` is installed (`brew install blueutil`), otherwise it opens Bluetooth settings. Dark mode asks once for Automation permission.
 - **Control centre on Windows:** brightness works on laptop screens (WMI); external monitors don't expose it.
-- **Version naming:** the public name is *Beta 0.5.0 “Sunrise”*; the build number is 0.7.0 so that in-app updates from earlier builds still see it as newer.
+- **Version naming:** the public name is *Beta 0.6.0 “Sunrise”*; the build number is 0.8.0 so that in-app updates from earlier builds still see it as newer.
 - **Music web players:** Spotify's web player uses DRM (Widevine). WebView2 on Windows and WKWebView on Mac may not support it, so Spotify playback *inside the app* can be refused; signing in still works for Yandex Music and SoundCloud, and the Spotify desktop app is always picked up through the system. Pages identify as Safari on Mac so the services accept the embedded browser.
 - **In-app updates** use HTTPS + the SHA-256 published in each release. Signature-based updates (`tauri-plugin-updater`) can be switched on once a signing key is added to the repository secrets.
 - **Cloudy** walks along the bottom of the primary display for now; walking on the tops of windows (stage 6 of the plan) comes next.
@@ -200,6 +218,22 @@ These are planned by stage: clipboard history and command palette search, OCR, s
 Чёрная пилюля по центру сверху экрана: часы и погода, живые активности (музыка, таймер, запись экрана, события Планера, «Afina думает») и панель с инструментами.
 
 > **Статус: базовая версия (v0.1)** — фундамент, который собирается, запускается и покрыт тестами.
+
+## Beta 0.6.0 — «Sunrise» 🌅
+
+- **Жидкий остров:** при открытии капли жидкого стекла сливаются в остров, свет расходится волной, содержимое появляется с 3D-наклоном; шесть стилей открытия; точки при клике убраны.
+- **Формы острова:** Остров, Вырез (прилегает к верху экрана), Капсула, Мини, Иней.
+- **Новая музыка:** 3D-обложка, настоящий логотип источника, полоса и низ острова пульсируют в такт, **своя громкость музыки** (общая не меняется), выбор плеера, радио, недавние.
+- **Текст песен синхронно:** позиция трека теперь уточняется, текст не отстаёт; можно сдвинуть раньше/позже.
+- **Чаты прямо в острове:** ChatGPT, Claude, Gemini, Perplexity, Copilot, DeepSeek, Telegram, WhatsApp, Discord.
+- **Уведомления** всех приложений ПК в острове (Windows спросит разрешение).
+- **Вкладка «Время»:** большие часы, прогресс дня/недели/года, солнце, луна, мировые часы, секундомер.
+- **Календарь, доска заметок и полка файлов** (перетащи файлы на остров: слева — на полку, справа — на рабочий стол). Подключение к Планеру пока убрано.
+- **Переводчик** с флагами, историей и недавними языками.
+- **Настоящие логотипы** приложений.
+- **Cloudy:** объёмный, в наушниках под музыку, говорит о том, что на экране, у него своя комната, может жить на рабочем столе.
+- **Виджеты:** меняй размер (на Главной и на рабочем столе); новые — голографическое **Лицо**, Заметки, Полка, День и год.
+- **Убрано:** запись экрана и раздел «Доступ».
 
 ## Beta 0.5.0 — «Sunrise» 🌅
 

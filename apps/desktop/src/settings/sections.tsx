@@ -1,9 +1,8 @@
 // All settings, in sections. The same sections appear stacked in the island's Settings tab and with a
 // sidebar in the separate Settings window. Every change is saved at once and the island updates live.
 import { useEffect, useState } from 'react';
-import { open } from '@tauri-apps/plugin-dialog';
 import { ArrowDown, ArrowUp, Plus, X } from 'lucide-react';
-import { call, inTauri, type CarouselItem, type MusicService, type Settings } from '../lib/ipc';
+import { call, type CarouselItem, type MusicService, type Settings } from '../lib/ipc';
 import { useT, useTr } from '../lib/i18n';
 import { saveSettings, useApp } from '../lib/store';
 import { ACCENTS, THEMES } from '../lib/theme';
@@ -13,11 +12,28 @@ import { Emoji } from '../lib/emoji';
 import { RELEASE } from '../lib/release';
 import { HotkeyField, Segment, Switch, WeatherPlace } from './parts';
 import { AccountSection } from './Account';
-import { AccessSection } from './Access';
 import { AiClipboardSection } from './AiClipboard';
 
 type S = Settings;
 const patch = <K extends keyof S>(key: K, cur: S[K], p: Partial<S[K]>) => void saveSettings({ [key]: { ...(cur as object), ...p } } as Partial<S>);
+
+/** The in-game overlay (FPS, CPU, GPU, RAM) and the developer notice. */
+function PerfSettings({ s }: { s: S }) {
+  const tr = useTr();
+  const perf = (s as unknown as { perf?: { enabled?: boolean; corner?: string } }).perf ?? {};
+  return (
+    <>
+      <Switch label={tr('In-game overlay: FPS, CPU, GPU and memory in fullscreen apps', 'Оверлей в играх: FPS, CPU, GPU и память в полноэкранных приложениях')} on={perf.enabled !== false} onChange={(enabled) => void saveSettings({ perf: { ...perf, enabled } } as unknown as Partial<Settings>)} />
+      <Segment
+        label={tr('Overlay corner', 'Угол оверлея')}
+        value={perf.corner ?? 'top-left'}
+        options={[['top-left', tr('Top left', 'Слева вверху')], ['top-right', tr('Top right', 'Справа вверху')], ['bottom-left', tr('Bottom left', 'Слева внизу')], ['bottom-right', tr('Bottom right', 'Справа внизу')]]}
+        onChange={(corner) => void saveSettings({ perf: { ...perf, corner } } as unknown as Partial<Settings>)}
+      />
+      <Switch label={tr('Show the developer notice at start', 'Показывать новости от разработчика при запуске')} on={s.newsAtStart} onChange={(newsAtStart) => void saveSettings({ newsAtStart })} />
+    </>
+  );
+}
 
 function General({ s }: { s: S }) {
   const t = useT();
@@ -26,6 +42,7 @@ function General({ s }: { s: S }) {
       <Segment label={t('set.language')} value={s.language} options={[['auto', 'Auto'], ['ru', 'Русский'], ['en', 'English']]} onChange={(language) => void saveSettings({ language })} />
       <Segment label={t('set.monitor')} value={s.monitor} options={[['primary', t('set.monitor.primary')], ['cursor', t('set.monitor.cursor')]]} onChange={(monitor) => void saveSettings({ monitor })} />
       <HotkeyField label={t.lang === 'ru' ? 'Остров и Афина' : 'Island & Afina'} />
+      <PerfSettings s={s} />
       <HotkeyField field="shotHotkey" label={t.lang === 'ru' ? 'Скриншот' : 'Screenshot'} />
       <Switch label={t('set.autostart')} on={s.autostart} onChange={(autostart) => void saveSettings({ autostart })} />
       <Switch label={t('set.dnd')} on={s.doNotDisturb} onChange={(doNotDisturb) => void saveSettings({ doNotDisturb })} />
@@ -66,12 +83,29 @@ function Personalise({ s }: { s: S }) {
         options={[['calm', tr('Calm', 'Спокойно')], ['balanced', tr('Balanced', 'Сбалансированно')], ['lively', tr('Lively', 'Живо')], ['off', tr('Off', 'Выкл')]]}
         onChange={(v) => void saveSettings(v === 'off' ? { motion: 'reduced' } : { motion: 'full', motionLevel: v as Settings['motionLevel'] })}
       />
+      <div className="setting col">
+        <span>{tr('Island shape', 'Форма острова')}</span>
+        <div className="shape-pick">
+          {(['island', 'notch', 'capsule', 'mini', 'frost'] as const).map((id) => {
+            const on = ((s as unknown as { islandShape?: string }).islandShape ?? 'island') === id;
+            const names: Record<string, [string, string]> = { island: ['Island', 'Остров'], notch: ['Notch', 'Вырез'], capsule: ['Capsule', 'Капсула'], mini: ['Mini', 'Мини'], frost: ['Frost', 'Иней'] };
+            return (
+              <button key={id} className={`shape-opt ${on ? 'on' : ''}`} onClick={() => void saveSettings({ islandShape: id } as unknown as Partial<Settings>)}>
+                <span className={`shape-prev ${id}`} />
+                <span className="tiny">{tr(...names[id])}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <Segment
         label={tr('Opening animation', 'Анимация открытия')}
-        value={(s as unknown as { openStyle?: string }).openStyle ?? 'morph'}
-        options={[['morph', tr('Morph', 'Плавно')], ['unfold', tr('Unfold', 'Разворот')], ['drop', tr('Drop', 'Сверху')], ['zoom', tr('Zoom', 'Масштаб')]]}
+        value={(s as unknown as { openStyle?: string }).openStyle ?? 'liquid'}
+        options={[['liquid', tr('Liquid', 'Жидкость')], ['depth', tr('3D', '3D')], ['morph', tr('Morph', 'Плавно')], ['unfold', tr('Unfold', 'Разворот')], ['drop', tr('Drop', 'Сверху')], ['zoom', tr('Zoom', 'Масштаб')]]}
         onChange={(openStyle) => void saveSettings({ openStyle } as unknown as Partial<Settings>)}
       />
+      <Switch label={tr('Liquid glass (follows the cursor, squishes, wobbles)', 'Жидкое стекло (следует за курсором, пружинит, колышется)')} on={s.liquid.enabled} onChange={(enabled) => void saveSettings({ liquid: { ...s.liquid, enabled } })} />
+      <Switch label={tr('Move with the beat of the music', 'Двигаться в такт музыке')} on={s.liquid.beat} onChange={(beat) => void saveSettings({ liquid: { ...s.liquid, beat } })} />
       <Switch label={tr('Open the island when the cursor rests on it', 'Открывать остров при наведении курсора')} on={s.hoverOpen} onChange={(hoverOpen) => void saveSettings({ hoverOpen })} />
       <div className="setting">
         <span>
@@ -303,51 +337,6 @@ function WeatherToday({ s }: { s: S }) {
   );
 }
 
-function Recordings({ s }: { s: S }) {
-  const t = useT();
-  const pick = async () => {
-    const dir = inTauri ? await open({ directory: true }) : null;
-    if (typeof dir === 'string') patch('recording', s.recording, { folder: dir });
-  };
-  return (
-    <>
-      <div className="setting">
-        <span>{t('rec.folder')}</span>
-        <button className="link small ellipsis" onClick={() => void pick()}>
-          {s.recording.folder || (t.lang === 'ru' ? 'Видео / Eternal Helper' : 'Videos / Eternal Helper')}
-        </button>
-      </div>
-      <Segment
-        label={t('rec.audio')}
-        value={s.recording.audio}
-        options={[['none', t('rec.audio.none')], ['system', t('rec.audio.system')], ['system+mic', t('rec.audio.mic')]]}
-        onChange={(audio) => patch('recording', s.recording, { audio })}
-      />
-    </>
-  );
-}
-
-function Planner({ s }: { s: S }) {
-  const t = useT();
-  return (
-    <div className="setting">
-      <span>{t('set.port')}</span>
-      <input
-        className="field mono narrow"
-        type="number"
-        min={1024}
-        max={65535}
-        defaultValue={s.planner.port}
-        onBlur={(e) => {
-          const port = parseInt(e.target.value, 10);
-          if (port >= 1024 && port <= 65535 && port !== s.planner.port) patch('planner', s.planner, { port });
-        }}
-        aria-label={t('set.port')}
-      />
-    </div>
-  );
-}
-
 function Cloudy({ s }: { s: S }) {
   const tr = useTr();
   const c = s.cloudy;
@@ -461,16 +450,13 @@ export interface Section {
 
 export const SECTIONS: Section[] = [
   { id: 'account', emoji: '👤', title: ['Account', 'Аккаунт'], desc: ['Your profile and connected services', 'Профиль и подключённые сервисы'], keywords: 'account profile sign in login name email city avatar аккаунт профиль войти имя почта город', Body: AccountSection },
-  { id: 'access', emoji: '🔐', title: ['Full access & motion', 'Доступ и движение'], desc: ['Always on top, liquid glass, the beat', 'Всегда сверху, жидкое стекло, ритм'], keywords: 'full access permission always on top priority liquid glass beat music news доступ разрешение поверх жидкое стекло ритм новости', Body: AccessSection },
-  { id: 'personal', emoji: '✨', title: ['Personalise', 'Под себя'], desc: ['Your name, sizes, clock, animations and tabs', 'Имя, размеры, часы, анимации и вкладки'], keywords: 'name size scale text font opacity clock 24 seconds animation motion tabs имя размер текст шрифт прозрачность часы секунды анимация вкладки', Body: Personalise },
+  { id: 'personal', emoji: '✨', title: ['Personalise', 'Под себя'], desc: ['Island shape, animations, sizes and clock', 'Форма острова, анимации, размеры и часы'], keywords: 'name size scale text font opacity clock 24 seconds animation motion tabs shape notch capsule mini frost liquid glass beat 3d имя размер текст шрифт прозрачность часы секунды анимация вкладки форма вырез капсула жидкое стекло ритм', Body: Personalise },
   { id: 'appearance', emoji: '🎨', title: ['Appearance', 'Внешний вид'], desc: ['Theme, colour, corners and the widgets in the pill', 'Тема, цвет, углы и виджеты в пилюле'], keywords: 'theme glass neon minimal accent colour color corner radius carousel widgets тема стекло неон цвет акцент углы карусель виджеты', Body: Appearance },
   { id: 'general', emoji: '⚙️', title: ['General', 'Общие'], desc: ['Language, monitor, shortcuts and start-up', 'Язык, монитор, горячие клавиши и запуск'], keywords: 'language monitor shortcut hotkey screenshot autostart login dnd fullscreen язык монитор клавиши скриншот автозапуск не беспокоить', Body: General },
-  { id: 'ai', emoji: '🤖', title: ['AI & clipboard', 'ИИ и буфер обмена'], desc: ['Your AI accounts and copy history', 'ИИ-аккаунты и история копирования'], keywords: 'ai chatgpt claude gemini perplexity copilot deepseek account clipboard copy paste history ии аккаунт буфер копировать история', Body: AiClipboardSection },
-  { id: 'music', emoji: '🎧', title: ['Music accounts', 'Музыка'], desc: ['Spotify, Yandex Music and SoundCloud', 'Spotify, Яндекс Музыка и SoundCloud'], keywords: 'spotify yandex soundcloud music player музыка плеер яндекс', Body: Music },
+  { id: 'ai', emoji: '💬', title: ['Chats & clipboard', 'Чаты и буфер обмена'], desc: ['AI and messenger accounts, copy history', 'ИИ и мессенджеры, история копирования'], keywords: 'telegram whatsapp discord messenger мессенджер ai chatgpt claude gemini perplexity copilot deepseek account clipboard copy paste history ии аккаунт буфер копировать история', Body: AiClipboardSection },
+  { id: 'music', emoji: '🎧', title: ['Music accounts', 'Музыка'], desc: ['Spotify, Yandex Music, YouTube Music, SoundCloud', 'Spotify, Яндекс Музыка, YouTube Music, SoundCloud'], keywords: 'spotify yandex soundcloud music player музыка плеер яндекс', Body: Music },
   { id: 'today', emoji: '🌤️', title: ['Weather & Today', 'Погода и «Сегодня»'], desc: ['City, currency pairs and world clocks', 'Город, валюты и мировые часы'], keywords: 'weather city currency rates clocks time zone погода город валюта курс часы пояс', Body: WeatherToday },
   { id: 'cloudy', emoji: '☁️', title: ['Cloudy', 'Cloudy'], desc: ['Your desktop cloud: size, speed and chatter', 'Облачко на рабочем столе: размер, скорость, реплики'], keywords: 'cloudy pet cloud feed облачко питомец кормить', Body: Cloudy },
-  { id: 'recordings', emoji: '🎬', title: ['Recordings', 'Записи'], desc: ['Where videos go and which sound is recorded', 'Куда сохраняются видео и какой звук пишется'], keywords: 'record video screen folder sound microphone запись видео экран папка звук микрофон', Body: Recordings },
-  { id: 'planner', emoji: '🗓️', title: ['Universal Planner', 'Universal Planner'], desc: ['The local connection to your planner', 'Подключение к планеру'], keywords: 'planner webhook port backup планер порт', Body: Planner },
   { id: 'updates', emoji: '🔄', title: ['Updates', 'Обновления'], desc: ['Check for and install new versions', 'Проверка и установка новых версий'], keywords: 'update version release обновление версия', Body: Updates },
   { id: 'developer', emoji: '🛠️', title: ['For developers', 'Для разработчиков'], desc: ['Debug overlays', 'Отладка'], keywords: 'debug safe area notch отладка вырез', Body: Developer },
   { id: 'about', emoji: '💙', title: ['About', 'О программе'], desc: ['Version and credits', 'Версия и авторы'], keywords: 'about version eternal inc о программе версия', Body: () => <About /> },

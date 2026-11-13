@@ -7,7 +7,10 @@ import { call, emitEvent } from '../lib/ipc';
 import type { LibSub } from '../lib/store';
 import { useTr } from '../lib/i18n';
 import { openLibrary, openPanel, saveSettings, takeScreenshot, timerLeft, useApp } from '../lib/store';
-import { toggleRecording } from '../lib/recorder';
+import { CalendarView, useEvents, ymd } from '../library/CalendarView';
+import { NotesBoard, useNotes } from '../library/NotesBoard';
+import { ShelfView, useShelf } from '../library/ShelfView';
+import { NotifyView } from '../library/NotifyView';
 import { readControls, setControl, slideControl, systemAction, useControls } from '../lib/controls';
 import { BigSlider } from '../components/BigSlider';
 import { Emoji } from '../lib/emoji';
@@ -18,7 +21,6 @@ import { CalcView } from '../library/CalcView';
 import { TranslateView } from '../library/TranslateView';
 import { WifiView } from '../library/WifiView';
 import { WeatherTab } from './WeatherTab';
-import { PlannerTab } from './PlannerTab';
 import { CapturesView } from '../library/CapturesView';
 import { ClipboardTab } from './ClipboardTab';
 
@@ -64,7 +66,10 @@ function Tool({ emoji, label, sub, onClick, hot, i = 0 }: { emoji: string; label
 
 const TITLES: Record<LibSub, [string, string, string]> = {
   weather: ['🌤️', 'Weather', 'Погода'],
-  planner: ['🗓️', 'Planner', 'Планер'],
+  calendar: ['🗓️', 'Calendar', 'Календарь'],
+  notes: ['📝', 'Notes', 'Заметки'],
+  shelf: ['🗂️', 'Shelf', 'Полка'],
+  notify: ['🔔', 'Notifications', 'Уведомления'],
   videos: ['🎬', 'Captures', 'Снимки и записи'],
   text: ['📋', 'Clipboard', 'Буфер обмена'],
   timer: ['⏱️', 'Timer', 'Таймер'],
@@ -78,8 +83,14 @@ function SubView({ sub }: { sub: LibSub }) {
   switch (sub) {
     case 'weather':
       return <WeatherTab />;
-    case 'planner':
-      return <PlannerTab />;
+    case 'calendar':
+      return <CalendarView />;
+    case 'notes':
+      return <NotesBoard />;
+    case 'shelf':
+      return <ShelfView />;
+    case 'notify':
+      return <NotifyView />;
     case 'videos':
       return <CapturesView />;
     case 'text':
@@ -103,8 +114,11 @@ export function LibraryTab() {
   const c = useControls((s) => s.c);
   const dnd = useApp((s) => s.settings?.doNotDisturb ?? false);
   const timer = useApp((s) => s.timer);
-  const rec = useApp((s) => s.rec.status);
-  const planner = useApp((s) => s.planner);
+  const events = useEvents();
+  const notes = useNotes();
+  const shelf = useShelf();
+  const notifs = useApp((s) => s.notifications.length);
+  const todayEvents = events.filter((e) => e.date === ymd(new Date())).length;
   const weather = useApp((s) => s.weather);
   const now = useNow(1000);
 
@@ -119,17 +133,19 @@ export function LibraryTab() {
   const volIcon = c?.muted || c?.volume === 0 ? <VolumeX size={16} /> : (c?.volume ?? 0) < 50 ? <Volume1 size={16} /> : <Volume2 size={16} />;
   const tools: Parameters<typeof Tool>[0][] = [
     { emoji: '🌤️', label: tr('Weather', 'Погода'), sub: weather ? `${weather.temp}°` : undefined, onClick: () => openLibrary('weather') },
-    { emoji: '🗓️', label: tr('Planner', 'Планер'), sub: planner ? `${planner.tasksToday.length}` : undefined, onClick: () => openLibrary('planner') },
+    { emoji: '🗓️', label: tr('Calendar', 'Календарь'), sub: todayEvents ? `${todayEvents}` : undefined, onClick: () => openLibrary('calendar') },
+    { emoji: '📝', label: tr('Notes', 'Заметки'), sub: notes.length ? `${notes.length}` : undefined, onClick: () => openLibrary('notes') },
+    { emoji: '🗂️', label: tr('Shelf', 'Полка'), sub: shelf.length ? `${shelf.length}` : undefined, onClick: () => openLibrary('shelf') },
+    { emoji: '🔔', label: tr('Alerts', 'Уведомл.'), sub: notifs ? `${notifs}` : undefined, onClick: () => openLibrary('notify'), hot: notifs > 0 },
     { emoji: '⏱️', label: tr('Timer', 'Таймер'), sub: timer ? fmtClock(timerLeft(timer, now)) : undefined, onClick: () => openLibrary('timer'), hot: !!timer },
     { emoji: '📷', label: tr('Screenshot', 'Скриншот'), onClick: () => void takeScreenshot() },
-    { emoji: '🎥', label: rec === 'idle' ? tr('Record', 'Запись') : tr('Stop rec', 'Стоп'), onClick: toggleRecording, hot: rec !== 'idle' },
-    { emoji: '🎬', label: tr('Captures', 'Снимки'), onClick: () => openLibrary('videos') },
-    { emoji: '📻', label: tr('Radio', 'Радио'), onClick: () => openPanel('music') },
-    { emoji: '🧮', label: tr('Calculator', 'Калькулятор'), onClick: () => openLibrary('calc') },
+    { emoji: '🖼️', label: tr('Captures', 'Снимки'), onClick: () => openLibrary('videos') },
     { emoji: '🌐', label: tr('Translator', 'Переводчик'), onClick: () => openLibrary('translate') },
+    { emoji: '🧮', label: tr('Calculator', 'Калькулятор'), onClick: () => openLibrary('calc') },
     { emoji: '📋', label: tr('Clipboard', 'Буфер'), onClick: () => openLibrary('text') },
+    { emoji: '📻', label: tr('Radio', 'Радио'), onClick: () => openPanel('music') },
     { emoji: '☁️', label: 'Cloudy', onClick: () => void call('open_window', { kind: 'pet' }) },
-    { emoji: '🤖', label: tr('AI', 'ИИ'), onClick: () => (openPanel('ai'), useApp.setState((s) => ({ focusAfina: s.focusAfina + 1 }))) },
+    { emoji: '💬', label: tr('Chats', 'Чаты'), onClick: () => openPanel('ai') },
     { emoji: '🔐', label: tr('Lock', 'Блокировка'), onClick: () => void systemAction('lock') },
     { emoji: '💤', label: tr('Sleep', 'Сон'), onClick: () => void systemAction('sleep') },
   ];

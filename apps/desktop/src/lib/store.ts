@@ -1,14 +1,14 @@
 // One store for the island: settings, which view is open, live activities and toasts.
 import { create } from 'zustand';
 import { withDefaults } from './defaults';
-import { call, type Battery, type Layout, type MediaInfo, type MusicReport, type PlannerEvent, type PlannerSnapshot, type Settings } from './ipc';
+import { call, type Battery, type Layout, type MediaInfo, type MusicReport, type PcNotification, type PlannerEvent, type PlannerSnapshot, type Settings } from './ipc';
 
-export type Tab = 'home' | 'music' | 'library' | 'ai' | 'planner' | 'videos' | 'text' | 'weather' | 'settings';
-/** The island has four tabs; the other screens live inside Library. */
-export type MainTab = 'home' | 'music' | 'library' | 'ai' | 'settings';
-export type LibSub = 'weather' | 'planner' | 'videos' | 'text' | 'timer' | 'calc' | 'translate' | 'wifi' | 'radio';
-export const MAIN_TABS: MainTab[] = ['home', 'music', 'library', 'ai', 'settings'];
-const IN_LIBRARY: Tab[] = ['weather', 'planner', 'videos', 'text'];
+export type Tab = 'home' | 'music' | 'time' | 'library' | 'ai' | 'calendar' | 'notes' | 'shelf' | 'notify' | 'videos' | 'text' | 'weather' | 'settings';
+/** The island's main tabs; the other screens live inside Library. */
+export type MainTab = 'home' | 'music' | 'time' | 'library' | 'ai' | 'settings';
+export type LibSub = 'weather' | 'calendar' | 'notes' | 'shelf' | 'notify' | 'videos' | 'text' | 'timer' | 'calc' | 'translate' | 'wifi' | 'radio';
+export const MAIN_TABS: MainTab[] = ['home', 'music', 'time', 'library', 'ai', 'settings'];
+const IN_LIBRARY: Tab[] = ['weather', 'calendar', 'notes', 'shelf', 'notify', 'videos', 'text'];
 export type View = 'idle' | 'panel';
 
 export type Hud =
@@ -113,6 +113,18 @@ interface AppState {
   toasts: Toast[];
   /** Counters Cloudy reacts to (a timer finished, something went wrong). */
   pulse: { timer: number; error: number };
+  /** A chat to show in the Chats tab (from Home, Cloudy or a live activity), with an optional question. */
+  chatRequest: { service: string; prompt: string | null; n: number } | null;
+  /** Notifications from other apps on this PC (this session only, newest first). */
+  notifications: PcNotification[];
+  /** A chat's web view is showing over the panel (the island keeps the mouse and keyboard for it). */
+  chatOpen: boolean;
+  /** The newest notification, shown in the pill for a few seconds. */
+  notifFlash: PcNotification | null;
+  /** Files are being dragged over the island. */
+  dropping: boolean;
+  /** The music app's own volume (0..1), separate from the system volume; null when unknown. */
+  musicVolume: number | null;
 }
 
 export const useApp = create<AppState>(() => ({
@@ -144,6 +156,12 @@ export const useApp = create<AppState>(() => ({
   weather: null,
   toasts: [],
   pulse: { timer: 0, error: 0 },
+  chatRequest: null,
+  notifications: [],
+  notifFlash: null,
+  chatOpen: false,
+  dropping: false,
+  musicVolume: null,
 }));
 
 const set = useApp.setState;
@@ -157,6 +175,13 @@ export function openPanel(tab?: Tab, opts: { hover?: boolean } = {}) {
     return { view: 'panel', pinned: s.view === 'panel' ? s.pinned || !hover : !hover, ...into };
   });
   void call('island_set_expanded', { expanded: true, focus: get().pinned });
+}
+
+/** Opens a chat (AI or messenger) inside the island, with the question filled in where the service allows. */
+export function openChat(service: string, prompt: string | null = null) {
+  set((s) => ({ chatRequest: { service, prompt, n: (s.chatRequest?.n ?? 0) + 1 } }));
+  openPanel('ai');
+  pinPanel();
 }
 
 /** Opens a sheet (developer notice, full-access request) over the panel. */
@@ -182,6 +207,7 @@ export function pinPanel() {
 export function closePanel() {
   if (get().view === 'idle') return;
   set({ view: 'idle', pinned: false, closedAt: Date.now(), sheet: null });
+  void call('chat_hide');
   void call('island_set_expanded', { expanded: false });
 }
 
@@ -228,6 +254,18 @@ export function toast(text: string, opts: Omit<Toast, 'id' | 'text'> & { force?:
 
 export function dismissToast(id: number) {
   set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) }));
+}
+
+// ---------- Notifications from other apps ----------
+
+let notifTimer: ReturnType<typeof setTimeout> | undefined;
+/** A notification arrived from another app: keep it in the list and flash it in the pill. */
+export function pushNotification(n: PcNotification) {
+  set((s) => ({ notifications: [n, ...s.notifications.filter((x) => x.id !== n.id)].slice(0, 60) }));
+  if (get().settings?.doNotDisturb) return;
+  clearTimeout(notifTimer);
+  set({ notifFlash: n });
+  notifTimer = setTimeout(() => set({ notifFlash: null }), 6000);
 }
 
 // ---------- Timer ----------
