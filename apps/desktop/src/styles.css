@@ -1853,3 +1853,37 @@ html[data-level='calm'] .cover3d.playing .vinyl2 { animation-duration: 9s; }
 .time-date, .cal-month, .cal-day-title { text-transform: none; }
 .time-date::first-letter, .cal-month::first-letter, .cal-day-title::first-letter { text-transform: uppercase; }
 .weather-tab { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #ffffff22 transparent; }
+
+/* ---------- Music 0.8.3: compact, fits any panel height ---------- */
+.music2 { gap: 8px; }
+.m3-top { display: flex; gap: 14px; align-items: center; flex: none; }
+.music2 .cover3d { width: 104px; height: 104px; }
+.music2 .cover3d-card { border-radius: 14px; }
+.music2 .vinyl2 { inset: 6px; }
+.music2 .cover3d.playing .vinyl2 { transform: translateX(30px); animation-name: spin3; }
+@keyframes spin3 { from { transform: translateX(30px) rotate(0); } to { transform: translateX(30px) rotate(360deg); } }
+.music2 .cover3d-reflect { display: none; }
+.m3-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding-left: 30px; position: relative; }
+.music2 .m2-title { font-size: 19px; }
+.m3-info .viz2 { position: static; height: 14px; padding: 0; margin-top: 4px; }
+.music2 .seek2 { flex: none; height: 20px; padding: 0 2px; }
+.music2 .seek2.empty { height: 6px; }
+.m3-controls { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; flex: none; }
+.m3-buttons { display: flex; align-items: center; gap: 18px; }
+.m3-skip { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--text); transition: background 0.2s; }
+.m3-skip:hover { background: rgba(255, 255, 255, 0.1); }
+.music2 .play-btn.big { width: 50px; height: 50px; }
+.m3-side.right { display: flex; justify-content: flex-end; }
+.music2 .mvol { width: 160px; }
+.music2 .m2-panes { min-height: 120px; }
+.music2 .m2-pane { overflow: hidden; }
+.music2 .m2-pane > .players, .music2 .m2-pane > .stations, .music2 .m2-pane > .recent { overflow-y: auto; }
+.music2 .m2-pane .ly { font-size: 18px; }
+.music2 .m2-tabs { flex-wrap: nowrap; overflow: hidden; }
+.music2 .m2-tabs > button { flex: none; }
+.music2 .lyr-badge { white-space: nowrap; }
+.music2 .players { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.m3-controls { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; padding: 0 2px; }
+.m3-side.right { min-width: 0; }
+.music2 .mvol { width: 100%; max-width: 180px; min-width: 0; }
+.music2 .mvol input { min-width: 40px; }

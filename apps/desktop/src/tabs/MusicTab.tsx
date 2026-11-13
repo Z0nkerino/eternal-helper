@@ -259,11 +259,12 @@ export function MusicTab() {
   return (
     <div className={`music2 ${playing ? 'playing' : ''}`} style={cover ? { ['--cover' as string]: cover } : undefined}>
       <div className="aurora" aria-hidden><i /><i /><i /></div>
-      <div className="m2-hero">
+      {/* Now playing: cover, what it is, then one full-width seek bar and one row of big controls. */}
+      <div className="m3-top">
         <Cover art={art} playing={playing} />
-        <div className="m2-info">
+        <div className="m3-info">
           <div className="m2-src">
-            <AppLogo name={srcName} size={16} fallback={<Disc3 size={13} className="faint" />} />
+            <AppLogo name={srcName} size={15} fallback={<Disc3 size={13} className="faint" />} />
             <span className="tiny faint ellipsis">{srcName || tr('Nothing playing', 'Ничего не играет')}</span>
             <span className="grow" />
             {m && (
@@ -273,32 +274,36 @@ export function MusicTab() {
             )}
           </div>
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={m?.title ?? 'none'} className="m2-meta" initial={{ opacity: 0, x: 14, filter: 'blur(4px)' }} animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, x: -14, filter: 'blur(4px)' }} transition={{ duration: 0.26 }}>
+            <motion.div key={m?.title ?? 'none'} className="m2-meta" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.22 }}>
               <Marquee className="m2-title" text={m?.title ?? track.title} />
-              <div className="small muted ellipsis">{m ? m.artist || tr('Unknown artist', 'Неизвестный исполнитель') : tr('Eternal Radio · press play', 'Eternal Radio · нажми play')}</div>
-              {m?.album && <div className="tiny faint ellipsis"><Disc3 size={10} /> {m.album}</div>}
+              <div className="small muted ellipsis">
+                {m ? m.artist || tr('Unknown artist', 'Неизвестный исполнитель') : tr('Eternal Radio · press play', 'Eternal Radio · нажми play')}
+                {m?.album ? <span className="faint"> · {m.album}</span> : null}
+              </div>
             </motion.div>
           </AnimatePresence>
-          {dur && pos != null ? <Seek pos={pos} dur={dur} /> : <div className="seek2 empty" />}
-          <div className="m2-controls">
-            <motion.button className="icon-btn" whileTap={{ scale: 0.82 }} aria-label="Previous" onClick={() => void mediaControl('previous')} disabled={!m}>
-              <SkipBack size={20} fill="currentColor" />
-            </motion.button>
-            <motion.button className={`play-btn big ${playing ? 'pulse' : ''}`} whileTap={{ scale: 0.86 }} whileHover={{ scale: 1.07 }} aria-label={playing ? 'Pause' : 'Play'} onClick={toggle}>
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.span key={playing ? 'pause' : 'play'} initial={{ scale: 0.3, opacity: 0, rotate: -40 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 0.3, opacity: 0, rotate: 40 }} transition={{ type: 'spring', stiffness: 500, damping: 26 }}>
-                  {playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}
-                </motion.span>
-              </AnimatePresence>
-            </motion.button>
-            <motion.button className="icon-btn" whileTap={{ scale: 0.82 }} aria-label="Next" onClick={() => void mediaControl('next')} disabled={!m}>
-              <SkipForward size={20} fill="currentColor" />
-            </motion.button>
-            <span className="grow" />
-            <MusicVolume />
-          </div>
+          <Visualizer playing={playing} radio={isRadio} />
         </div>
-        <Visualizer playing={playing} radio={isRadio} />
+      </div>
+      {dur && pos != null ? <Seek pos={pos} dur={dur} /> : <div className="seek2 empty" />}
+      <div className="m3-controls">
+        <span className="m3-side" />
+        <div className="m3-buttons">
+          <motion.button className="m3-skip" whileTap={{ scale: 0.82 }} aria-label="Previous" title={tr('Previous', 'Назад')} onClick={() => void mediaControl('previous')} disabled={!m}>
+            <SkipBack size={20} fill="currentColor" />
+          </motion.button>
+          <motion.button className={`play-btn big ${playing ? 'pulse' : ''}`} whileTap={{ scale: 0.86 }} whileHover={{ scale: 1.06 }} aria-label={playing ? 'Pause' : 'Play'} onClick={toggle}>
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span key={playing ? 'pause' : 'play'} initial={{ scale: 0.3, opacity: 0, rotate: -40 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} exit={{ scale: 0.3, opacity: 0, rotate: 40 }} transition={{ type: 'spring', stiffness: 500, damping: 26 }}>
+                {playing ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}
+              </motion.span>
+            </AnimatePresence>
+          </motion.button>
+          <motion.button className="m3-skip" whileTap={{ scale: 0.82 }} aria-label="Next" title={tr('Next', 'Дальше')} onClick={() => void mediaControl('next')} disabled={!m}>
+            <SkipForward size={20} fill="currentColor" />
+          </motion.button>
+        </div>
+        <span className="m3-side right"><MusicVolume /></span>
       </div>
       <div className="m2-panes">
         <div className="m2-tabs">

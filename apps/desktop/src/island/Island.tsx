@@ -24,7 +24,7 @@ import { LiquidBurst } from './LiquidBurst';
 
 const PANEL_W = 660;
 /** Each tab gets the height it needs; the island springs between them. */
-const PANEL_H: Record<MainTab, number> = { home: 350, music: 500, time: 486, library: 470, ai: 560, settings: 470 };
+const PANEL_H: Record<MainTab, number> = { home: 350, music: 470, time: 486, library: 470, ai: 560, settings: 470 };
 const SUB_H: Record<LibSub, number> = { weather: 500, calendar: 470, notes: 500, shelf: 460, notify: 480, videos: 500, text: 470, timer: 452, calc: 452, translate: 500, wifi: 452, radio: 400 };
 
 /** Normal top padding of the open panel when there's no notch to clear. */
@@ -43,7 +43,10 @@ function useSize(activity: boolean, notch: { width: number; height: number } | n
   const font = useApp.getState().settings?.fontScale ?? 1;
   const ui = useApp.getState().settings?.uiScale ?? 1;
   const extra = p.notch ? p.contentTop - PANEL_PAD : 0;
-  const room = (typeof innerHeight === 'number' && innerHeight > 200 ? innerHeight : 760) / ui - 24;
+  // The window can be taller than a small (or scaled) screen, so the screen's own height counts too.
+  const win = typeof innerHeight === 'number' && innerHeight > 200 ? innerHeight : 760;
+  const scr = typeof screen !== 'undefined' && screen.availHeight > 200 ? screen.availHeight - 40 : win;
+  const room = Math.min(win, scr) / ui - 24;
   const h = Math.min(Math.round(base * (1 + Math.max(0, font - 1) * 0.6)) + extra, Math.max(300, room));
   if (panel) return { w: PANEL_W, h, r: 30 };
   // Pill "wings" either side of the notch, wide enough for the clock and weather.
