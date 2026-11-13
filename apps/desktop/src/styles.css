@@ -1376,3 +1376,54 @@ html[data-view='video'] #root { animation: win-in 0.28s ease-out both; }
 .ve-actions { display: flex; align-items: center; gap: 8px; }
 .ve-notice { position: fixed; left: 50%; bottom: 70px; translate: -50% 0; display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 12px; background: #1e2a1f; color: #9be7a8; border: 0.5px solid #30d15855; box-shadow: 0 10px 30px #000a; }
 .ve-error { margin: auto; color: #ffb4ae; text-align: center; }
+
+/* ===================== In-game overlay ===================== */
+html[data-view='perf'], html[data-view='perf'] body, html[data-view='perf'] #root { background: transparent; }
+.perf { display: inline-flex; align-items: center; gap: 12px; height: 34px; margin: 5px; padding: 0 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.62); color: #fff; font-size: 12px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 0 0 0.5px rgba(255, 255, 255, 0.12); animation: win-in 0.3s ease-out both; }
+.perf-item { display: inline-flex; align-items: baseline; gap: 5px; }
+.perf-item b { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.55); }
+.perf-item.ok .mono { color: #7ef0a0; } .perf-item.warn .mono { color: #ffd166; } .perf-item.hot .mono { color: #ff7a6e; }
+.perf-item.time .mono { color: rgba(255, 255, 255, 0.8); }
+.perf-item .mono { transition: color 0.4s; font-weight: 600; }
+
+/* ===================== Desktop widgets ===================== */
+html[data-view='desk'], html[data-view='desk'] body, html[data-view='desk'] #root { background: transparent; }
+.desk { position: fixed; inset: 8px; border-radius: 24px; background: linear-gradient(160deg, rgba(28, 28, 34, 0.86), rgba(12, 12, 16, 0.9)); border: 0.5px solid rgba(255, 255, 255, 0.12); box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.6), inset 0 0.5px 0 rgba(255, 255, 255, 0.16); overflow: hidden; }
+.desk-in { inset: 0; padding: 16px; }
+.desk-bar { position: absolute; top: 0; left: 0; right: 0; z-index: 3; height: 22px; display: flex; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.2s; }
+.desk:hover .desk-bar { opacity: 1; }
+.desk-grip { display: grid; place-items: center; width: 60px; height: 18px; border-radius: 0 0 10px 10px; background: rgba(255, 255, 255, 0.1); color: var(--muted); cursor: grab; }
+.desk-x { position: absolute; right: 8px; top: 6px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; background: rgba(255, 255, 255, 0.1); color: var(--muted); }
+.desk-x:hover { background: var(--danger); color: #fff; }
+.desk .w-time { font-size: 46px; }
+.w-pick.on { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* ===================== Music 0.5 ===================== */
+.mp-track.seekable { position: relative; height: 6px; cursor: pointer; overflow: visible; transition: height 0.15s; touch-action: none; }
+.mp-track.seekable:hover, .mp-track.seekable.drag { height: 8px; }
+.mp-track.seekable .mp-fill { border-radius: 6px; }
+.mp-track.drag .mp-fill { transition: none; }
+.mp-thumb { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px #0008; opacity: 0; scale: 0.5; transition: opacity 0.15s, scale 0.2s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.mp-track.seekable:hover .mp-thumb, .mp-track.drag .mp-thumb { opacity: 1; scale: 1; }
+.marquee { overflow: hidden; white-space: nowrap; display: flex; justify-content: center; }
+.marquee.on { justify-content: flex-start; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.marquee.on span { padding-right: 40px; animation: marquee 14s linear infinite; flex: none; }
+@keyframes marquee { 0%, 12% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+.music-tags { display: flex; justify-content: center; gap: 6px; margin-top: 4px; min-width: 0; }
+.music-tags span { display: inline-flex; align-items: center; gap: 4px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 2px 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); color: var(--muted); }
+.music-vol { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 2px; }
+.music-vol input { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: linear-gradient(90deg, #fff var(--v), rgba(255, 255, 255, 0.16) var(--v)); outline: none; }
+.music-vol input::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px #0008; }
+.music-panes { display: flex; align-items: center; gap: 8px; }
+.music-panes .segmented button { display: inline-flex; align-items: center; gap: 5px; }
+.music-pane { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.lyr-badge { padding: 2px 8px; border-radius: 999px; background: rgba(76, 217, 123, 0.14); color: #7ef0a0; }
+.lyr-badge.approx { background: rgba(255, 207, 77, 0.14); color: #ffd166; }
+.lyr-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: var(--faint); max-width: 260px; }
+/* The play button breathes softly while music plays. */
+.play-btn { position: relative; }
+.play-btn.pulse::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--cover, #fff) 70%, transparent); animation: play-ring 2.4s ease-out infinite; pointer-events: none; }
+@keyframes play-ring { 0% { opacity: 0.7; scale: 1; } 100% { opacity: 0; scale: 1.35; } }
+html[data-level='calm'] .play-btn.pulse::after, html[data-level='calm'] .marquee.on span { animation: none; }
+.music { grid-template-columns: 240px 1fr; }
+.music-left { gap: 7px; }

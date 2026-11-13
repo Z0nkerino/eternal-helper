@@ -38,19 +38,22 @@ export async function installUpdate() {
   }
 }
 
+/** The version we already sent a system notification about (once per version). */
+let notified = '';
+
 export function startUpdateChecks() {
-  // Updates are required, so the check always runs: soon after start, then every hour. When one is found
-  // the island opens on the update screen.
+  // Updates are required, so the check always runs: soon after start, then every 30 minutes. A new
+  // version brings a system notification and opens the island on the update screen.
   const run = () =>
     void checkForUpdates().then((info) => {
-      if (info?.available && useApp.getState().view !== 'panel') openPanel('home', { hover: true });
+      if (!info?.available) return;
+      if (notified !== info.latest) {
+        notified = info.latest;
+        void call('notify', { title: tNow('upd.notifyTitle'), body: `${tNow('upd.available')} ${info.latest}. ${tNow('upd.notifyBody')}` }).catch(() => undefined);
+      }
+      if (useApp.getState().view !== 'panel') openPanel('home', { hover: true });
     });
   const first = setTimeout(run, 4_000);
-  const timer = setInterval(run, 3600_000);
-  // Remind once a day if an update is still waiting.
-  const remind = setInterval(() => {
-    const u = useApp.getState().update;
-    if (u?.available && u.progress == null) offered = '';
-  }, 24 * 3600_000);
-  return () => (clearTimeout(first), clearInterval(timer), clearInterval(remind));
+  const timer = setInterval(run, 30 * 60_000);
+  return () => (clearTimeout(first), clearInterval(timer));
 }

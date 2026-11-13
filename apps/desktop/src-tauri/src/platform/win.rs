@@ -102,6 +102,12 @@ impl MediaProvider for Media {
         };
         op.and_then(|o| o.get()).map(|_| ()).map_err(|e| e.to_string())
     }
+
+    fn seek(&self, ms: u64) -> Result<(), String> {
+        let s = session().map_err(|e| e.to_string())?;
+        // Positions are in 100-nanosecond units.
+        s.TryChangePlaybackPositionAsync(ms as i64 * 10_000).and_then(|o| o.get()).map(|_| ()).map_err(|e| e.to_string())
+    }
 }
 
 /// "Spotify.exe" / "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify" → "Spotify".

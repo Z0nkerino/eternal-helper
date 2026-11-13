@@ -95,6 +95,7 @@ fn open_editor(app: &AppHandle, monitor: &tauri::Monitor) -> Result<(), String> 
     }
     let w = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html#shot".into()))
         .title("Screenshot")
+        .additional_browser_args(&crate::webview_args())
         .decorations(false)
         .always_on_top(true)
         .skip_taskbar(true)

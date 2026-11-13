@@ -22,7 +22,7 @@ import { Rich } from '../lib/emoji';
 
 const PANEL_W = 660;
 /** Each tab gets the height it needs; the island springs between them. */
-const PANEL_H: Record<MainTab, number> = { home: 350, music: 420, library: 404, ai: 300, settings: 470 };
+const PANEL_H: Record<MainTab, number> = { home: 350, music: 460, library: 404, ai: 300, settings: 470 };
 const SUB_H: Record<LibSub, number> = { weather: 500, planner: 452, videos: 500, text: 470, timer: 452, calc: 452, translate: 480, wifi: 452, radio: 400 };
 
 /** Normal top padding of the open panel when there's no notch to clear. */
@@ -71,7 +71,41 @@ function useHitArea(refs: React.RefObject<HTMLElement>[]) {
   }, [pressing, ...refs.map((r) => r.current)]);
 }
 
+/**
+ * How the panel's content appears and disappears as the island opens and closes (the island's shape
+ * always springs between sizes). All quick and soft; picked in Settings → Personalise.
+ */
+const EASE = [0.25, 0.1, 0.25, 1] as const;
+const OPEN_STYLES = {
+  // Like iOS: the shape grows first, the content fades in as it settles.
+  morph: {
+    initial: { opacity: 0, scale: 0.98 },
+    animate: { opacity: 1, scale: 1, transition: { delay: 0.06, duration: 0.24, ease: EASE } },
+    exit: { opacity: 0, scale: 0.97, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } },
+  },
+  // Revealed from the top down, folded back up when closing.
+  unfold: {
+    initial: { opacity: 0.4, clipPath: 'inset(0% 0% 100% 0% round 28px)' },
+    animate: { opacity: 1, clipPath: 'inset(0% 0% 0% 0% round 28px)', transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] } },
+    exit: { opacity: 0, clipPath: 'inset(0% 0% 70% 0% round 28px)', transition: { duration: 0.16, ease: [0.4, 0, 1, 1] } },
+  },
+  // Settles in from just above, with a hint of spring.
+  drop: {
+    initial: { opacity: 0, y: -18 },
+    animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 380, damping: 30, delay: 0.04 } },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.12 } },
+  },
+  // Grows out of the pill.
+  zoom: {
+    initial: { opacity: 0, scale: 0.86 },
+    animate: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 360, damping: 28, delay: 0.03 } },
+    exit: { opacity: 0, scale: 0.9, transition: { duration: 0.13 } },
+  },
+} as const;
+type OpenStyle = keyof typeof OPEN_STYLES;
+
 function Panel({ p }: { p: PanelLayout }) {
+  const openStyle = useApp((s) => ((s.settings as unknown as { openStyle?: OpenStyle })?.openStyle && (s.settings as unknown as { openStyle: OpenStyle }).openStyle in OPEN_STYLES ? (s.settings as unknown as { openStyle: OpenStyle }).openStyle : 'morph'));
   const tab = useApp((s) => s.tab);
   const required = useApp((s) => !!s.update?.available);
   const Active = MODULES.find((m) => m.id === tab)?.tab ?? MODULES[0].tab!;
@@ -83,9 +117,7 @@ function Panel({ p }: { p: PanelLayout }) {
     <motion.div
       className={`panel tabs-${p.tabs}`}
       style={{ paddingTop: p.notch ? p.contentTop : PANEL_PAD }}
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1, transition: { delay: 0.06, duration: 0.24, ease: [0.25, 0.1, 0.25, 1] } }}
-      exit={{ opacity: 0, scale: 0.96, y: -4, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } }}
+      {...OPEN_STYLES[openStyle]}
       onPointerDown={pinPanel}
     >
       {p.notch && <NotchStrip notch={p.notch} width={PANEL_W} />}

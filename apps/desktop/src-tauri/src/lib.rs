@@ -4,6 +4,8 @@ mod afina_tools;
 mod ai_accounts;
 mod clipwatch;
 mod hud;
+mod perf;
+mod desk;
 mod cloudy;
 mod music;
 mod planner;
@@ -253,6 +255,26 @@ fn spawn_hit_test(app: AppHandle) {
     });
 }
 
+/// WebView2 options shared by every window (WebView2 needs them identical). Besides Tauri's defaults,
+/// screen recording picks the entire screen by itself, with no "what to share" picker, like a game
+/// recorder: Chromium selects the source whose name contains this text ("Entire screen" / "Screen 1",
+/// or "Весь экран" / "Экран 1" on Russian, Ukrainian or Kazakh Windows).
+pub fn webview_args() -> String {
+    format!("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --auto-select-desktop-capture-source={}", screen_source_name())
+}
+
+#[cfg(windows)]
+fn screen_source_name() -> &'static str {
+    // Primary language of the Windows UI: Russian 0x19, Ukrainian 0x22, Belarusian 0x23, Kazakh 0x3F.
+    let lang = unsafe { ::windows::Win32::Globalization::GetUserDefaultUILanguage() } & 0x3ff;
+    if [0x19, 0x22, 0x23, 0x3f].contains(&lang) { "кран" } else { "creen" }
+}
+
+#[cfg(not(windows))]
+fn screen_source_name() -> &'static str {
+    "creen"
+}
+
 /// "Full access" (granted by the user in the app): the island stays above everything, fullscreen apps
 /// included, and Afina may open apps. Stored as `fullAccess.granted` in the settings.
 pub fn full_access(s: &Settings) -> bool {
@@ -307,8 +329,11 @@ fn spawn_screen_watch(app: AppHandle) {
             let st = app.state::<AppState>();
             let s = st.settings.get();
             let priority = full_access(&s);
+            // The in-game overlay follows any fullscreen app (whether or not the island hides for it).
+            let fullscreen_now = detector.fullscreen_active();
+            perf::tick(&app, fullscreen_now && app.get_webview_window(screenshot::LABEL).is_none());
             // With full access the island never hides for fullscreen apps: it is always there.
-            let full = s.hide_in_fullscreen && !priority && detector.fullscreen_active();
+            let full = s.hide_in_fullscreen && !priority && fullscreen_now;
             // Act only after two identical readings in a row, so a single odd reading never makes the
             // island blink.
             streak = if full != hidden_for_fullscreen { streak.saturating_add(1) } else { 0 };
@@ -492,6 +517,17 @@ fn island_set_expanded(app: AppHandle, expanded: bool, focus: Option<bool>) {
 #[tauri::command]
 fn media_now(st: S) -> Option<MediaInfo> {
     st.last_media.lock().unwrap().clone()
+}
+
+#[tauri::command]
+async fn media_seek(app: AppHandle, ms: u64) -> Result<(), String> {
+    let media = app.state::<AppState>().media.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        platform::init_thread();
+        media.seek(ms)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -1024,6 +1060,33 @@ fn reveal_download(app: AppHandle, path: String) -> Result<(), String> {
     app.opener().reveal_item_in_dir(p).map_err(|e| e.to_string())
 }
 
+/// A system notification (Windows Action Center / macOS Notification Centre).
+#[tauri::command]
+fn desk_list(app: AppHandle) -> Vec<desk::DeskWidget> {
+    desk::list(&app)
+}
+
+#[tauri::command]
+async fn desk_add(app: AppHandle, id: String) -> Result<(), String> {
+    desk::add(&app, &id)
+}
+
+#[tauri::command]
+async fn desk_remove(app: AppHandle, id: String) -> Result<(), String> {
+    desk::remove(&app, &id)
+}
+
+#[tauri::command]
+fn desk_save_pos(app: AppHandle, id: String) -> Result<(), String> {
+    desk::save_pos(&app, &id)
+}
+
+#[tauri::command]
+fn notify(app: AppHandle, title: String, body: String) -> Result<(), String> {
+    use tauri_plugin_notification::NotificationExt;
+    app.notification().builder().title(title.chars().take(80).collect::<String>()).body(body.chars().take(240).collect::<String>()).show().map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn clip_list(st: tauri::State<'_, clipwatch::ClipState>) -> Vec<clipwatch::Clip> {
     st.items.lock().unwrap().clone()
@@ -1197,6 +1260,7 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         // Closing a music player only hides it, so the music keeps playing.
         .on_window_event(|window, event| {
@@ -1245,7 +1309,25 @@ pub fn run() {
                 log::warn!("{e}");
             }
             build_tray(&handle)?;
+            desk::restore(&handle);
 
+            // The island is created here (not in tauri.conf.json) so it gets the same WebView2 options as
+            // every other window — WebView2 requires that.
+            tauri::WebviewWindowBuilder::new(&handle, "island", tauri::WebviewUrl::App("index.html".into()))
+                .title("Eternal Helper")
+                .inner_size(ISLAND_W, ISLAND_H)
+                .decorations(false)
+                .transparent(true)
+                .always_on_top(true)
+                .visible_on_all_workspaces(true)
+                .skip_taskbar(true)
+                .resizable(false)
+                .shadow(false)
+                .focused(false)
+                .visible(false)
+                .background_color(tauri::webview::Color(0, 0, 0, 0))
+                .additional_browser_args(&webview_args())
+                .build()?;
             if let Some(w) = island(&handle) {
                 platform::style_island(&w);
                 platform::set_priority(&w, full_access(&app.state::<AppState>().settings.get()));
@@ -1325,6 +1407,12 @@ pub fn run() {
             afina_launch,
             reveal_download,
             island_save_pos,
+            notify,
+            media_seek,
+            desk_list,
+            desk_add,
+            desk_remove,
+            desk_save_pos,
             clip_list,
             clip_delete,
             clip_pin,

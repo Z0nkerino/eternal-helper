@@ -1,4 +1,4 @@
-//! Music accounts: Spotify, Yandex Music and SoundCloud.
+//! Music accounts: Spotify, Yandex Music, SoundCloud and YouTube Music.
 //!
 //! Each service opens its official web player in an app window. The user signs in on the service's own
 //! page (we never see the password); the login is kept in the app's web storage. A small script added
@@ -14,10 +14,11 @@ pub struct Service {
     pub url: &'static str,
 }
 
-pub const SERVICES: [Service; 3] = [
+pub const SERVICES: [Service; 4] = [
     Service { id: "spotify", name: "Spotify", url: "https://open.spotify.com/" },
     Service { id: "yandex", name: "Yandex Music", url: "https://music.yandex.ru/" },
     Service { id: "soundcloud", name: "SoundCloud", url: "https://soundcloud.com/" },
+    Service { id: "youtube", name: "YouTube Music", url: "https://music.youtube.com/" },
 ];
 
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq)]
@@ -66,6 +67,12 @@ const BRIDGE: &str = r#"
       const h = handlers[playing ? 'pause' : 'play'];
       if (h) return h({ action: playing ? 'pause' : 'play' });
       const m = media(); if (m) return m.paused ? m.play() : m.pause();
+      return;
+    }
+    if (action.startsWith('seek:')) {
+      const t = Number(action.slice(5)) / 1000;
+      if (handlers.seekto) return handlers.seekto({ action: 'seekto', seekTime: t });
+      const m = media(); if (m) m.currentTime = t;
       return;
     }
     const name = action === 'next' ? 'nexttrack' : 'previoustrack';
@@ -119,6 +126,7 @@ pub fn open(app: &AppHandle, id: &str, show: bool) -> Result<(), String> {
     }
     let mut b = WebviewWindowBuilder::new(app, label(id), WebviewUrl::External(svc.url.parse::<tauri::Url>().map_err(|e| e.to_string())?))
         .title(format!("{} — Eternal Helper", svc.name))
+        .additional_browser_args(&crate::webview_args())
         .inner_size(1100.0, 760.0)
         .min_inner_size(420.0, 520.0)
         .center()
@@ -131,7 +139,8 @@ pub fn open(app: &AppHandle, id: &str, show: bool) -> Result<(), String> {
 }
 
 pub fn control(app: &AppHandle, id: &str, action: &str) -> Result<(), String> {
-    if !["toggle", "next", "previous"].contains(&action) {
+    let seek = action.strip_prefix("seek:").is_some_and(|n| !n.is_empty() && n.len() < 12 && n.bytes().all(|b| b.is_ascii_digit()));
+    if !seek && !["toggle", "next", "previous"].contains(&action) {
         return Err("bad action".into());
     }
     let w = app.get_webview_window(&label(id)).ok_or("player isn't open")?;

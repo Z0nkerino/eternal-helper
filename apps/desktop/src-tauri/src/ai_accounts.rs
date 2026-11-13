@@ -58,7 +58,7 @@ pub fn open(app: &AppHandle, id: &str, prompt: Option<&str>) -> Result<bool, Str
         let _ = w.set_focus();
         return Ok(prefilled);
     }
-    let mut b = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(parsed)).title(format!("{} — Eternal Helper", s.name)).inner_size(980.0, 760.0).min_inner_size(420.0, 520.0).center();
+    let mut b = WebviewWindowBuilder::new(app, &label, WebviewUrl::External(parsed)).title(format!("{} — Eternal Helper", s.name)).inner_size(980.0, 760.0).min_inner_size(420.0, 520.0).center().additional_browser_args(&crate::webview_args());
     if let Some(ua) = crate::music::user_agent() {
         b = b.user_agent(ua);
     }

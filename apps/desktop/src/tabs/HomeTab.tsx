@@ -1,9 +1,10 @@
 // Home: your widgets on a small grid. "Edit" makes them wiggle: drag to reorder, × to remove, + to add
 // from the gallery. The island grows and shrinks to fit the rows.
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDownToLine, Check, Pencil, Plus, X } from 'lucide-react';
+import { ArrowDownToLine, Check, Monitor, Pencil, Plus, X } from 'lucide-react';
+import { call } from '../lib/ipc';
 import { installUpdate } from '../lib/updates';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTr } from '../lib/i18n';
 import { saveSettings, useApp } from '../lib/store';
 import { cellsOf, cellsOfWidget, MAX_CELLS, widget, WIDGETS, DEFAULT_WIDGETS } from '../home/widgets';
@@ -15,24 +16,37 @@ export function useHomeWidgets(): string[] {
 
 function Gallery({ ids, onAdd, onClose }: { ids: string[]; onAdd: (id: string) => void; onClose: () => void }) {
   const tr = useTr();
+  const [where, setWhere] = useState<'home' | 'desktop'>('home');
+  const [desk, setDesk] = useState<string[]>([]);
+  useEffect(() => void call('desk_list').then((l) => setDesk((l ?? []).map((w) => w.id))), []);
   const free = MAX_CELLS - cellsOf(ids);
-  const left = WIDGETS.filter((w) => !ids.includes(w.id));
+  const list = where === 'home' ? WIDGETS.filter((w) => !ids.includes(w.id)) : WIDGETS;
+  const toggleDesk = async (id: string) => {
+    const on = desk.includes(id);
+    setDesk((d) => (on ? d.filter((x) => x !== id) : [...d, id]));
+    await call(on ? 'desk_remove' : 'desk_add', { id }).catch(() => undefined);
+  };
   return (
     <motion.div className="w-gallery" initial={{ y: '100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: '100%', opacity: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 36 }}>
       <header className="row between">
-        <span className="w-gallery-title">{tr('Add a widget', 'Добавить виджет')}</span>
+        <div className="segmented">
+          <button className={where === 'home' ? 'on' : ''} onClick={() => setWhere('home')}>{tr('On Home', 'На Главную')}</button>
+          <button className={where === 'desktop' ? 'on' : ''} onClick={() => setWhere('desktop')}><Monitor size={12} /> {tr('On the desktop', 'На рабочий стол')}</button>
+        </div>
         <button className="icon-btn" onClick={onClose} aria-label={tr('Close', 'Закрыть')}><X size={16} /></button>
       </header>
-      {left.length === 0 && <p className="small muted">{tr('All widgets are on Home already.', 'Все виджеты уже на Главной.')}</p>}
+      {where === 'desktop' && <p className="tiny faint">{tr('Widgets on your desktop sit below your windows. Drag them by the grip at the top.', 'Виджеты на рабочем столе лежат под окнами. Перетаскивай их за полоску сверху.')}</p>}
+      {where === 'home' && list.length === 0 && <p className="small muted">{tr('All widgets are on Home already.', 'Все виджеты уже на Главной.')}</p>}
       <div className="w-gallery-grid">
-        {left.map((w, i) => {
-          const fits = cellsOfWidget(w) <= free;
+        {list.map((w, i) => {
+          const onDesk = desk.includes(w.id);
+          const fits = where === 'desktop' || cellsOfWidget(w) <= free;
           const Icon = w.icon;
           return (
-            <motion.button key={w.id} className="w-pick" disabled={!fits} onClick={() => onAdd(w.id)} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.025 }} whileHover={fits ? { y: -2 } : undefined} whileTap={fits ? { scale: 0.95 } : undefined}>
+            <motion.button key={w.id} className={`w-pick ${onDesk && where === 'desktop' ? 'on' : ''}`} disabled={!fits} onClick={() => (where === 'home' ? onAdd(w.id) : void toggleDesk(w.id))} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.025 }} whileHover={fits ? { y: -2 } : undefined} whileTap={fits ? { scale: 0.95 } : undefined}>
               <span className="w-pick-icon"><Icon size={18} /></span>
               <span className="small">{tr(...w.name)}</span>
-              <span className="tiny faint">{fits ? { s: tr('Small', 'Маленький'), m: tr('Medium', 'Средний'), w: tr('Wide', 'Широкий'), t: tr('Large', 'Большой') }[w.size] : tr('No room', 'Нет места')}</span>
+              <span className="tiny faint">{where === 'desktop' ? (onDesk ? tr('On the desktop ✓', 'На столе ✓') : tr('Add', 'Добавить')) : fits ? { s: tr('Small', 'Маленький'), m: tr('Medium', 'Средний'), w: tr('Wide', 'Широкий'), t: tr('Large', 'Большой') }[w.size] : tr('No room', 'Нет места')}</span>
             </motion.button>
           );
         })}

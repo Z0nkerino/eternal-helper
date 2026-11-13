@@ -9,7 +9,9 @@
     "cloudy",
     "pet",
     "shot",
-    "video-edit"
+    "video-edit",
+    "perf",
+    "desk-*"
   ],
   "permissions": [
     "core:default",
@@ -87,6 +89,12 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:window:allow-is-maximized",
+    "allow-notify",
+    "allow-media-seek",
+    "allow-desk-list",
+    "allow-desk-add",
+    "allow-desk-remove",
+    "allow-desk-save-pos",
     "allow-clip-list",
     "allow-clip-delete",
     "allow-clip-pin",

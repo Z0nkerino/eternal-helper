@@ -66,6 +66,12 @@ function Personalise({ s }: { s: S }) {
         options={[['calm', tr('Calm', 'Спокойно')], ['balanced', tr('Balanced', 'Сбалансированно')], ['lively', tr('Lively', 'Живо')], ['off', tr('Off', 'Выкл')]]}
         onChange={(v) => void saveSettings(v === 'off' ? { motion: 'reduced' } : { motion: 'full', motionLevel: v as Settings['motionLevel'] })}
       />
+      <Segment
+        label={tr('Opening animation', 'Анимация открытия')}
+        value={(s as unknown as { openStyle?: string }).openStyle ?? 'morph'}
+        options={[['morph', tr('Morph', 'Плавно')], ['unfold', tr('Unfold', 'Разворот')], ['drop', tr('Drop', 'Сверху')], ['zoom', tr('Zoom', 'Масштаб')]]}
+        onChange={(openStyle) => void saveSettings({ openStyle } as unknown as Partial<Settings>)}
+      />
       <Switch label={tr('Open the island when the cursor rests on it', 'Открывать остров при наведении курсора')} on={s.hoverOpen} onChange={(hoverOpen) => void saveSettings({ hoverOpen })} />
       <div className="setting">
         <span>
@@ -177,7 +183,7 @@ function Appearance({ s }: { s: S }) {
   );
 }
 
-const SERVICE_EMOJI: Record<MusicService['id'], string> = { spotify: '🟢', yandex: '🟡', soundcloud: '🟠' };
+const SERVICE_EMOJI: Record<MusicService['id'], string> = { spotify: '🟢', yandex: '🟡', soundcloud: '🟠', youtube: '🔴' };
 
 function Music({ s }: { s: S }) {
   const tr = useTr();

@@ -8,6 +8,8 @@ import { CloudyStage, type MoodSignal } from './cloudy/CloudyStage';
 import { PetWindow } from './cloudy/PetWindow';
 import { ShotEditor } from './shot/ShotEditor';
 import { VideoEditor } from './video/VideoEditor';
+import { PerfOverlay } from './perf/PerfOverlay';
+import { DesktopWidget } from './home/DesktopWidget';
 import { call, emitEvent, inTauri, listen, type Layout, type MediaInfo, type Settings } from './lib/ipc';
 import { closePanel, openPanel, openSheet, saveSettings, showHud, tickTimer, toast, useApp, type Hud, type Tab } from './lib/store';
 import { useControls } from './lib/controls';
@@ -23,7 +25,7 @@ import { tNow } from './lib/i18n';
 import { RELEASE } from './lib/release';
 import './styles.css';
 
-type View = { kind: 'island' } | { kind: 'settings' } | { kind: 'panel'; tab: Tab } | { kind: 'cloudy' } | { kind: 'pet' } | { kind: 'shot' } | { kind: 'video'; path: string };
+type View = { kind: 'island' } | { kind: 'settings' } | { kind: 'panel'; tab: Tab } | { kind: 'cloudy' } | { kind: 'pet' } | { kind: 'shot' } | { kind: 'video'; path: string } | { kind: 'perf' } | { kind: 'desk'; id: string };
 
 function currentView(): View {
   const h = location.hash.replace(/^#/, '');
@@ -32,6 +34,8 @@ function currentView(): View {
   if (h === 'cloudy') return { kind: 'cloudy' };
   if (h === 'pet') return { kind: 'pet' };
   if (h === 'shot') return { kind: 'shot' };
+  if (h === 'perf') return { kind: 'perf' };
+  if (h.startsWith('desk/')) return { kind: 'desk', id: h.slice(5) };
   if (h.startsWith('video/')) return { kind: 'video', path: decodeURIComponent(h.slice(6)) };
   return { kind: 'island' };
 }
@@ -55,7 +59,7 @@ async function bootCommon(view: View) {
   listen<Layout>('island://layout', (layout) => useApp.setState({ layout }));
   startMusicSync();
   // The pet and settings windows don't show weather or the Planner: skip the network work there.
-  if (view.kind === 'island' || view.kind === 'panel') {
+  if (view.kind === 'island' || view.kind === 'panel' || view.kind === 'desk') {
     void refreshWeather();
     setInterval(() => void refreshWeather(), 30 * 60_000);
     startPlannerSync();
@@ -191,8 +195,8 @@ if (!inTauri && import.meta.env.DEV) {
 }
 
 const view = currentView();
-if (view.kind === 'cloudy') {
-  document.documentElement.dataset.view = 'cloudy';
+if (view.kind === 'cloudy' || view.kind === 'perf') {
+  document.documentElement.dataset.view = view.kind;
 } else {
   void bootCommon(view).then(() => {
     if (view.kind === 'island') bootIsland();
@@ -219,6 +223,10 @@ function Root() {
       return <ShotEditor />;
     case 'video':
       return <VideoEditor path={view.path} />;
+    case 'perf':
+      return <PerfOverlay />;
+    case 'desk':
+      return <DesktopWidget id={view.id} />;
     default:
       return <Island />;
   }

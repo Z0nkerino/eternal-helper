@@ -3,9 +3,9 @@
 import { call, listen, type MediaInfo, type MusicReport } from './ipc';
 import { useApp, type MediaSource } from './store';
 import { rememberTrack } from './recent';
-import { coverArt, currentTrack, next as radioNext, previous as radioPrev, toggle as radioToggle, useRadio } from '../radio/player';
+import { coverArt, currentTrack, next as radioNext, previous as radioPrev, seek as radioSeek, toggle as radioToggle, useRadio } from '../radio/player';
 
-export const SERVICE_NAMES: Record<MusicReport['service'], string> = { spotify: 'Spotify', yandex: 'Yandex Music', soundcloud: 'SoundCloud' };
+export const SERVICE_NAMES: Record<MusicReport['service'], string> = { spotify: 'Spotify', yandex: 'Yandex Music', soundcloud: 'SoundCloud', youtube: 'YouTube Music' };
 
 export function pickMedia(system: MediaInfo | null, web: Partial<Record<MusicReport['service'], MusicReport>>): { media: MediaInfo | null; source: MediaSource } {
   const reports = Object.values(web).filter((r): r is MusicReport => !!r && !!r.title);
@@ -71,6 +71,18 @@ export function mediaControl(action: 'toggle' | 'next' | 'previous') {
   if (src.kind === 'radio') return Promise.resolve(action === 'toggle' ? radioToggle() : action === 'next' ? radioNext() : radioPrev());
   if (src.kind === 'web') return call('music_control', { service: src.service, action });
   return call('media_control', { action });
+}
+
+/** Jumps to a position (ms) on whichever source the island is showing. */
+export async function mediaSeek(ms: number) {
+  const s = useApp.getState();
+  const src = s.mediaSource;
+  const at = Math.max(0, Math.round(ms));
+  // Move the bar at once; the player catches up.
+  if (s.media) useApp.setState({ media: { ...s.media, positionMs: at }, mediaAt: Date.now() });
+  if (src.kind === 'radio') return radioSeek(at / 1000 / Math.max(1, (s.media?.durationMs ?? 1) / 1000));
+  if (src.kind === 'web') return call('music_control', { service: src.service, action: `seek:${at}` });
+  return call('media_seek', { ms: at });
 }
 
 /** Current position, moved forward since the last reading while playing. */

@@ -27,6 +27,10 @@ pub enum MediaAction {
 pub trait MediaProvider: Send + Sync {
     fn now_playing(&self) -> Option<MediaInfo>;
     fn control(&self, action: MediaAction) -> Result<(), String>;
+    /// Jumps to a position in the current track (where the player allows it).
+    fn seek(&self, _ms: u64) -> Result<(), String> {
+        Err("This player can't jump to a position.".into())
+    }
 }
 
 pub trait FullscreenDetector: Send + Sync {

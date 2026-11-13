@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desk-save-pos"
+description = "Enables the desk_save_pos command without any pre-configured scope."
+commands.allow = ["desk_save_pos"]
+
+[[permission]]
+identifier = "deny-desk-save-pos"
+description = "Denies the desk_save_pos command without any pre-configured scope."
+commands.deny = ["desk_save_pos"]

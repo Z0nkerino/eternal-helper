@@ -22,6 +22,7 @@ pub fn open(app: &AppHandle, kind: &str) -> Result<(), String> {
     }
     let b = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(format!("index.html#{route}").into()))
         .title(title)
+        .additional_browser_args(&crate::webview_args())
         .inner_size(size.0, size.1)
         .min_inner_size(min.0, min.1)
         .center()
@@ -45,6 +46,7 @@ pub fn open_video_editor(app: &AppHandle, path: &str) -> Result<(), String> {
     let enc: String = path.bytes().map(|b| if b.is_ascii_alphanumeric() || b"-_.~".contains(&b) { (b as char).to_string() } else { format!("%{b:02X}") }).collect();
     let b = WebviewWindowBuilder::new(app, label, WebviewUrl::App(format!("index.html#video/{enc}").into()))
         .title("Eternal Helper — Video")
+        .additional_browser_args(&crate::webview_args())
         .inner_size(960.0, 680.0)
         .min_inner_size(640.0, 480.0)
         .center()

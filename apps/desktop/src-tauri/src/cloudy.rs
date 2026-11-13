@@ -23,6 +23,7 @@ pub fn sync(app: &AppHandle, on: bool) {
     }
     let built = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("index.html#cloudy".into()))
         .title("Cloudy")
+        .additional_browser_args(&crate::webview_args())
         .decorations(false)
         .transparent(true)
         .always_on_top(true)

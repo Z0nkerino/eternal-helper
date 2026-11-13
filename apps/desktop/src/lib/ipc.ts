@@ -164,7 +164,7 @@ export interface UpdateInfo {
 }
 
 export interface MusicService {
-  id: 'spotify' | 'yandex' | 'soundcloud';
+  id: 'spotify' | 'yandex' | 'soundcloud' | 'youtube';
   name: string;
   open: boolean;
   visible: boolean;
@@ -219,7 +219,7 @@ interface Commands {
   music_services: [void, MusicService[]];
   music_open: [{ service: string; show: boolean }, void];
   music_hide: [{ service: string }, void];
-  music_control: [{ service: string; action: 'toggle' | 'next' | 'previous' }, void];
+  music_control: [{ service: string; action: 'toggle' | 'next' | 'previous' | `seek:${number}` }, void];
   music_sign_out: [void, void];
   shot_start: [void, void];
   shot_close: [void, void];
@@ -239,6 +239,12 @@ interface Commands {
   reveal_download: [{ path: string }, void];
   island_save_pos: [{ px: number; py: number }, void];
   shot_info: [void, string | null];
+  notify: [{ title: string; body: string }, void];
+  media_seek: [{ ms: number }, void];
+  desk_list: [void, { id: string; x: number; y: number }[]];
+  desk_add: [{ id: string }, void];
+  desk_remove: [{ id: string }, void];
+  desk_save_pos: [{ id: string }, void];
   shot_list: [void, ShotFile[]];
   shot_edit: [{ path: string }, void];
   shot_rename: [{ path: string; title: string }, string];
@@ -397,6 +403,7 @@ async function mock(cmd: keyof Commands, arg: unknown): Promise<unknown> {
         { id: 'spotify', name: 'Spotify', open: false, visible: false },
         { id: 'yandex', name: 'Yandex Music', open: false, visible: false },
         { id: 'soundcloud', name: 'SoundCloud', open: false, visible: false },
+        { id: 'youtube', name: 'YouTube Music', open: false, visible: false },
       ] satisfies MusicService[];
     default:
       return undefined;

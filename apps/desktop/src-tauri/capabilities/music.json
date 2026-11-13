@@ -5,14 +5,16 @@
   "windows": [
     "music-spotify",
     "music-yandex",
-    "music-soundcloud"
+    "music-soundcloud",
+    "music-youtube"
   ],
   "remote": {
     "urls": [
       "https://open.spotify.com/*",
       "https://music.yandex.ru/*",
       "https://music.yandex.com/*",
-      "https://soundcloud.com/*"
+      "https://soundcloud.com/*",
+      "https://music.youtube.com/*"
     ]
   },
   "permissions": [

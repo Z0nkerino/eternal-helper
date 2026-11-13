@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-desk-add"
+description = "Enables the desk_add command without any pre-configured scope."
+commands.allow = ["desk_add"]
+
+[[permission]]
+identifier = "deny-desk-add"
+description = "Denies the desk_add command without any pre-configured scope."
+commands.deny = ["desk_add"]
